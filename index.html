@@ -1476,13 +1476,41 @@ function imprimirRanking(){
 function renderEscolas(){
   const el=document.getElementById('listaEscolas');
   if(!db.escolas.length){el.innerHTML='<p style="text-align:center;color:#64748b;padding:40px;">Nenhuma escola cadastrada.</p>';return;}
-  el.innerHTML=db.escolas.map(e=>`<div class="escola-card">
+  el.innerHTML=`
+    <div style="padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;margin-bottom:12px;font-size:12px;color:#92400e;">
+      🔑 Os códigos de acesso abaixo são as senhas das escolas. Compartilhe com cada responsável.
+      Clique em <strong>✏️ Código</strong> para alterar ou em <strong>📋</strong> para copiar.
+    </div>` +
+  db.escolas.map(e=>`<div class="escola-card">
     <div style="width:36px;height:36px;border-radius:8px;background:var(--azc);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🏫</div>
-    <div style="flex:1;"><h4 style="font-size:13px;font-weight:600;">${esc(e.nome)}</h4>
-    <small style="font-size:11px;color:#64748b;">${esc(e.responsavel)} · ${esc(e.email)} ${e.telefone?'· '+esc(e.telefone):''}</small>
-    <div style="margin-top:4px;"><span class="badge badge-purple">Código: ${esc(e.codigo)}</span></div></div>
+    <div style="flex:1;">
+      <h4 style="font-size:13px;font-weight:600;">${esc(e.nome)}</h4>
+      <small style="font-size:11px;color:#64748b;">${esc(e.responsavel)} · ${esc(e.email)} ${e.telefone?'· '+esc(e.telefone):''}</small>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="font-family:monospace;font-size:12px;font-weight:700;background:#f3e8ff;color:#6d28d9;padding:3px 10px;border-radius:6px;letter-spacing:.5px;">${esc(e.codigo)}</span>
+        <button title="Copiar código" onclick="copiarCodigo('${esc(e.codigo)}')"
+          style="background:none;border:1px solid var(--bd);border-radius:5px;cursor:pointer;padding:2px 7px;font-size:11px;color:#475569;">📋 Copiar</button>
+        <button title="Alterar código" onclick="alterarCodigo('${e.id}')"
+          style="background:none;border:1px solid var(--bd);border-radius:5px;cursor:pointer;padding:2px 7px;font-size:11px;color:#0056b8;">✏️ Código</button>
+      </div>
+    </div>
     <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="excluirEscola('${e.id}')">🗑️</button>
   </div>`).join('');
+}
+function copiarCodigo(codigo){
+  navigator.clipboard.writeText(codigo).then(()=>showToast('Código copiado!')).catch(()=>{
+    prompt('Copie o código abaixo:',codigo);
+  });
+}
+function alterarCodigo(id){
+  const e=db.escolas.find(x=>x.id===id); if(!e) return;
+  const novo=prompt(`Novo código para "${e.nome}":\n(atual: ${e.codigo})`,e.codigo);
+  if(!novo||!novo.trim()) return;
+  const novoFmt=novo.trim().toUpperCase();
+  // Verifica duplicata
+  if(db.escolas.some(x=>x.id!==id&&x.codigo===novoFmt)){alert('Este código já está em uso por outra escola.');return;}
+  e.codigo=novoFmt; markDirty(); renderEscolas();
+  showToast(`Código de "${e.nome}" atualizado!`);
 }
 function excluirEscola(id){
   const e=db.escolas.find(x=>x.id===id);if(!e) return;
@@ -1500,10 +1528,20 @@ function renderPortalEscola(){
   let totalAtl=0,totalInscr=0;
   db.etapas.forEach(e=>{ Object.values(e.provas||{}).forEach(p=>{ const at=p.atletas.filter(a=>a.escola===escola.nome); totalInscr+=at.length; }); });
   const todosNomes=new Set(); db.etapas.forEach(e=>{ Object.values(e.provas||{}).forEach(p=>{ p.atletas.filter(a=>a.escola===escola.nome).forEach(a=>todosNomes.add(a.nome)); }); }); totalAtl=todosNomes.size;
-  let html=`<div style="background:linear-gradient(135deg,#003f8a,#0056b8);color:#fff;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+  let html=`<div style="background:linear-gradient(135deg,#003f8a,#0056b8);color:#fff;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;">
     <span style="font-size:32px;">🏫</span>
-    <div><h3 style="font-size:14px;font-weight:700;">${esc(escola.nome)}</h3>
-    <p style="font-size:11px;opacity:.8;">${esc(escola.responsavel)} · Código: ${esc(escola.codigo)}</p></div>
+    <div style="flex:1;">
+      <h3 style="font-size:14px;font-weight:700;">${esc(escola.nome)}</h3>
+      <p style="font-size:11px;opacity:.8;">${esc(escola.responsavel)}</p>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="font-size:11px;opacity:.8;">Código de acesso:</span>
+        <span style="font-family:monospace;font-size:12px;font-weight:700;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:5px;letter-spacing:.5px;">${esc(escola.codigo)}</span>
+        <button onclick="copiarCodigoEscola()" title="Copiar código"
+          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:5px;color:#fff;cursor:pointer;padding:2px 8px;font-size:11px;">📋 Copiar</button>
+        <button onclick="trocarCodigoEscola()" title="Trocar código de acesso"
+          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:5px;color:#fff;cursor:pointer;padding:2px 8px;font-size:11px;">✏️ Trocar código</button>
+      </div>
+    </div>
   </div>
   <div class="srow" style="margin-bottom:16px;">
     <div class="sc"><div class="lbl">Etapas</div><div class="val">${db.etapas.length}</div></div>
@@ -1544,45 +1582,109 @@ function gerenciarInscricao(etapaId,nomePr){
   const etapa=db.etapas.find(x=>x.id===etapaId);if(!etapa) return;
   const p=etapa.provas[nomePr];if(!p) return;
   const escola=perfil;
-  // Remove modal anterior se existir
   document.getElementById('inscricaoModal')?.remove();
   const modal=document.createElement('div');
   modal.className='mover open'; modal.id='inscricaoModal';
   modal.innerHTML=`<div class="mdl" style="max-width:580px;">
-    <div class="mdl-hd"><h3>✏️ ${esc(nomePr)}</h3><button class="mdl-x" onclick="document.getElementById('inscricaoModal').remove()">×</button></div>
+    <div class="mdl-hd">
+      <h3>✏️ ${esc(nomePr)}</h3>
+      <button class="mdl-x" onclick="document.getElementById('inscricaoModal').remove()">×</button>
+    </div>
     <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Escola: <strong>${esc(escola.nome)}</strong> · Etapa: <strong>${esc(etapa.nome)}</strong></p>
-    <div id="inscrAtletas" style="max-height:340px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;"></div>
-    <div class="card-ft" style="border:none;padding:10px 0 0;"><button class="btn b-out" onclick="addAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})">+ Adicionar atleta</button></div>
+    <div style="background:#f8fafc;border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--az);margin-bottom:8px;">+ Adicionar atleta</div>
+      <div class="frow" style="margin-bottom:8px;">
+        <div class="fg grow"><label>Nome *</label>
+          <input type="text" id="inscrNome" placeholder="Nome completo"
+            onkeydown="if(event.key==='Enter')confirmarAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})"/>
+        </div>
+      </div>
+      <div class="frow" style="margin-bottom:10px;">
+        <div class="fg" style="min-width:140px;"><label>Categoria *</label>
+          <select id="inscrCat">
+            <option value="">Selecione...</option>
+            <option value="A7">A7 (nasc. 2019)</option>
+            <option value="A8">A8 (nasc. 2018)</option>
+            <option value="A9">A9 (nasc. 2017)</option>
+            <option value="A10">A10 (nasc. 2016)</option>
+            <option value="A11">A11 (nasc. 2015)</option>
+            <option value="A12">A12 (nasc. 2014)</option>
+            <option value="A13">A13 (nasc. 2013)</option>
+            <option value="A14">A14 (nasc. 2012)</option>
+            <option value="A15">A15 (nasc. 2011)</option>
+            <option value="A16-17">A16-17 (nasc. 2009-10)</option>
+          </select>
+        </div>
+        <div class="fg grow"><label>Tempo de referência <small style="font-weight:400;color:#94a3b8;">(opcional)</small></label>
+          <input type="text" id="inscrTRef" placeholder="Ex: 00:32,50"
+            onkeydown="if(event.key==='Enter')confirmarAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})"/>
+        </div>
+      </div>
+      <button class="btn b-pri" style="width:100%;" onclick="confirmarAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})">✅ Adicionar atleta</button>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:6px;">Inscritos nesta prova:</div>
+    <div id="inscrAtletas" style="max-height:260px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;"></div>
   </div>`;
   document.body.appendChild(modal);
   renderInscrAtletas(etapaId,nomePr);
+  setTimeout(()=>document.getElementById('inscrNome')?.focus(),150);
+}
+function confirmarAtletaPortal(etapaId,nomePr){
+  const nome=toTitle((document.getElementById('inscrNome')?.value||'').trim());
+  const cat=(document.getElementById('inscrCat')?.value||'').trim();
+  const tr=(document.getElementById('inscrTRef')?.value||'').trim();
+  if(!nome){showToast('⚠️ Nome obrigatório.');document.getElementById('inscrNome')?.focus();return;}
+  if(!cat){showToast('⚠️ Selecione a categoria.');document.getElementById('inscrCat')?.focus();return;}
+  const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
+  p.atletas.push({id:uid(),nome,categoria:cat,escola:perfil.nome,tempoRef:tr,tempo:''});
+  markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola();
+  document.getElementById('inscrNome').value='';
+  document.getElementById('inscrCat').value='';
+  document.getElementById('inscrTRef').value='';
+  document.getElementById('inscrNome').focus();
+  showToast(`${nome} adicionado(a)!`);
 }
 function renderInscrAtletas(etapaId,nomePr){
   const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];const escola=perfil;
   const el=document.getElementById('inscrAtletas');if(!el||!p) return;
   const atls=p.atletas.filter(a=>a.escola===escola.nome);
-  if(!atls.length){el.innerHTML='<p style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;font-style:italic;">Nenhum atleta inscrito. Use "+ Adicionar atleta".</p>';return;}
+  if(!atls.length){el.innerHTML='<p style="text-align:center;color:#94a3b8;font-size:12px;padding:16px;font-style:italic;">Nenhum atleta inscrito ainda.</p>';return;}
   el.innerHTML=atls.map(a=>{
     const idx=p.atletas.indexOf(a);
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0f4f8;">
-      <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${esc(a.nome)}</div>
-      <div style="font-size:11px;color:#64748b;">Cat: ${esc(a.categoria||'—')} · Tempo ref: ${esc(a.tempoRef||'—')}</div></div>
-      <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="rmAtletaPortal('${etapaId}',${JSON.stringify(nomePr)},${idx})">✕</button>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:13px;">${esc(a.nome)}</div>
+        <div style="font-size:11px;color:#64748b;">Cat: <strong>${esc(a.categoria||'—')}</strong>${a.tempoRef?' · Ref: '+esc(a.tempoRef):''}</div>
+      </div>
+      <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="rmAtletaPortal('${etapaId}',${JSON.stringify(nomePr)},${idx})">✕ Remover</button>
     </div>`;
   }).join('');
-}
-function addAtletaPortal(etapaId,nomePr){
-  const nome=prompt('Nome do atleta:');if(!nome?.trim()) return;
-  const cat=prompt('Categoria (ex: A12):','')||'';
-  const tr=prompt('Tempo de referência (ex: 00:32,50 — opcional):','')||'';
-  const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
-  p.atletas.push({id:uid(),nome:toTitle(nome.trim()),categoria:cat.trim().toUpperCase(),escola:perfil.nome,tempoRef:tr.trim(),tempo:''});
-  markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola(); showToast('Atleta adicionado!');
 }
 function rmAtletaPortal(etapaId,nomePr,idx){
   if(!confirm('Remover atleta?')) return;
   const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
   p.atletas.splice(idx,1); markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola();
+}
+function copiarCodigoEscola(){
+  if(!perfil||perfil==='admin') return;
+  navigator.clipboard.writeText(perfil.codigo).then(()=>showToast('Código copiado!')).catch(()=>{
+    prompt('Copie o código:',perfil.codigo);
+  });
+}
+function trocarCodigoEscola(){
+  if(!perfil||perfil==='admin') return;
+  const novo=prompt(`Escolha um novo código de acesso para "${perfil.nome}":\n(atual: ${perfil.codigo})\n\nUse letras maiúsculas e números, sem espaços.`,perfil.codigo);
+  if(!novo||!novo.trim()) return;
+  const novoFmt=novo.trim().toUpperCase().replace(/\s+/g,'-');
+  if(novoFmt.length<6){alert('O código deve ter pelo menos 6 caracteres.');return;}
+  if(db.escolas.some(x=>x.id!==perfil.id&&x.codigo===novoFmt)){alert('Este código já está em uso por outra escola. Escolha outro.');return;}
+  // Atualiza no db e no perfil ativo
+  const escola=db.escolas.find(x=>x.id===perfil.id);
+  if(!escola) return;
+  escola.codigo=novoFmt; perfil.codigo=novoFmt;
+  markDirty(); renderPortalEscola();
+  showToast(`Código atualizado para: ${novoFmt}`);
+  setTimeout(()=>alert(`✅ Novo código salvo: ${novoFmt}\n\nAnote este código — você precisará dele para entrar no sistema da próxima vez!`),300);
 }
 
 // ══════════════════════════════════════════════════════════
