@@ -695,7 +695,29 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 // ══════════════════════════════════════════════════════════
 const ADMIN_SENHA = 'lne2026';
 const PONTOS_LNE  = [13,9,7,5,4,3,2,1,1,1,1,1,1,1,1,1,1,1,1,1];
-const LANE_ORDER  = [4,5,3,6,2,7,1,8,9,10];
+
+// Gera ordem de raias do centro para fora (padrão FINA)
+function getLaneOrder(raias) {
+  const center = raias / 2;
+  const order = [];
+  // Para par de raias: centro é entre raias center e center+1
+  // Ex: 6 raias → centro entre 3 e 4 → ordem: 3,4,2,5,1,6
+  // Ex: 8 raias → centro entre 4 e 5 → ordem: 4,5,3,6,2,7,1,8
+  if (raias % 2 === 0) {
+    order.push(center, center + 1);
+    for (let i = 1; i < center; i++) {
+      order.push(center - i, center + 1 + i);
+    }
+  } else {
+    // Para ímpar: centro é a raia do meio
+    const mid = Math.ceil(center);
+    order.push(mid);
+    for (let i = 1; i <= Math.floor(center); i++) {
+      order.push(mid - i, mid + i);
+    }
+  }
+  return order;
+}
 
 let db = { etapas:[], escolas:[] };
 let perfil = null;
@@ -1275,7 +1297,7 @@ function gerarBal(nome){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   const p=etapa.provas[nome]; if(!p) return;
   const raias=etapa.raias||8;
-  const lo=LANE_ORDER.slice(0,raias);
+  const lo=getLaneOrder(raias);
   const spread=[...p.atletas].sort((a,b)=>tempoMs(a.tempoRef)-tempoMs(b.tempoRef));
   const counts=calcSeries(spread.length,raias);
   const series=[]; let pos=0;
