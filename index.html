@@ -712,7 +712,8 @@ let curPrintCSS  = 'normal';
 // UTILS
 // ══════════════════════════════════════════════════════════
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const tid = s => String(s).replace(/[^a-zA-Z0-9]/g,'_');
+const tid = s => 'p_'+String(s).replace(/[^a-zA-Z0-9]/g,'_');
+const jstr = s => JSON.stringify(s).replace(/"/g,'&quot;');
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const toTitle = s => s ? s.trim().split(/\s+/).map(w=>w?w[0].toUpperCase()+w.slice(1).toLowerCase():'').join(' ') : '';
 const tempoMs = t => { if(!t||!t.trim()) return Infinity; const m=t.match(/^(\d+):(\d+)[,.](\d+)$/); return m?+m[1]*60000+ +m[2]*1000+ +m[3]*10:Infinity; };
@@ -1111,7 +1112,7 @@ function renderProvasEtapa(){
   const contEl=document.getElementById('provasConteudo');
   if(!nomes.length){ document.getElementById('provasContainer').style.display='none'; document.getElementById('semProvas').style.display='block'; return; }
   document.getElementById('provasContainer').style.display='block'; document.getElementById('semProvas').style.display='none';
-  tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===curProva?'active':''}" data-prova="${esc(n)}" onclick="switchProvaTab(${JSON.stringify(n)})">${esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
+  tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===curProva?'active':''}" data-prova="${esc(n)}" data-tid="${tid(n)}" onclick="switchProvaTab(${jstr(n)})">${esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
   contEl.innerHTML=nomes.map(n=>`<div class="prova-tab-content ${n===curProva?'active':''}" id="prova-tab-${tid(n)}">
     <div id="stats-${tid(n)}" class="srow" style="padding:10px 14px 0;"></div>
     <div id="atl-${tid(n)}" style="padding:0 14px;"></div>
@@ -1124,7 +1125,7 @@ function renderProvasEtapa(){
 function switchProvaTab(nome){
   const provas=getProvas(); if(!provas[nome]) return;
   curProva=nome;
-  document.querySelectorAll('.prova-tab').forEach(b=>b.classList.toggle('active',b.dataset.prova===nome));
+  document.querySelectorAll('.prova-tab').forEach(b=>b.classList.toggle('active',b.dataset.tid===tid(nome)));
   document.querySelectorAll('.prova-tab-content').forEach(d=>d.classList.remove('active'));
   const el=document.getElementById('prova-tab-'+tid(nome)); if(el) el.classList.add('active');
   renderAll(nome); mostrarSticky(nome);
@@ -1155,11 +1156,11 @@ function renderAtletas(nome){
   const el=document.getElementById('atl-'+tid(nome)); if(!el) return;
   const collapsed=(p.series||[]).length>0;
   const rows=p.atletas.map((a,i)=>`<tr>
-    <td><input type="text" value="${esc(a.nome)}" onchange="updAtl(${JSON.stringify(nome)},${i},'nome',this.value)" placeholder="Nome"/></td>
-    <td><input type="text" value="${esc(a.categoria||'')}" onchange="updAtl(${JSON.stringify(nome)},${i},'categoria',this.value)" placeholder="A12" style="width:65px;"/></td>
-    <td><input type="text" value="${esc(a.escola||'')}" onchange="updAtl(${JSON.stringify(nome)},${i},'escola',this.value)" placeholder="Escola"/></td>
+    <td><input type="text" value="${esc(a.nome)}" onchange="updAtl(${jstr(nome)},${i},'nome',this.value)" placeholder="Nome"/></td>
+    <td><input type="text" value="${esc(a.categoria||'')}" onchange="updAtl(${jstr(nome)},${i},'categoria',this.value)" placeholder="A12" style="width:65px;"/></td>
+    <td><input type="text" value="${esc(a.escola||'')}" onchange="updAtl(${jstr(nome)},${i},'escola',this.value)" placeholder="Escola"/></td>
     <td style="font-family:monospace;font-size:11px;color:#64748b;">${esc(a.tempoRef||'')}</td>
-    <td><button class="btn b-red" style="font-size:10px;padding:2px 7px;" onclick="rmAtl(${JSON.stringify(nome)},${i})">✕</button></td>
+    <td><button class="btn b-red" style="font-size:10px;padding:2px 7px;" onclick="rmAtl(${jstr(nome)},${i})">✕</button></td>
   </tr>`).join('');
   el.innerHTML=`<div class="card" style="margin-bottom:12px;">
     <div class="card-hd coll-hd" onclick="toggleCollapse('atlbody-${tid(nome)}','atlarr-${tid(nome)}')">
@@ -1171,7 +1172,7 @@ function renderAtletas(nome){
         <thead><tr><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:90px;">Tempo Ref.</th><th style="width:40px;"></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;font-style:italic;">Nenhum atleta. Use "+ Atleta" ou importe Excel.</td></tr>'}</tbody>
       </table></div>
-      <div class="card-ft"><button class="btn b-out" onclick="addAtleta(${JSON.stringify(nome)})">+ Atleta</button></div>
+      <div class="card-ft"><button class="btn b-out" onclick="addAtleta(${jstr(nome)})">+ Atleta</button></div>
     </div></div>`;
 }
 function updAtl(nome,i,f,v){ const p=getProva(nome); if(!p) return; if(f==='nome'||f==='escola') v=toTitle(v); p.atletas[i][f]=v; markDirty(); }
@@ -1181,7 +1182,7 @@ function addAtleta(nome){
   const escola=perfil&&perfil!=='admin'?perfil.nome:'';
   document.getElementById('addAtletaTitulo').textContent=`+ Atleta em "${nome}"`;
   document.getElementById('addAtletaConteudo').innerHTML=`
-    <div class="frow"><div class="fg grow"><label>Nome *</label><input type="text" id="addNome" placeholder="Nome completo" onkeydown="if(event.key==='Enter')confirmarAddAtleta(${JSON.stringify(nome)})"/></div></div>
+    <div class="frow"><div class="fg grow"><label>Nome *</label><input type="text" id="addNome" placeholder="Nome completo" onkeydown="if(event.key==='Enter')confirmarAddAtleta(${jstr(nome)})"/></div></div>
     <div class="frow">
       <div class="fg"><label>Categoria *</label><input type="text" id="addCat" placeholder="Ex: A12"/></div>
       <div class="fg grow"><label>Escola</label><input type="text" id="addEscola" value="${esc(escola)}" placeholder="Nome da escola"/></div>
@@ -1189,7 +1190,7 @@ function addAtleta(nome){
     <div class="frow"><div class="fg"><label>Tempo de referência</label><input type="text" id="addTRef" placeholder="00:00,00"/></div></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
       <button class="btn b-out" onclick="fecharModal('modalAddAtleta')">Cancelar</button>
-      <button class="btn b-pri" onclick="confirmarAddAtleta(${JSON.stringify(nome)})">+ Adicionar</button>
+      <button class="btn b-pri" onclick="confirmarAddAtleta(${jstr(nome)})">+ Adicionar</button>
     </div>`;
   abrirModal('modalAddAtleta');
   setTimeout(()=>document.getElementById('addNome').focus(),100);
@@ -1296,7 +1297,7 @@ function renderBal(nome){
     <div class="card-hd coll-hd" onclick="toggleCollapse('balbody-${tid(nome)}','balarr-${tid(nome)}')">
       <span>⚡ Balizamento — ${esc(nome)} <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.series.length} série(s)</span></span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <button class="btn b-pri" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();abrirSerieCombinada(${JSON.stringify(nome)})">🔀 Série combinada</button>
+        <button class="btn b-pri" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();abrirSerieCombinada(${jstr(nome)})">🔀 Série combinada</button>
         <span id="balarr-${tid(nome)}" class="coll-arrow open">▼</span>
       </div>
     </div>
@@ -1316,21 +1317,21 @@ function renderBal(nome){
       if(a&&!a._outra){
         const ok=a.tempo&&/^\d{1,2}:\d{2}[,.]\d{2}$/.test(a.tempo.trim());
         html+=`<tr class="drag-row${cen}" draggable="true"
-          ondragstart="dstart(event,${JSON.stringify(nome)},${si},${li})" ondragover="dover(event)"
-          ondrop="ddrop(event,${JSON.stringify(nome)},${si},${li})" ondragleave="dleave(event)" ondragend="dend(event)">
+          ondragstart="dstart(event,${jstr(nome)},${si},${li})" ondragover="dover(event)"
+          ondrop="ddrop(event,${jstr(nome)},${si},${li})" ondragleave="dleave(event)" ondragend="dend(event)">
           <td class="drag-handle">⠿</td><td class="rn">${raia}</td>
-          <td><input type="text" value="${esc(a.nome)}" onchange="updBal(${JSON.stringify(nome)},${si},${li},'nome',this.value)"/></td>
+          <td><input type="text" value="${esc(a.nome)}" onchange="updBal(${jstr(nome)},${si},${li},'nome',this.value)"/></td>
           <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
-          <td><input type="text" value="${esc(a.escola||'')}" onchange="updBal(${JSON.stringify(nome)},${si},${li},'escola',this.value)"/></td>
+          <td><input type="text" value="${esc(a.escola||'')}" onchange="updBal(${jstr(nome)},${si},${li},'escola',this.value)"/></td>
           <td>
             <input type="text" class="ti${a.tempo?(ok?' ok':' err'):''}" placeholder="00:00,00" value="${esc(a.tempo||'')}"
               inputmode="decimal"
               oninput="vTi(this)"
-              onchange="updBal(${JSON.stringify(nome)},${si},${li},'tempo',this.value)"
+              onchange="updBal(${jstr(nome)},${si},${li},'tempo',this.value)"
               style="width:95px;"/>
           </td>
           <td style="text-align:center;white-space:nowrap;">
-            <button onclick="excluirRaia(${JSON.stringify(nome)},${si},${li})"
+            <button onclick="excluirRaia(${jstr(nome)},${si},${li})"
               title="Remover desta raia"
               style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:4px 8px;border-radius:5px;font-weight:600;touch-action:manipulation;">✕</button>
           </td>
@@ -1346,7 +1347,7 @@ function renderBal(nome){
         html+=`<tr class="${cen}" id="rvazia-${tid(nome)}-${si}-${li}">
           <td></td><td class="rn" style="color:#ccc;">${raia}</td>
           <td colspan="3" class="er">— raia vazia —</td>
-          <td style="text-align:right;" colspan="2"><button onclick="ativarRaiaVazia(${JSON.stringify(nome)},${si},${li})"
+          <td style="text-align:right;" colspan="2"><button onclick="ativarRaiaVazia(${jstr(nome)},${si},${li})"
             style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#6b7280;cursor:pointer;font-size:11px;padding:2px 8px;">+ incluir</button></td>
         </tr>`;
       }
@@ -1354,8 +1355,8 @@ function renderBal(nome){
     html+=`</tbody></table></div>`;
   });
   html+=`<div class="card-ft">
-    <button class="btn b-pdf" onclick="printBal(${JSON.stringify(nome)})">🖨️ Imprimir balizamento</button>
-    <button class="btn b-suc" onclick="gerarClass(${JSON.stringify(nome)})">🏅 Gerar classificação →</button>
+    <button class="btn b-pdf" onclick="printBal(${jstr(nome)})">🖨️ Imprimir balizamento</button>
+    <button class="btn b-suc" onclick="gerarClass(${jstr(nome)})">🏅 Gerar classificação →</button>
   </div></div></div>`;
   el.innerHTML=html;
 }
@@ -1366,12 +1367,12 @@ function excluirRaia(nome,si,li){const p=getProva(nome);if(!p) return;p.series[s
 function ativarRaiaVazia(nome,si,li){
   const tr=document.getElementById(`rvazia-${tid(nome)}-${si}-${li}`); if(!tr) return;
   tr.innerHTML=`<td></td><td class="rn">${li+1}</td>
-    <td><input type="text" id="rvn-${si}-${li}" placeholder="Nome" autofocus style="width:100%;border:1px solid var(--azm);padding:3px 5px;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')confRaiaVazia(${JSON.stringify(nome)},${si},${li});if(event.key==='Escape')renderBal(${JSON.stringify(nome)});"/></td>
+    <td><input type="text" id="rvn-${si}-${li}" placeholder="Nome" autofocus style="width:100%;border:1px solid var(--azm);padding:3px 5px;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')confRaiaVazia(${jstr(nome)},${si},${li});if(event.key==='Escape')renderBal(${jstr(nome)});"/></td>
     <td><input type="text" id="rvcat-${si}-${li}" placeholder="Cat." style="width:65px;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
     <td><input type="text" id="rve-${si}-${li}" placeholder="Escola" style="width:100%;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
     <td colspan="2" style="white-space:nowrap;">
-      <button onclick="confRaiaVazia(${JSON.stringify(nome)},${si},${li})" style="background:var(--vd);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;padding:3px 8px;margin-right:3px;">✓</button>
-      <button onclick="renderBal(${JSON.stringify(nome)})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:11px;padding:3px 6px;color:#6b7280;">✕</button>
+      <button onclick="confRaiaVazia(${jstr(nome)},${si},${li})" style="background:var(--vd);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;padding:3px 8px;margin-right:3px;">✓</button>
+      <button onclick="renderBal(${jstr(nome)})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:11px;padding:3px 6px;color:#6b7280;">✕</button>
     </td>`;
   document.getElementById(`rvn-${si}-${li}`)?.focus();
 }
@@ -1485,7 +1486,7 @@ function renderClass(nome){
       <td style="text-align:center;font-weight:700;color:var(--az);">${pts||''}</td>
       <td style="font-size:11px;color:#64748b;">S${a.serie} R${a.raia}</td>
       <td>
-        <select onchange="setStatusCls(${JSON.stringify(nome)},${i},this.value)"
+        <select onchange="setStatusCls(${jstr(nome)},${i},this.value)"
           title="DQ=Desclassificado · DNS=Não largou · DNF=Não terminou"
           style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
           <option value="" ${!st?'selected':''}>—</option>
@@ -1513,7 +1514,7 @@ function renderClass(nome){
         <th style="background:#15803d;width:80px;" title="DQ=Desclassificado · DNS=Não largou · DNF=Não terminou">Status ℹ️</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
       <div class="card-ft">
-        <button class="btn b-pdf" onclick="printClass(${JSON.stringify(nome)})">🖨️ Imprimir classificação</button>
+        <button class="btn b-pdf" onclick="printClass(${jstr(nome)})">🖨️ Imprimir classificação</button>
       </div>
     </div></div>`;
 }
