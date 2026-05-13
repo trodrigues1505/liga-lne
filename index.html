@@ -215,8 +215,113 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 @keyframes spin{to{transform:rotate(360deg);}}
 
 @media print{.no-print{display:none!important;}}
-@media(max-width:700px){.frow{flex-direction:column;}.grid-2{grid-template-columns:1fr;}}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* ══════════════════════════════════════
+   MOBILE — tudo abaixo de 768px
+══════════════════════════════════════ */
+@media(max-width:768px){
+
+  /* Header compacto */
+  .hdr{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px;}
+  .hdr h1{font-size:13px;}
+  .hdr small{font-size:9px;}
+  .hdr-right{gap:5px;flex-wrap:wrap;}
+  .hdr-right .btn{font-size:10px;padding:4px 8px;}
+  /* Esconde backup/restaurar no mobile — ficam acessíveis só no desktop */
+  .hdr-right .b-gray, .hdr-right .b-out:not(#btnLogout){display:none;}
+
+  /* Nav principal — scroll horizontal */
+  .nav-main{top:auto;position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .nav-btn{padding:9px 12px;font-size:11px;}
+
+  /* Sticky bar — vira bottom bar no mobile */
+  .etapa-sticky{
+    position:fixed;bottom:0;left:0;right:0;top:auto;
+    z-index:200;padding:8px 10px;gap:5px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    box-shadow:0 -2px 8px rgba(0,0,0,.12);
+    flex-wrap:nowrap;
+  }
+  .etapa-sticky .sep{display:none;}
+  .etapa-sticky .btn{font-size:10px;padding:5px 9px;flex-shrink:0;}
+  /* Empurra conteúdo para não ficar atrás da bottom bar */
+  #page-balizamento .wrap{padding-bottom:70px;}
+
+  /* Wrap com menos padding */
+  .wrap{padding:10px;}
+
+  /* Cards */
+  .card-hd{font-size:11px;padding:8px 10px;}
+  .card-bd{padding:10px;}
+  .card-ft{padding:8px 10px;gap:5px;}
+  .card-ft .btn{font-size:10px;padding:4px 9px;}
+
+  /* Formulários */
+  .frow{flex-direction:column;gap:8px;}
+  .fg{min-width:unset;}
+  .fg input,.fg select,.fg textarea{font-size:14px;padding:9px 10px;}/* 14px evita zoom no iOS */
+
+  /* Grid */
+  .grid-2{grid-template-columns:1fr;}
+
+  /* Login */
+  .login-wrap{margin:20px auto;padding:12px;}
+  .login-box{padding:20px 16px;}
+  .role-btn{padding:14px 10px;font-size:12px;}
+
+  /* Etapa cards */
+  .etapa-card{padding:10px;gap:8px;}
+  .etapa-num{width:34px;height:34px;font-size:13px;flex-shrink:0;}
+
+  /* Escola cards */
+  .escola-card{flex-wrap:wrap;gap:8px;padding:10px;}
+
+  /* Tabelas — scroll horizontal */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tbl{min-width:500px;font-size:11px;}
+  .tbl th,.tbl td{padding:5px 7px;}
+
+  /* Tabs de provas */
+  .provas-tabs{font-size:10px;}
+  .prova-tab{padding:8px 10px;font-size:10px;}
+  .prova-tab-content{padding:10px;}
+
+  /* Stats row */
+  .srow{gap:6px;}
+  .sc{padding:7px 10px;min-width:70px;}
+  .sc .val{font-size:16px;}
+  .sc .lbl{font-size:9px;}
+
+  /* Modais — tela cheia no mobile */
+  .mdl{
+    width:100%;max-width:100%;
+    border-radius:16px 16px 0 0;
+    position:fixed;bottom:0;left:0;right:0;
+    margin:0;max-height:92vh;
+    padding:16px 14px;
+  }
+  .mover{align-items:flex-end;}
+
+  /* Botões de ação na tabela */
+  .btn{touch-action:manipulation;}
+
+  /* Balizamento: esconde coluna documento no mobile */
+  .col-doc{display:none;}
+
+  /* Ranking */
+  .ranking-row{padding:8px 10px;}
+
+  /* Portal badges */
+  .portal-badge{padding:12px 14px;gap:10px;}
+}
+
+/* Telas muito pequenas (< 380px) */
+@media(max-width:380px){
+  .hdr h1{font-size:11px;}
+  .nav-btn{padding:8px 9px;font-size:10px;}
+  .etapa-sticky .btn{font-size:9px;padding:4px 7px;}
+}
 </style>
 </head>
 <body>
@@ -1569,7 +1674,7 @@ function renderPortalEscola(){
         const atlE=provas[n].atletas.filter(a=>a.escola===escola.nome);
         html+=`<tr><td style="font-weight:500;">${esc(n)}</td>
           <td style="text-align:center;">${atlE.length?`<span class="badge badge-green">${atlE.length}</span>`:'<span class="badge badge-gray">0</span>'}</td>
-          <td style="text-align:center;">${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:3px 9px;" onclick="gerenciarInscricao('${e.id}',${JSON.stringify(n)})">✏️ Gerenciar</button>`:'<span style="font-size:11px;color:#94a3b8;">Encerrado</span>'}</td>
+          <td style="text-align:center;">${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:3px 9px;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="gerenciarInscricaoBtn(this)">✏️ Gerenciar</button>`:'<span style="font-size:11px;color:#94a3b8;">Encerrado</span>'}</td>
         </tr>`;
       });
       html+=`</tbody></table>`;
@@ -1578,90 +1683,132 @@ function renderPortalEscola(){
   });
   document.getElementById('portalConteudo').innerHTML=html;
 }
+function gerenciarInscricaoBtn(btn){
+  const etapaId=btn.dataset.etapa;
+  const nomePr=btn.dataset.prova;
+  gerenciarInscricao(etapaId,nomePr);
+}
+// Variáveis temporárias para o modal de inscrição (evita quebra com caracteres especiais nos nomes)
+let _inscEtapaId = null, _inscNomePr = null;
+
 function gerenciarInscricao(etapaId,nomePr){
   const etapa=db.etapas.find(x=>x.id===etapaId);if(!etapa) return;
   const p=etapa.provas[nomePr];if(!p) return;
+  // Salva estado global para o modal usar sem inline JSON
+  _inscEtapaId=etapaId; _inscNomePr=nomePr;
   const escola=perfil;
   document.getElementById('inscricaoModal')?.remove();
   const modal=document.createElement('div');
   modal.className='mover open'; modal.id='inscricaoModal';
   modal.innerHTML=`<div class="mdl" style="max-width:580px;">
     <div class="mdl-hd">
-      <h3>✏️ ${esc(nomePr)}</h3>
-      <button class="mdl-x" onclick="document.getElementById('inscricaoModal').remove()">×</button>
+      <h3>✏️ Inscrição de Atletas</h3>
+      <button class="mdl-x" onclick="fecharInscricaoModal()">×</button>
     </div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:4px;">Prova: <strong id="inscrProvaNome"></strong></p>
     <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Escola: <strong>${esc(escola.nome)}</strong> · Etapa: <strong>${esc(etapa.nome)}</strong></p>
     <div style="background:#f8fafc;border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:var(--az);margin-bottom:8px;">+ Adicionar atleta</div>
-      <div class="frow" style="margin-bottom:8px;">
-        <div class="fg grow"><label>Nome *</label>
-          <input type="text" id="inscrNome" placeholder="Nome completo"
-            onkeydown="if(event.key==='Enter')confirmarAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})"/>
+      <div style="font-size:12px;font-weight:700;color:var(--az);margin-bottom:10px;">+ Adicionar atleta</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;">Nome *</label>
+          <input type="text" id="inscrNome" placeholder="Nome completo do atleta"
+            style="border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:15px;font-family:inherit;color:var(--cz);background:#fff;outline:none;width:100%;"
+            onfocus="this.style.borderColor='var(--azm)'" onblur="this.style.borderColor='var(--bd)'"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('inscrCat').focus();}"/>
         </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+            <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;">Categoria *</label>
+            <select id="inscrCat" style="border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:15px;font-family:inherit;color:var(--cz);background:#fff;outline:none;">
+              <option value="">Selecione...</option>
+              <option value="A7">A7 — nasc. 2019</option>
+              <option value="A8">A8 — nasc. 2018</option>
+              <option value="A9">A9 — nasc. 2017</option>
+              <option value="A10">A10 — nasc. 2016</option>
+              <option value="A11">A11 — nasc. 2015</option>
+              <option value="A12">A12 — nasc. 2014</option>
+              <option value="A13">A13 — nasc. 2013</option>
+              <option value="A14">A14 — nasc. 2012</option>
+              <option value="A15">A15 — nasc. 2011</option>
+              <option value="A16-17">A16-17 — nasc. 2009-10</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
+            <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;">Tempo ref. <span style="font-weight:400;color:#94a3b8;text-transform:none;">(opcional)</span></label>
+            <input type="text" id="inscrTRef" placeholder="Ex: 00:32,50"
+              style="border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:15px;font-family:monospace;color:var(--cz);background:#fff;outline:none;"
+              onfocus="this.style.borderColor='var(--azm)'" onblur="this.style.borderColor='var(--bd)'"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarAtletaPortal();}"/>
+          </div>
+        </div>
+        <button class="btn b-pri" style="width:100%;padding:12px;font-size:14px;" onclick="confirmarAtletaPortal()">✅ Adicionar atleta</button>
       </div>
-      <div class="frow" style="margin-bottom:10px;">
-        <div class="fg" style="min-width:140px;"><label>Categoria *</label>
-          <select id="inscrCat">
-            <option value="">Selecione...</option>
-            <option value="A7">A7 (nasc. 2019)</option>
-            <option value="A8">A8 (nasc. 2018)</option>
-            <option value="A9">A9 (nasc. 2017)</option>
-            <option value="A10">A10 (nasc. 2016)</option>
-            <option value="A11">A11 (nasc. 2015)</option>
-            <option value="A12">A12 (nasc. 2014)</option>
-            <option value="A13">A13 (nasc. 2013)</option>
-            <option value="A14">A14 (nasc. 2012)</option>
-            <option value="A15">A15 (nasc. 2011)</option>
-            <option value="A16-17">A16-17 (nasc. 2009-10)</option>
-          </select>
-        </div>
-        <div class="fg grow"><label>Tempo de referência <small style="font-weight:400;color:#94a3b8;">(opcional)</small></label>
-          <input type="text" id="inscrTRef" placeholder="Ex: 00:32,50"
-            onkeydown="if(event.key==='Enter')confirmarAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})"/>
-        </div>
-      </div>
-      <button class="btn b-pri" style="width:100%;" onclick="confirmarAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})">✅ Adicionar atleta</button>
     </div>
-    <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:6px;">Inscritos nesta prova:</div>
+    <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:6px;">Atletas inscritos nesta prova:</div>
     <div id="inscrAtletas" style="max-height:260px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;"></div>
   </div>`;
   document.body.appendChild(modal);
+  // Preenche nome da prova de forma segura (sem innerHTML injection)
+  document.getElementById('inscrProvaNome').textContent=nomePr;
   renderInscrAtletas(etapaId,nomePr);
   setTimeout(()=>document.getElementById('inscrNome')?.focus(),150);
 }
-function confirmarAtletaPortal(etapaId,nomePr){
+function fecharInscricaoModal(){
+  document.getElementById('inscricaoModal')?.remove();
+  _inscEtapaId=null; _inscNomePr=null;
+}
+function confirmarAtletaPortal(){
+  const etapaId=_inscEtapaId, nomePr=_inscNomePr;
+  if(!etapaId||!nomePr) return;
   const nome=toTitle((document.getElementById('inscrNome')?.value||'').trim());
   const cat=(document.getElementById('inscrCat')?.value||'').trim();
   const tr=(document.getElementById('inscrTRef')?.value||'').trim();
-  if(!nome){showToast('⚠️ Nome obrigatório.');document.getElementById('inscrNome')?.focus();return;}
-  if(!cat){showToast('⚠️ Selecione a categoria.');document.getElementById('inscrCat')?.focus();return;}
+  if(!nome){
+    document.getElementById('inscrNome').style.borderColor='#f87171';
+    document.getElementById('inscrNome').focus();
+    showToast('⚠️ Digite o nome do atleta.');return;
+  }
+  if(!cat){
+    document.getElementById('inscrCat').style.borderColor='#f87171';
+    document.getElementById('inscrCat').focus();
+    showToast('⚠️ Selecione a categoria.');return;
+  }
   const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
   p.atletas.push({id:uid(),nome,categoria:cat,escola:perfil.nome,tempoRef:tr,tempo:''});
   markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola();
-  document.getElementById('inscrNome').value='';
-  document.getElementById('inscrCat').value='';
-  document.getElementById('inscrTRef').value='';
-  document.getElementById('inscrNome').focus();
+  // Limpa para próximo atleta
+  const nomeEl=document.getElementById('inscrNome');
+  const catEl=document.getElementById('inscrCat');
+  const trEl=document.getElementById('inscrTRef');
+  if(nomeEl){nomeEl.value='';nomeEl.style.borderColor='var(--bd)';nomeEl.focus();}
+  if(catEl){catEl.value='';catEl.style.borderColor='var(--bd)';}
+  if(trEl) trEl.value='';
   showToast(`${nome} adicionado(a)!`);
 }
 function renderInscrAtletas(etapaId,nomePr){
   const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];const escola=perfil;
   const el=document.getElementById('inscrAtletas');if(!el||!p) return;
   const atls=p.atletas.filter(a=>a.escola===escola.nome);
-  if(!atls.length){el.innerHTML='<p style="text-align:center;color:#94a3b8;font-size:12px;padding:16px;font-style:italic;">Nenhum atleta inscrito ainda.</p>';return;}
-  el.innerHTML=atls.map(a=>{
+  if(!atls.length){
+    el.innerHTML='<p style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;font-style:italic;">Nenhum atleta inscrito ainda.</p>';
+    return;
+  }
+  el.innerHTML=atls.map((a,i)=>{
     const idx=p.atletas.indexOf(a);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0f4f8;">
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0f4f8;">
       <div style="flex:1;">
         <div style="font-weight:600;font-size:13px;">${esc(a.nome)}</div>
         <div style="font-size:11px;color:#64748b;">Cat: <strong>${esc(a.categoria||'—')}</strong>${a.tempoRef?' · Ref: '+esc(a.tempoRef):''}</div>
       </div>
-      <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="rmAtletaPortal('${etapaId}',${JSON.stringify(nomePr)},${idx})">✕ Remover</button>
+      <button style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:6px;font-weight:600;" onclick="rmAtletaPortal(${idx})">✕ Remover</button>
     </div>`;
   }).join('');
 }
-function rmAtletaPortal(etapaId,nomePr,idx){
+function rmAtletaPortal(idx){
   if(!confirm('Remover atleta?')) return;
+  const etapaId=_inscEtapaId, nomePr=_inscNomePr;
+  if(!etapaId||!nomePr) return;
   const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
   p.atletas.splice(idx,1); markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola();
 }
