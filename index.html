@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema LNE — Liga de Natação Escolar 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAU2I5CZFPwuJcNKRXWMsNG2ZTOJSHBw-0",
+  authDomain: "liga-lne.firebaseapp.com",
+  projectId: "liga-lne",
+  storageBucket: "liga-lne.firebasestorage.app",
+  messagingSenderId: "631393516368",
+  appId: "1:631393516368:web:471f45e346ad11a9f58a55"
+};
+
+const app = initializeApp(firebaseConfig);
+const fsdb = getFirestore(app);
+
+// ── Expõe helpers globais para o código não-module ──
+window._fb = {
+  // Salva objeto principal no Firestore
+  async saveDB(data) {
+    try {
+      // Firestore tem limite de 1MB por doc — dividimos em etapas + escolas
+      await setDoc(doc(fsdb, "lne2026", "escolas"), { escolas: data.escolas || [], ts: Date.now() });
+      // Cada etapa em documento separado
+      for (const e of (data.etapas || [])) {
+        await setDoc(doc(fsdb, "lne2026", "etapa_" + e.id), { etapa: e, ts: Date.now() });
+      }
+      return true;
+    } catch(err) { console.error("Firebase save error:", err); return false; }
+  },
+
+  async loadDB() {
+    try {
+      const escolasSnap = await getDoc(doc(fsdb, "lne2026", "escolas"));
+      const escolas = escolasSnap.exists() ? (escolasSnap.data().escolas || []) : [];
+      // Buscar todas as etapas
+      const colSnap = await getDocs(collection(fsdb, "lne2026"));
+      const etapas = [];
+      colSnap.forEach(d => {
+        if (d.id.startsWith("etapa_")) {
+          const et = d.data().etapa;
+          if (et) etapas.push(et);
+        }
+      });
+      etapas.sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
+      return { escolas, etapas };
+    } catch(err) { console.error("Firebase load error:", err); return null; }
+  },
+
+  async deleteEtapa(id) {
+    try { await deleteDoc(doc(fsdb, "lne2026", "etapa_" + id)); return true; }
+    catch(err) { console.error(err); return false; }
+  },
+
+  // Listener em tempo real para escolas (útil para portal escola)
+  onEscolasChange(cb) {
+    return onSnapshot(doc(fsdb, "lne2026", "escolas"), snap => {
+      if (snap.exists()) cb(snap.data().escolas || []);
+    });
+  }
+};
+
+window.dispatchEvent(new Event("firebaseReady"));
+</script>
+<style>
+:root{
+  --az:#003f8a;--azm:#0056b8;--azc:#dbeafe;
+  --vd:#15803d;--la:#c2410c;--cz:#1e293b;
+  --czc:#f1f5f9;--bd:#cbd5e1;--bg-body:#e8f0fb;
+  --tbl-head:#003f8a;--rn-color:#0056b8;--rc-bg:#eff6ff;--stat-val:#003f8a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var(--cz);font-size:14px;}
+
+.hdr{background:var(--az);color:#fff;padding:0 20px;height:58px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,.35);}
+.hdr-logo{width:38px;height:38px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.hdr h1{font-size:15px;font-weight:700;line-height:1.2;}
+.hdr small{font-size:10px;opacity:.7;display:block;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:3px;transition:background .3s;}
+.sync-dot.saving{background:#fbbf24;}
+.sync-dot.error{background:#f87171;}
+
+.nav-main{background:#fff;border-bottom:2px solid var(--bd);position:sticky;top:58px;z-index:200;display:flex;gap:0;box-shadow:0 2px 6px rgba(0,0,0,.06);}
+.nav-btn{padding:11px 18px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;color:#64748b;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.nav-btn:hover{color:var(--azm);background:var(--czc);}
+.nav-btn.active{color:var(--az);border-bottom-color:var(--az);background:#fff;}
+.nav-sep{width:1px;height:20px;background:var(--bd);align-self:center;margin:0 4px;}
+
+.wrap{max-width:1400px;margin:0 auto;padding:16px;}
+.page{display:none;} .page.active{display:block;}
+
+.btn{padding:7px 13px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:5px;transition:all .15s;line-height:1.4;white-space:nowrap;}
+.b-pri{background:var(--azm);color:#fff;} .b-pri:hover{background:var(--az);}
+.b-suc{background:var(--vd);color:#fff;} .b-suc:hover{background:#166534;}
+.b-war{background:#d97706;color:#fff;} .b-war:hover{background:#b45309;}
+.b-pdf{background:#7c3aed;color:#fff;} .b-pdf:hover{background:#6d28d9;}
+.b-cya{background:#0891b2;color:#fff;} .b-cya:hover{background:#0e7490;}
+.b-out{background:#fff;color:var(--azm);border:1.5px solid var(--azm);} .b-out:hover{background:var(--azc);}
+.b-gray{background:#6b7280;color:#fff;} .b-gray:hover{background:#4b5563;}
+.b-red{background:#dc2626;color:#fff;} .b-red:hover{background:#b91c1c;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.sep{width:1px;height:22px;background:var(--bd);flex-shrink:0;}
+
+.card{background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--bd);margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.card-hd{padding:10px 14px;background:var(--czc);font-size:12px;font-weight:700;color:var(--cz);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-bd{padding:14px;}
+.card-ft{padding:9px 14px;border-top:1px solid var(--bd);display:flex;gap:7px;flex-wrap:wrap;background:#fafafa;}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:var(--tbl-head);color:#fff;padding:7px 9px;text-align:left;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+.tbl td{padding:6px 9px;border-bottom:1px solid #f0f4f8;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:#f8fafc;}
+.tbl input[type=text]{width:100%;border:1px solid transparent;padding:3px 5px;border-radius:4px;font-size:12px;background:transparent;font-family:inherit;color:inherit;}
+.tbl input[type=text]:focus{outline:none;border-color:var(--azm);background:#fff;}
+.rn{font-weight:700;color:var(--rn-color);text-align:center;width:34px;}
+.rc{background:var(--rc-bg)!important;}
+.ti{width:90px;border:1px solid var(--bd)!important;padding:4px 6px!important;border-radius:4px!important;font-family:monospace!important;text-align:center!important;background:#fff!important;}
+.ti:focus{outline:none;border-color:var(--azm)!important;}
+.ti.ok{border-color:#86efac!important;background:#f0fdf4!important;}
+.ti.err{border-color:#fca5a5!important;background:#fff5f5!important;}
+.er{color:#bbb;font-style:italic;}
+
+.srow{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:13px;}
+.sc{background:var(--czc);border-radius:8px;padding:9px 13px;min-width:85px;}
+.sc .lbl{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;}
+.sc .val{font-size:19px;font-weight:700;color:var(--stat-val);}
+
+.frow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;}
+.fg{display:flex;flex-direction:column;gap:4px;min-width:120px;}
+.fg label{font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;}
+.fg input,.fg select,.fg textarea{border:1px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--cz);background:#fff;outline:none;}
+.fg input:focus,.fg select:focus{border-color:var(--azm);}
+.fg.grow{flex:1;}
+
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.badge-blue{background:#dbeafe;color:#1e40af;}
+.badge-green{background:#dcfce7;color:#15803d;}
+.badge-amber{background:#fef9c3;color:#92400e;}
+.badge-red{background:#fee2e2;color:#dc2626;}
+.badge-gray{background:#f1f5f9;color:#475569;}
+.badge-purple{background:#f3e8ff;color:#6d28d9;}
+.bc{display:inline-flex;align-items:center;justify-content:center;background:var(--azm);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;margin-left:4px;padding:0 3px;}
+
+.coll-hd{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;}
+.coll-hd:hover{background:#e9edf2!important;}
+.coll-arrow{font-size:11px;transition:transform .2s;margin-left:8px;color:#6b7280;}
+.coll-arrow.open{transform:rotate(180deg);}
+.coll-body{overflow:hidden;transition:max-height .3s ease;}
+
+.drag-row{user-select:none;}
+.drag-row.dragging{opacity:.35;background:#e0f2fe!important;}
+.drag-row.drag-over{box-shadow:inset 0 2px 0 var(--azm);}
+.drag-handle{cursor:grab;color:#bbb;font-size:13px;padding:0 4px;text-align:center;}
+
+.mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:center;justify-content:center;}
+.mover.open{display:flex;}
+.mdl{background:#fff;border-radius:12px;padding:22px;max-width:780px;width:96%;max-height:93vh;overflow-y:auto;}
+.mdl-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.mdl-hd h3{font-size:15px;font-weight:700;color:var(--az);}
+.mdl-x{background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1;}
+.mdl-x:hover{color:#475569;}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--az);color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;z-index:500;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+.pb{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-weight:700;font-size:11px;}
+.p1{background:#fbbf24;color:#78350f;} .p2{background:#94a3b8;color:#1e293b;} .p3{background:#cd7c3e;color:#431407;} .pn{background:#e5e7eb;color:#374151;}
+
+.etapa-card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.etapa-card:hover{border-color:var(--azm);box-shadow:0 2px 8px rgba(0,86,184,.12);}
+.etapa-num{width:40px;height:40px;border-radius:50%;background:var(--az);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;}
+
+.escola-card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+
+.provas-tabs{display:flex;overflow-x:auto;background:var(--czc);border-bottom:1px solid var(--bd);}
+.prova-tab{padding:9px 14px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:#64748b;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s;}
+.prova-tab:hover{color:var(--azm);}
+.prova-tab.active{color:var(--az);border-bottom-color:var(--az);background:#fff;}
+.prova-tab-content{display:none;padding:14px;}
+.prova-tab-content.active{display:block;}
+
+.etapa-sticky{position:sticky;top:99px;z-index:150;background:#fff;border-bottom:2px solid var(--bd);padding:7px 16px;display:none;gap:7px;flex-wrap:wrap;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.07);}
+.etapa-sticky.visible{display:flex;}
+
+.ranking-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:7px;}
+
+.login-wrap{max-width:480px;margin:60px auto;padding:16px;}
+.login-box{background:#fff;border-radius:14px;padding:36px;border:1px solid var(--bd);box-shadow:0 4px 20px rgba(0,0,0,.08);}
+.login-logo{text-align:center;margin-bottom:24px;}
+.role-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;border-radius:10px;border:2px solid var(--bd);background:#fff;cursor:pointer;transition:all .15s;font-size:13px;font-weight:600;color:var(--cz);}
+.role-btn:hover{border-color:var(--azm);background:var(--azc);}
+
+.portal-badge{background:linear-gradient(135deg,#003f8a,#0056b8);color:#fff;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+
+/* Cartões de inscrição */
+.folha-cartoes{width:210mm;height:297mm;padding:5mm 6mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);gap:2mm;page-break-after:always;}
+.folha-cartoes:last-child{page-break-after:auto;}
+.cartao-inscricao{border:.5pt solid #888;padding:5pt 8pt 4pt;display:flex;flex-direction:column;overflow:hidden;font-family:'Calibri',Arial,sans-serif;}
+
+/* Loading overlay */
+.loading-over{display:none;position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:600;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.loading-over.show{display:flex;}
+.spinner{width:36px;height:36px;border:4px solid var(--azc);border-top-color:var(--azm);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media print{.no-print{display:none!important;}}
+@media(max-width:700px){.frow{flex-direction:column;}.grid-2{grid-template-columns:1fr;}}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-over" id="loadingOver">
+  <div class="spinner"></div>
+  <p style="font-size:13px;color:var(--az);font-weight:600;" id="loadingMsg">Conectando ao Firebase…</p>
+</div>
+
+<!-- HEADER -->
+<div class="hdr no-print">
+  <div class="hdr-logo">🏊</div>
+  <div>
+    <h1>Sistema LNE — Liga de Natação Escolar</h1>
+    <small>2026 · São Paulo · Firebase Sync</small>
+  </div>
+  <div class="hdr-right">
+    <span style="font-size:11px;opacity:.8;display:flex;align-items:center;gap:4px;">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncLabel">Conectando…</span>
+    </span>
+    <button class="btn b-gray" style="font-size:11px;padding:5px 11px;" onclick="exportBackup()">💾 Backup</button>
+    <button class="btn b-out" style="font-size:11px;padding:5px 11px;" onclick="document.getElementById('importBkp').click()">📂 Restaurar</button>
+    <input type="file" id="importBkp" accept=".json" style="display:none;" onchange="importBackup(this)">
+    <button class="btn b-out" style="font-size:11px;padding:5px 11px;" id="btnLogout" onclick="fazerLogout()">🚪 Sair</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginSection">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-logo">
+        <span style="font-size:48px;display:block;margin-bottom:8px;">🏊‍♂️</span>
+        <h2 style="font-size:20px;font-weight:800;color:var(--az);">Liga de Natação Escolar</h2>
+        <p style="font-size:12px;color:#64748b;margin-top:3px;">LNE 2026 — Sistema de Gerenciamento</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <button class="role-btn" onclick="loginAdmin()">
+          <span style="font-size:28px;">⚙️</span>Administrador
+        </button>
+        <button class="role-btn" onclick="mostrarLoginEscola()">
+          <span style="font-size:28px;">🏫</span>Escola / Colégio
+        </button>
+      </div>
+      <div id="loginAdminForm" style="display:none;border-top:1px solid var(--bd);padding-top:14px;margin-top:4px;">
+        <div class="frow">
+          <div class="fg grow"><label>Senha do administrador</label>
+            <input type="password" id="adminSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')confirmarLoginAdmin()"/>
+          </div>
+        </div>
+        <button class="btn b-pri" style="width:100%;" onclick="confirmarLoginAdmin()">🔑 Entrar como Admin</button>
+        <p style="font-size:10px;color:#94a3b8;text-align:center;margin-top:8px;">Senha padrão: <strong>lne2026</strong></p>
+      </div>
+      <div id="loginEscolaForm" style="display:none;border-top:1px solid var(--bd);padding-top:14px;margin-top:4px;">
+        <p style="font-size:12px;color:#64748b;margin-bottom:10px;">Entre com o código da sua escola ou faça o cadastro:</p>
+        <div class="frow" style="margin-bottom:10px;">
+          <div class="fg grow">
+            <label>Código de acesso</label>
+            <input type="text" id="loginCodigo" placeholder="Ex: COL-ESCOLA-1234" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')loginEscola()"/>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn b-pri" style="flex:1;" onclick="loginEscola()">🔑 Entrar</button>
+          <button class="btn b-out" onclick="abrirModal('modalCadEscola')">+ Cadastrar escola</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="mainApp" style="display:none;">
+  <div class="nav-main no-print" id="navMain"></div>
+
+  <!-- Sticky bar etapa -->
+  <div class="etapa-sticky no-print" id="etapaSticky">
+    <span id="stickyEtapaNome" style="font-size:12px;font-weight:700;color:var(--az);margin-right:4px;"></span>
+    <div class="sep"></div>
+    <button class="btn b-pri" onclick="gerarBal(curProva)">⚡ Gerar Balizamento</button>
+    <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Classificação</button>
+    <button class="btn" style="background:#6b7280;color:#fff;" onclick="apagarTempos(curProva)">⏱️ Apagar Tempos</button>
+    <div class="sep"></div>
+    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Balizamento</button>
+    <button class="btn b-cya" onclick="printClass(curProva)">🖨️ Classificação</button>
+    <button class="btn" style="background:#166534;color:#fff;" onclick="abrirSumula()">📄 Súmula</button>
+    <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirCartoesProva(curProva)">🪪 Cartões</button>
+    <div class="sep"></div>
+    <button class="btn b-out" onclick="addAtleta(curProva)">+ Atleta</button>
+    <button class="btn b-out" onclick="abrirTelaCheia(curProva)">⛶ Tempos</button>
+    <button class="btn b-red" style="font-size:11px;padding:5px 10px;" onclick="excluirProva(curProva)">🗑️ Excluir</button>
+  </div>
+
+  <!-- PÁGINA ETAPAS -->
+  <div class="page" id="page-etapas">
+    <div class="wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:700;color:var(--az);">📅 Etapas da Liga</h2>
+          <p style="font-size:12px;color:#64748b;margin-top:2px;">Gerencie os dias de competição da temporada</p>
+        </div>
+        <button class="btn b-pri" onclick="abrirModalNovaEtapa()">+ Nova Etapa</button>
+      </div>
+      <div id="listaEtapas"><p style="color:#64748b;font-size:13px;text-align:center;padding:40px;">Nenhuma etapa cadastrada.</p></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA BALIZAMENTO -->
+  <div class="page" id="page-balizamento">
+    <div class="wrap">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn b-out" style="font-size:11px;" onclick="voltarEtapas()">← Etapas</button>
+        <div>
+          <h2 style="font-size:15px;font-weight:700;color:var(--az);" id="balEtapaNome">Etapa</h2>
+          <p style="font-size:11px;color:#64748b;" id="balEtapaInfo"></p>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;">
+          <button class="btn b-pri" onclick="abrirModalNovaProva()">+ Nova Prova</button>
+          <button class="btn" style="background:#0f766e;color:#fff;" onclick="criarProvasPadraoLNE()">🏊 Provas padrão LNE</button>
+          <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
+          <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="importarExcel(this)">
+          <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar Etapa</button>
+          <button class="btn" style="background:#1e40af;color:#fff;" onclick="abrirPlacarGeral()">🏆 Ranking</button>
+          <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirTodosCartoes()">🪪 Todos Cartões</button>
+        </div>
+      </div>
+      <div class="card" id="provasContainer" style="display:none;">
+        <div class="provas-tabs" id="provasTabs"></div>
+        <div id="provasConteudo"></div>
+      </div>
+      <div id="semProvas" style="text-align:center;padding:40px;color:#64748b;font-size:13px;">
+        Nenhuma prova cadastrada. Clique em "+ Nova Prova" ou importe via Excel.
+      </div>
+    </div>
+  </div>
+
+  <!-- PÁGINA ESCOLAS (admin) -->
+  <div class="page" id="page-escolas">
+    <div class="wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:700;color:var(--az);">🏫 Escolas Cadastradas</h2>
+          <p style="font-size:12px;color:#64748b;margin-top:2px;">Gerencie as escolas participantes</p>
+        </div>
+        <button class="btn b-pri" onclick="abrirModal('modalCadEscola')">+ Cadastrar Escola</button>
+      </div>
+      <div id="listaEscolas"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA RANKING -->
+  <div class="page" id="page-ranking">
+    <div class="wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:700;color:var(--az);">🏆 Ranking Geral — LNE 2026</h2>
+          <p style="font-size:12px;color:#64748b;margin-top:2px;">Pontuação acumulada de todas as etapas</p>
+        </div>
+        <button class="btn b-pdf" onclick="imprimirRanking()">🖨️ Imprimir</button>
+      </div>
+      <div id="rankingGeral"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA PORTAL ESCOLA -->
+  <div class="page" id="page-portal">
+    <div class="wrap" id="portalConteudo"></div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAIS ══════════════ -->
+
+<!-- Cadastrar escola -->
+<div class="mover" id="modalCadEscola">
+  <div class="mdl" style="max-width:520px;">
+    <div class="mdl-hd"><h3>🏫 Cadastrar Nova Escola</h3><button class="mdl-x" onclick="fecharModal('modalCadEscola')">×</button></div>
+    <div class="frow"><div class="fg grow"><label>Nome da escola *</label><input type="text" id="cadNome" placeholder="Ex: Colégio São Paulo"/></div></div>
+    <div class="frow">
+      <div class="fg grow"><label>Responsável *</label><input type="text" id="cadResp" placeholder="Nome do professor/responsável"/></div>
+      <div class="fg grow"><label>E-mail *</label><input type="text" id="cadEmail" placeholder="email@escola.com.br"/></div>
+    </div>
+    <div class="frow"><div class="fg grow"><label>Telefone</label><input type="text" id="cadTel" placeholder="(11) 99999-9999"/></div></div>
+    <div style="padding:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e;margin-bottom:14px;">
+      ⚠️ Após o cadastro, você receberá um <strong>código de acesso único</strong>. Guarde-o para entrar no sistema.
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn b-out" onclick="fecharModal('modalCadEscola')">Cancelar</button>
+      <button class="btn b-pri" onclick="cadastrarEscola()">✅ Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nova etapa -->
+<div class="mover" id="modalNovaEtapa">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>📅 Nova Etapa</h3><button class="mdl-x" onclick="fecharModal('modalNovaEtapa')">×</button></div>
+    <div class="frow"><div class="fg grow"><label>Nome da etapa *</label><input type="text" id="etapaNome" placeholder="Ex: 1ª Etapa — 1º Semestre 2026"/></div></div>
+    <div class="frow">
+      <div class="fg"><label>Data da competição *</label><input type="date" id="etapaData"/></div>
+      <div class="fg grow"><label>Local</label><input type="text" id="etapaLocal" placeholder="Ex: Colégio Emillie de Villeneuve"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg grow"><label>Endereço</label><input type="text" id="etapaEndereco" placeholder="Ex: Rua Madre Emillie de Villeneuve, 331 — Vila Mascote"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Nº de raias *</label>
+        <select id="etapaRaias"><option value="6">6 raias</option><option value="8" selected>8 raias</option><option value="10">10 raias</option></select>
+      </div>
+      <div class="fg"><label>Tamanho da piscina</label>
+        <select id="etapaTam"><option value="25m" selected>25m</option><option value="50m">50m</option></select>
+      </div>
+      <div class="fg"><label>Prazo de inscrições</label><input type="date" id="etapaPrazo"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Início aquecimento</label><input type="time" id="etapaAquec" value="13:00"/></div>
+      <div class="fg"><label>Início das provas</label><input type="time" id="etapaInicio" value="13:30"/></div>
+    </div>
+
+    <!-- Provas padrão LNE -->
+    <div style="border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:14px;background:#f8fafc;">
+      <div style="font-size:12px;font-weight:700;color:var(--az);margin-bottom:8px;">🏊 Criar provas padrão da LNE automaticamente?</div>
+      <p style="font-size:11px;color:#64748b;margin-bottom:10px;">Cria as 20 provas do regulamento de uma vez (25m/50m/100m · Livre, Costas, Peito · Masc/Fem · por faixa de categoria).</p>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
+        <input type="checkbox" id="etapaCriarProvas" checked style="width:16px;height:16px;"/>
+        Criar as 20 provas padrão LNE ao salvar
+      </label>
+    </div>
+
+    <div style="padding:10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;font-size:12px;color:#1e40af;margin-bottom:14px;">
+      💡 Após criar a etapa você também pode adicionar provas manualmente ou usar o botão "Provas padrão LNE" na tela da etapa.
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn b-out" onclick="fecharModal('modalNovaEtapa')">Cancelar</button>
+      <button class="btn b-pri" onclick="salvarEtapa()">✅ Criar Etapa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nova prova -->
+<div class="mover" id="modalNovaProva">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>🏊 Nova Prova</h3><button class="mdl-x" onclick="fecharModal('modalNovaProva')">×</button></div>
+    <div class="frow"><div class="fg grow"><label>Nome da prova (opcional — gerado automaticamente)</label><input type="text" id="provaNome" placeholder="Ex: 50m Livre A12 Feminino"/></div></div>
+    <div class="frow">
+      <div class="fg"><label>Distância</label>
+        <select id="provaDistancia"><option value="25m">25m</option><option value="50m" selected>50m</option><option value="100m">100m</option><option value="200m">200m</option><option value="4x50m">4×50m Revezamento</option></select>
+      </div>
+      <div class="fg"><label>Estilo</label>
+        <select id="provaEstilo"><option value="Livre" selected>Livre</option><option value="Costas">Costas</option><option value="Peito">Peito</option><option value="Borboleta">Borboleta</option><option value="Medley">Medley</option></select>
+      </div>
+      <div class="fg"><label>Gênero</label>
+        <select id="provaGenero"><option value="Feminino" selected>Feminino</option><option value="Masculino">Masculino</option><option value="Misto">Misto</option></select>
+      </div>
+    </div>
+    <div class="frow"><div class="fg grow"><label>Categoria(s) — digite ou use os atalhos abaixo</label><input type="text" id="provaCategoria" placeholder="Ex: A12 — ou A9, A10, A11, A12"/></div></div>
+    <!-- Atalhos de categoria -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Categorias LNE rápidas:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" onclick="setCat('A7, A8')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A7–A8</button>
+        <button type="button" onclick="setCat('A9, A10, A11, A12')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A9–A12</button>
+        <button type="button" onclick="setCat('A13, A14, A15, A16-17')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A13–A16-17</button>
+        <span style="width:1px;background:var(--bd);align-self:stretch;margin:0 2px;"></span>
+        <button type="button" onclick="setCat('A7')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A7</button>
+        <button type="button" onclick="setCat('A8')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A8</button>
+        <button type="button" onclick="setCat('A9')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A9</button>
+        <button type="button" onclick="setCat('A10')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A10</button>
+        <button type="button" onclick="setCat('A11')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A11</button>
+        <button type="button" onclick="setCat('A12')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A12</button>
+        <button type="button" onclick="setCat('A13')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A13</button>
+        <button type="button" onclick="setCat('A14')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A14</button>
+        <button type="button" onclick="setCat('A15')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A15</button>
+        <button type="button" onclick="setCat('A16-17')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A16-17</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#64748b;">
+        Anos de nascimento: A7=2019 · A8=2018 · A9=2017 · A10=2016 · A11=2015 · A12=2014 · A13=2013 · A14=2012 · A15=2011 · A16-17=2009-2010
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn b-out" onclick="fecharModal('modalNovaProva')">Cancelar</button>
+      <button class="btn b-pri" onclick="salvarProva()">✅ Criar Prova</button>
+    </div>
+  </div>
+</div>
+
+<!-- Série combinada -->
+<div class="mover" id="modalSerieComb">
+  <div class="mdl" style="max-width:680px;">
+    <div class="mdl-hd"><h3>🔀 Criar Série Combinada</h3><button class="mdl-x" onclick="fecharModal('modalSerieComb')">×</button></div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Selecione atletas de provas diferentes para compor uma série combinada, preenchendo as raias da piscina.</p>
+    <div id="serieCombConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieComb')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieCombinada()">✅ Criar Série</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add atleta -->
+<div class="mover" id="modalAddAtleta">
+  <div class="mdl" style="max-width:520px;">
+    <div class="mdl-hd"><h3 id="addAtletaTitulo">+ Adicionar Atleta</h3><button class="mdl-x" onclick="fecharModal('modalAddAtleta')">×</button></div>
+    <div id="addAtletaConteudo"></div>
+  </div>
+</div>
+
+<!-- Placar -->
+<div class="mover" id="modalPlacar">
+  <div class="mdl" style="max-width:640px;">
+    <div class="mdl-hd"><h3 id="placarTitulo">🏅 Placar</h3><button class="mdl-x" onclick="fecharModal('modalPlacar')">×</button></div>
+    <div id="placarConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button class="btn b-pdf" onclick="imprimirPlacar()">🖨️ Imprimir</button>
+      <button class="btn b-out" onclick="fecharModal('modalPlacar')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tela cheia tempos -->
+<div class="mover" id="fsModal" style="background:rgba(0,0,0,.85);">
+  <div style="background:#1e293b;border-radius:12px;padding:20px;width:96%;max-width:700px;max-height:95vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="font-size:14px;font-weight:700;color:#fff;" id="fsTitle">Entrada de tempos</h3>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="fsSearch" placeholder="🔍 Filtrar…" oninput="fsFiltra(this.value)"
+          style="border:1px solid #475569;border-radius:6px;padding:6px 10px;font-size:12px;background:#334155;color:#fff;width:180px;"/>
+        <button class="btn b-suc" onclick="fsSalvar()">💾 Salvar</button>
+        <button onclick="fecharTelaCheia()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">×</button>
+      </div>
+    </div>
+    <div id="fsBody"></div>
+  </div>
+</div>
+
+<!-- Súmula -->
+<div class="mover" id="modalSumulaForm">
+  <div class="mdl" style="max-width:460px;">
+    <div class="mdl-hd"><h3>📄 Súmula Oficial</h3><button class="mdl-x" onclick="fecharModal('modalSumulaForm')">×</button></div>
+    <div class="frow">
+      <div class="fg grow"><label>Tipo</label><select id="sumTipo"><option value="classif">Classificatória</option></select></div>
+      <div class="fg"><label>Data</label><input type="date" id="sumData"/></div>
+    </div>
+    <div class="frow"><div class="fg grow"><label>Local</label><input type="text" id="sumLocal" placeholder="Nome do local"/></div></div>
+    <div class="frow"><div class="fg grow"><label>Árbitro / Juiz</label><input type="text" id="sumJuiz" placeholder="Nome do árbitro"/></div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn b-out" onclick="fecharModal('modalSumulaForm')">Cancelar</button>
+      <button class="btn b-pdf" onclick="imprimirSumula()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Preview -->
+<div class="mover" id="pdfModal">
+  <div class="mdl" style="max-width:900px;">
+    <div class="mdl-hd"><h3>🖨️ Visualizar antes de imprimir</h3><button class="mdl-x" onclick="fecharModal('pdfModal')">×</button></div>
+    <div id="pdfContent" style="border:1px solid var(--bd);border-radius:6px;padding:16px;max-height:70vh;overflow-y:auto;background:#fafafa;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button class="btn b-out" onclick="fecharModal('pdfModal')">Fechar</button>
+      <button class="btn b-pdf" onclick="doPrint()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONSTANTES E ESTADO
+// ══════════════════════════════════════════════════════════
+const ADMIN_SENHA = 'lne2026';
+const PONTOS_LNE  = [13,9,7,5,4,3,2,1,1,1,1,1,1,1,1,1,1,1,1,1];
+const LANE_ORDER  = [4,5,3,6,2,7,1,8,9,10];
+
+let db = { etapas:[], escolas:[] };
+let perfil = null;
+let curEtapaId = null;
+let curProva   = null;
+let dragData   = null;
+let fsProva    = null;
+let fsTempos   = {};
+let fbReady    = false;
+let saveDebounce = null;
+let curPrintCSS  = 'normal';
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const tid = s => String(s).replace(/[^a-zA-Z0-9]/g,'_');
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const toTitle = s => s ? s.trim().split(/\s+/).map(w=>w?w[0].toUpperCase()+w.slice(1).toLowerCase():'').join(' ') : '';
+const tempoMs = t => { if(!t||!t.trim()) return Infinity; const m=t.match(/^(\d+):(\d+)[,.](\d+)$/); return m?+m[1]*60000+ +m[2]*1000+ +m[3]*10:Infinity; };
+const fmtData = d => { try{ return d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):''; }catch(e){return d||'';} };
+const showToast = msg => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); };
+const abrirModal  = id => document.getElementById(id).classList.add('open');
+const fecharModal = id => document.getElementById(id).classList.remove('open');
+const gerarCodigo = nome => 'COL-'+(nome||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)+'-'+Math.floor(1000+Math.random()*9000);
+const loading = (show, msg='Aguarde…') => { const o=document.getElementById('loadingOver'); o.classList.toggle('show',show); document.getElementById('loadingMsg').textContent=msg; };
+
+function setSyncStatus(status){
+  const dot=document.getElementById('syncDot'), lbl=document.getElementById('syncLabel');
+  if(status==='ok'){ dot.style.background='#4ade80'; lbl.textContent='Sincronizado ✓'; }
+  else if(status==='saving'){ dot.style.background='#fbbf24'; lbl.textContent='Salvando…'; }
+  else if(status==='error'){ dot.style.background='#f87171'; lbl.textContent='Erro de conexão'; }
+  else { dot.style.background='#94a3b8'; lbl.textContent='Conectando…'; }
+}
+
+// ══════════════════════════════════════════════════════════
+// FIREBASE SYNC
+// ══════════════════════════════════════════════════════════
+window.addEventListener('firebaseReady', async () => {
+  fbReady = true;
+  loading(true, 'Carregando dados da liga…');
+  try {
+    const data = await window._fb.loadDB();
+    if(data){ db = data; if(!db.etapas) db.etapas=[]; if(!db.escolas) db.escolas=[]; }
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); }
+  loading(false);
+});
+
+async function salvarFirebase(){
+  if(!fbReady) return;
+  setSyncStatus('saving');
+  const ok = await window._fb.saveDB(db);
+  setSyncStatus(ok?'ok':'error');
+  if(!ok) showToast('⚠️ Erro ao salvar no Firebase. Verifique a conexão.');
+}
+
+function markDirty(){
+  setSyncStatus('saving');
+  clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(salvarFirebase, 1200);
+}
+
+// Backup local
+function exportBackup(){
+  const blob = new Blob([JSON.stringify({ts:Date.now(),db},null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lne2026_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); showToast('Backup exportado!');
+}
+function importBackup(inp){
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      db=JSON.parse(ev.target.result).db||{etapas:[],escolas:[]};
+      salvarFirebase(); showToast('Backup restaurado e enviado ao Firebase!');
+      if(perfil==='admin') navegarPara('etapas');
+    }catch(e){alert('Arquivo inválido.');}
+  };
+  r.readAsText(f); inp.value='';
+}
+
+// ══════════════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════════════
+function loginAdmin(){ document.getElementById('loginAdminForm').style.display='block'; setTimeout(()=>document.getElementById('adminSenha').focus(),100); }
+function confirmarLoginAdmin(){
+  const s=document.getElementById('adminSenha').value;
+  if(s!==ADMIN_SENHA){alert('Senha incorreta.');return;}
+  perfil='admin'; iniciarApp();
+}
+function mostrarLoginEscola(){ document.getElementById('loginEscolaForm').style.display='block'; setTimeout(()=>document.getElementById('loginCodigo').focus(),100); }
+function loginEscola(){
+  const cod=document.getElementById('loginCodigo').value.trim().toUpperCase();
+  if(!cod){alert('Digite o código de acesso.');return;}
+  const escola=db.escolas.find(e=>e.codigo===cod);
+  if(!escola){alert('Código não encontrado. Verifique ou cadastre sua escola.');return;}
+  perfil=escola; iniciarApp();
+}
+async function cadastrarEscola(){
+  const nome=document.getElementById('cadNome').value.trim();
+  const resp=document.getElementById('cadResp').value.trim();
+  const email=document.getElementById('cadEmail').value.trim();
+  const tel=document.getElementById('cadTel').value.trim();
+  if(!nome||!resp||!email){alert('Preencha nome, responsável e e-mail.');return;}
+  const codigo=gerarCodigo(nome);
+  const escola={id:uid(),nome:toTitle(nome),responsavel:toTitle(resp),email,telefone:tel,codigo,dataCadastro:new Date().toISOString()};
+  db.escolas.push(escola);
+  await salvarFirebase();
+  fecharModal('modalCadEscola');
+  alert(`✅ Escola cadastrada!\n\nSeu código de acesso:\n\n${codigo}\n\n⚠️ Guarde este código — você precisará dele para entrar no sistema.`);
+  document.getElementById('loginCodigo').value=codigo;
+  mostrarLoginEscola();
+}
+function fazerLogout(){
+  perfil=null; curEtapaId=null; curProva=null;
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('loginSection').style.display='block';
+  document.getElementById('loginAdminForm').style.display='none';
+  document.getElementById('loginEscolaForm').style.display='none';
+  document.getElementById('adminSenha').value='';
+  document.getElementById('loginCodigo').value='';
+  document.getElementById('etapaSticky').classList.remove('visible');
+}
+function iniciarApp(){
+  document.getElementById('loginSection').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  construirNav();
+  if(perfil==='admin') navegarPara('etapas');
+  else { navegarPara('portal'); renderPortalEscola(); }
+}
+function construirNav(){
+  const nav=document.getElementById('navMain');
+  if(perfil==='admin'){
+    nav.innerHTML=`
+      <button class="nav-btn" data-page="etapas" onclick="navegarPara('etapas')">📅 Etapas</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" data-page="escolas" onclick="navegarPara('escolas')">🏫 Escolas</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" data-page="ranking" onclick="navegarPara('ranking');renderRankingGeral()">🏆 Ranking Geral</button>`;
+  } else {
+    nav.innerHTML=`
+      <button class="nav-btn active" data-page="portal" onclick="navegarPara('portal');renderPortalEscola()">🏫 ${esc(perfil.nome)}</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" data-page="ranking" onclick="navegarPara('ranking');renderRankingGeral()">🏆 Ranking Geral</button>`;
+  }
+}
+function navegarPara(pg){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+pg).classList.add('active');
+  document.querySelectorAll('.nav-btn[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===pg));
+  if(pg!=='balizamento') document.getElementById('etapaSticky').classList.remove('visible');
+  if(pg==='etapas') renderEtapas();
+  if(pg==='escolas') renderEscolas();
+}
+
+// ══════════════════════════════════════════════════════════
+// ETAPAS
+// ══════════════════════════════════════════════════════════
+const getEtapa = id => db.etapas.find(e=>e.id===id);
+
+function abrirModalNovaEtapa(){
+  ['etapaNome','etapaLocal','etapaEndereco','etapaPrazo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('etapaData').value='';
+  document.getElementById('etapaRaias').value='8';
+  document.getElementById('etapaTam').value='25m';
+  document.getElementById('etapaAquec').value='13:00';
+  document.getElementById('etapaInicio').value='13:30';
+  document.getElementById('etapaCriarProvas').checked=true;
+  abrirModal('modalNovaEtapa');
+  setTimeout(()=>document.getElementById('etapaNome').focus(),100);
+}
+// ── Provas padrão LNE (20 provas do regulamento) ──
+const PROVAS_PADRAO_LNE = [
+  // A7 e A8 — 25m Livre e Costas
+  {nome:'25m Livre A7-A8 Feminino',  distancia:'25m', estilo:'Livre',   genero:'Feminino',  categoria:'A7, A8'},
+  {nome:'25m Livre A7-A8 Masculino', distancia:'25m', estilo:'Livre',   genero:'Masculino', categoria:'A7, A8'},
+  {nome:'25m Costas A7-A8 Feminino', distancia:'25m', estilo:'Costas',  genero:'Feminino',  categoria:'A7, A8'},
+  {nome:'25m Costas A7-A8 Masculino',distancia:'25m', estilo:'Costas',  genero:'Masculino', categoria:'A7, A8'},
+  // A9–A12 — 50m Livre, Costas, Peito + 100m Livre
+  {nome:'50m Livre A9-A12 Feminino',  distancia:'50m', estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'50m Livre A9-A12 Masculino', distancia:'50m', estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'50m Costas A9-A12 Feminino', distancia:'50m', estilo:'Costas', genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'50m Costas A9-A12 Masculino',distancia:'50m', estilo:'Costas', genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'50m Peito A9-A12 Feminino',  distancia:'50m', estilo:'Peito',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'50m Peito A9-A12 Masculino', distancia:'50m', estilo:'Peito',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'100m Livre A9-A12 Feminino', distancia:'100m',estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'100m Livre A9-A12 Masculino',distancia:'100m',estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  // A13–A16-17 — 50m Livre, Costas, Peito + 100m Livre
+  {nome:'50m Livre A13-A17 Feminino',  distancia:'50m', estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'50m Livre A13-A17 Masculino', distancia:'50m', estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'50m Costas A13-A17 Feminino', distancia:'50m', estilo:'Costas', genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'50m Costas A13-A17 Masculino',distancia:'50m', estilo:'Costas', genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'50m Peito A13-A17 Feminino',  distancia:'50m', estilo:'Peito',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'50m Peito A13-A17 Masculino', distancia:'50m', estilo:'Peito',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'100m Livre A13-A17 Feminino', distancia:'100m',estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'100m Livre A13-A17 Masculino',distancia:'100m',estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+];
+
+// Categorias LNE e anos de nascimento correspondentes
+const CATEGORIAS_LNE = {
+  'A7':'2019','A8':'2018','A9':'2017','A10':'2016','A11':'2015',
+  'A12':'2014','A13':'2013','A14':'2012','A15':'2011','A16-17':'2009-2010'
+};
+
+function salvarEtapa(){
+  const nome=document.getElementById('etapaNome').value.trim();
+  if(!nome){alert('Nome obrigatório.');return;}
+  const criarPadrao=document.getElementById('etapaCriarProvas').checked;
+  const e={
+    id:uid(), nome,
+    data:document.getElementById('etapaData').value,
+    local:document.getElementById('etapaLocal').value.trim(),
+    endereco:document.getElementById('etapaEndereco').value.trim(),
+    raias:+document.getElementById('etapaRaias').value,
+    tamPiscina:document.getElementById('etapaTam').value,
+    prazoInscricao:document.getElementById('etapaPrazo').value,
+    horaAquecimento:document.getElementById('etapaAquec').value,
+    horaInicio:document.getElementById('etapaInicio').value,
+    provas:{}, criadoEm:new Date().toISOString()
+  };
+  // Criar provas padrão LNE se marcado
+  if(criarPadrao){
+    PROVAS_PADRAO_LNE.forEach(p=>{
+      e.provas[p.nome]={atletas:[],series:[],classificacao:[],
+        genero:p.genero,distancia:p.distancia,estilo:p.estilo,
+        categoria:p.categoria,criadoEm:new Date().toISOString()};
+    });
+  }
+  db.etapas.push(e);
+  markDirty(); fecharModal('modalNovaEtapa'); renderEtapas();
+  showToast(`Etapa "${nome}" criada!${criarPadrao?' 20 provas LNE adicionadas.':''}`);
+}
+
+function criarProvasPadraoLNE(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const existentes=Object.keys(etapa.provas||{});
+  const novas=PROVAS_PADRAO_LNE.filter(p=>!etapa.provas[p.nome]);
+  if(!novas.length){showToast('Todas as provas padrão já existem nesta etapa.');return;}
+  if(!confirm(`Adicionar ${novas.length} provas padrão LNE a esta etapa?\n(${existentes.length} provas existentes serão mantidas)`)) return;
+  novas.forEach(p=>{
+    etapa.provas[p.nome]={atletas:[],series:[],classificacao:[],
+      genero:p.genero,distancia:p.distancia,estilo:p.estilo,
+      categoria:p.categoria,criadoEm:new Date().toISOString()};
+  });
+  markDirty(); renderProvasEtapa();
+  showToast(`${novas.length} provas adicionadas!`);
+}
+async function excluirEtapa(id){
+  const e=getEtapa(id); if(!e) return;
+  if(!confirm(`Excluir a etapa "${e.nome}" e todas as suas provas?`)) return;
+  db.etapas=db.etapas.filter(x=>x.id!==id);
+  if(fbReady) await window._fb.deleteEtapa(id);
+  markDirty(); renderEtapas(); showToast('Etapa excluída.');
+}
+function renderEtapas(){
+  const el=document.getElementById('listaEtapas');
+  if(!db.etapas.length){ el.innerHTML='<p style="color:#64748b;font-size:13px;text-align:center;padding:40px;">Nenhuma etapa cadastrada.</p>'; return; }
+  el.innerHTML=db.etapas.map((e,i)=>{
+    const nP=Object.keys(e.provas||{}).length;
+    const nA=Object.values(e.provas||{}).reduce((a,p)=>a+p.atletas.length,0);
+    const hoje=new Date().toISOString().split('T')[0];
+    const prazoOk=!e.prazoInscricao||e.prazoInscricao>=hoje;
+    return `<div class="etapa-card" onclick="abrirEtapa('${e.id}')">
+      <div class="etapa-num">${i+1}</div>
+      <div style="flex:1;">
+        <h4 style="font-size:13px;font-weight:700;">${esc(e.nome)}</h4>
+        <small style="font-size:11px;color:#64748b;">${e.data?fmtData(e.data):'Sem data'} ${e.local?'· '+esc(e.local):''} · ${e.raias} raias · ${e.tamPiscina}${e.horaAquecimento?' · Aquec. '+e.horaAquecimento:''}${e.horaInicio?' · Início '+e.horaInicio:''}</small>
+        <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="badge badge-blue">${nP} prova(s)</span>
+          <span class="badge badge-gray">${nA} atleta(s)</span>
+          ${e.prazoInscricao?`<span class="badge ${prazoOk?'badge-green':'badge-red'}">${prazoOk?'✅ Inscrições abertas':'🔒 Prazo encerrado'} · até ${fmtData(e.prazoInscricao)}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn b-out" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();editarPrazo('${e.id}')">✏️ Prazo</button>
+        <button class="btn b-red" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();excluirEtapa('${e.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function editarPrazo(id){
+  const e=getEtapa(id); if(!e) return;
+  const novo=prompt('Novo prazo de inscrições (AAAA-MM-DD):',e.prazoInscricao||'');
+  if(novo===null) return;
+  e.prazoInscricao=novo; markDirty(); renderEtapas(); showToast('Prazo atualizado!');
+}
+function abrirEtapa(id){
+  curEtapaId=id; const e=getEtapa(id); if(!e) return;
+  document.getElementById('balEtapaNome').textContent=e.nome;
+  document.getElementById('balEtapaInfo').textContent=
+    [e.data?fmtData(e.data):'', e.local||'', e.endereco||'',
+     e.raias+' raias '+e.tamPiscina,
+     e.horaAquecimento?'Aquec. '+e.horaAquecimento:'',
+     e.horaInicio?'Início '+e.horaInicio:'',
+     e.prazoInscricao?'Prazo: '+fmtData(e.prazoInscricao):'']
+    .filter(Boolean).join(' · ');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-balizamento').classList.add('active');
+  document.querySelectorAll('.nav-btn[data-page]').forEach(b=>b.classList.remove('active'));
+  renderProvasEtapa();
+}
+function voltarEtapas(){ curEtapaId=null; curProva=null; document.getElementById('etapaSticky').classList.remove('visible'); navegarPara('etapas'); }
+
+// ══════════════════════════════════════════════════════════
+// PROVAS
+// ══════════════════════════════════════════════════════════
+const getProvas = () => { const e=getEtapa(curEtapaId); return e?e.provas:{}; };
+const getProva  = n  => { const e=getEtapa(curEtapaId); return e&&e.provas?e.provas[n]:null; };
+
+function setCat(v){ document.getElementById('provaCategoria').value=v; }
+
+function abrirModalNovaProva(){
+  ['provaNome','provaCategoria'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('provaDistancia').value='50m';
+  document.getElementById('provaEstilo').value='Livre';
+  document.getElementById('provaGenero').value='Feminino';
+  abrirModal('modalNovaProva');
+  setTimeout(()=>document.getElementById('provaNome').focus(),100);
+}
+function salvarProva(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const dist=document.getElementById('provaDistancia').value;
+  const estilo=document.getElementById('provaEstilo').value;
+  const genero=document.getElementById('provaGenero').value;
+  const cat=document.getElementById('provaCategoria').value.trim();
+  let nome=document.getElementById('provaNome').value.trim();
+  if(!nome) nome=`${dist} ${estilo}${cat?' '+cat:''} ${genero}`;
+  if(etapa.provas[nome]){alert('Já existe uma prova com este nome nesta etapa.');return;}
+  etapa.provas[nome]={atletas:[],series:[],classificacao:[],genero,distancia:dist,estilo,categoria:cat,criadoEm:new Date().toISOString()};
+  markDirty(); fecharModal('modalNovaProva'); renderProvasEtapa(); switchProvaTab(nome);
+  showToast(`Prova "${nome}" criada!`);
+}
+function excluirProva(nome){
+  if(!nome) return;
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  if(!confirm(`Excluir a prova "${nome}"?`)) return;
+  delete etapa.provas[nome]; curProva=null;
+  markDirty(); renderProvasEtapa(); document.getElementById('etapaSticky').classList.remove('visible');
+  showToast('Prova excluída.');
+}
+function renderProvasEtapa(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const provas=etapa.provas||{}, nomes=Object.keys(provas);
+  const tabsEl=document.getElementById('provasTabs');
+  const contEl=document.getElementById('provasConteudo');
+  if(!nomes.length){ document.getElementById('provasContainer').style.display='none'; document.getElementById('semProvas').style.display='block'; return; }
+  document.getElementById('provasContainer').style.display='block'; document.getElementById('semProvas').style.display='none';
+  tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===curProva?'active':''}" data-prova="${esc(n)}" onclick="switchProvaTab(${JSON.stringify(n)})">${esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
+  contEl.innerHTML=nomes.map(n=>`<div class="prova-tab-content ${n===curProva?'active':''}" id="prova-tab-${tid(n)}">
+    <div id="stats-${tid(n)}" class="srow" style="padding:10px 14px 0;"></div>
+    <div id="atl-${tid(n)}" style="padding:0 14px;"></div>
+    <div id="bal-${tid(n)}" style="padding:0 14px;"></div>
+    <div id="cls-${tid(n)}" style="padding:0 14px;"></div>
+  </div>`).join('');
+  if(curProva&&provas[curProva]){ renderAll(curProva); mostrarSticky(curProva); }
+  else if(nomes.length) switchProvaTab(nomes[0]);
+}
+function switchProvaTab(nome){
+  const provas=getProvas(); if(!provas[nome]) return;
+  curProva=nome;
+  document.querySelectorAll('.prova-tab').forEach(b=>b.classList.toggle('active',b.dataset.prova===nome));
+  document.querySelectorAll('.prova-tab-content').forEach(d=>d.classList.remove('active'));
+  const el=document.getElementById('prova-tab-'+tid(nome)); if(el) el.classList.add('active');
+  renderAll(nome); mostrarSticky(nome);
+}
+function mostrarSticky(nome){ document.getElementById('etapaSticky').classList.add('visible'); document.getElementById('stickyEtapaNome').textContent=nome; }
+
+// ══════════════════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════════════════
+function renderAll(nome){ const p=getProva(nome); if(!p) return; renderStats(nome); renderAtletas(nome); if(p.series&&p.series.length) renderBal(nome); if(p.classificacao&&p.classificacao.length) renderClass(nome); }
+
+function renderStats(nome){
+  const p=getProva(nome); if(!p) return;
+  const el=document.getElementById('stats-'+tid(nome)); if(!el) return;
+  const tempos=(p.series||[]).reduce((a,s)=>a+s.lanes.filter(l=>l&&l.tempo&&l.tempo.trim()).length,0);
+  el.innerHTML=`<div class="sc"><div class="lbl">Atletas</div><div class="val">${p.atletas.length}</div></div>
+    <div class="sc"><div class="lbl">Séries</div><div class="val">${(p.series||[]).length}</div></div>
+    <div class="sc"><div class="lbl">Com tempo</div><div class="val">${tempos}</div></div>
+    <div class="sc"><div class="lbl">Categoria</div><div class="val" style="font-size:13px;font-weight:600;">${esc(p.categoria||'—')}</div></div>
+    <div class="sc"><div class="lbl">Gênero</div><div class="val" style="font-size:13px;font-weight:600;">${esc(p.genero||'—')}</div></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// ATLETAS TABLE
+// ══════════════════════════════════════════════════════════
+function renderAtletas(nome){
+  const p=getProva(nome); if(!p) return;
+  const el=document.getElementById('atl-'+tid(nome)); if(!el) return;
+  const collapsed=(p.series||[]).length>0;
+  const rows=p.atletas.map((a,i)=>`<tr>
+    <td><input type="text" value="${esc(a.nome)}" onchange="updAtl(${JSON.stringify(nome)},${i},'nome',this.value)" placeholder="Nome"/></td>
+    <td><input type="text" value="${esc(a.categoria||'')}" onchange="updAtl(${JSON.stringify(nome)},${i},'categoria',this.value)" placeholder="A12" style="width:65px;"/></td>
+    <td><input type="text" value="${esc(a.escola||'')}" onchange="updAtl(${JSON.stringify(nome)},${i},'escola',this.value)" placeholder="Escola"/></td>
+    <td style="font-family:monospace;font-size:11px;color:#64748b;">${esc(a.tempoRef||'')}</td>
+    <td><button class="btn b-red" style="font-size:10px;padding:2px 7px;" onclick="rmAtl(${JSON.stringify(nome)},${i})">✕</button></td>
+  </tr>`).join('');
+  el.innerHTML=`<div class="card" style="margin-bottom:12px;">
+    <div class="card-hd coll-hd" onclick="toggleCollapse('atlbody-${tid(nome)}','atlarr-${tid(nome)}')">
+      <span>👤 Atletas inscritos <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.atletas.length}</span></span>
+      <span id="atlarr-${tid(nome)}" class="coll-arrow ${collapsed?'':'open'}">▼</span>
+    </div>
+    <div id="atlbody-${tid(nome)}" class="coll-body" style="max-height:${collapsed?'0px':'9999px'};">
+      <div style="overflow-x:auto;"><table class="tbl">
+        <thead><tr><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:90px;">Tempo Ref.</th><th style="width:40px;"></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;font-style:italic;">Nenhum atleta. Use "+ Atleta" ou importe Excel.</td></tr>'}</tbody>
+      </table></div>
+      <div class="card-ft"><button class="btn b-out" onclick="addAtleta(${JSON.stringify(nome)})">+ Atleta</button></div>
+    </div></div>`;
+}
+function updAtl(nome,i,f,v){ const p=getProva(nome); if(!p) return; if(f==='nome'||f==='escola') v=toTitle(v); p.atletas[i][f]=v; markDirty(); }
+function rmAtl(nome,i){ const p=getProva(nome); if(!p) return; p.atletas.splice(i,1); markDirty(); renderAtletas(nome); renderStats(nome); }
+
+function addAtleta(nome){
+  const escola=perfil&&perfil!=='admin'?perfil.nome:'';
+  document.getElementById('addAtletaTitulo').textContent=`+ Atleta em "${nome}"`;
+  document.getElementById('addAtletaConteudo').innerHTML=`
+    <div class="frow"><div class="fg grow"><label>Nome *</label><input type="text" id="addNome" placeholder="Nome completo" onkeydown="if(event.key==='Enter')confirmarAddAtleta(${JSON.stringify(nome)})"/></div></div>
+    <div class="frow">
+      <div class="fg"><label>Categoria *</label><input type="text" id="addCat" placeholder="Ex: A12"/></div>
+      <div class="fg grow"><label>Escola</label><input type="text" id="addEscola" value="${esc(escola)}" placeholder="Nome da escola"/></div>
+    </div>
+    <div class="frow"><div class="fg"><label>Tempo de referência</label><input type="text" id="addTRef" placeholder="00:00,00"/></div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+      <button class="btn b-out" onclick="fecharModal('modalAddAtleta')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarAddAtleta(${JSON.stringify(nome)})">+ Adicionar</button>
+    </div>`;
+  abrirModal('modalAddAtleta');
+  setTimeout(()=>document.getElementById('addNome').focus(),100);
+}
+function confirmarAddAtleta(nome){
+  const n=toTitle((document.getElementById('addNome').value||'').trim());
+  if(!n){alert('Nome obrigatório.');return;}
+  const cat=(document.getElementById('addCat').value||'').trim().toUpperCase();
+  const escola=toTitle((document.getElementById('addEscola').value||'').trim());
+  const tr=(document.getElementById('addTRef').value||'').trim();
+  getProva(nome).atletas.push({id:uid(),nome:n,categoria:cat,escola,tempoRef:tr,tempo:''});
+  markDirty(); fecharModal('modalAddAtleta'); renderAll(nome); showToast(`${n} adicionado(a)!`);
+}
+
+// ══════════════════════════════════════════════════════════
+// IMPORTAR EXCEL
+// ══════════════════════════════════════════════════════════
+function importarExcel(inp){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      let totalAtletas=0, novasProvas=0;
+      wb.SheetNames.forEach(sn=>{
+        const ws=wb.Sheets[sn];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        // Buscar linha de cabeçalho
+        let hRow=-1;
+        for(let i=0;i<rows.length;i++){
+          if(rows[i].some(c=>String(c).toUpperCase().includes('NOME'))){hRow=i;break;}
+        }
+        if(hRow===-1) return;
+        // Detectar colunas
+        const hdrs=rows[hRow].map(c=>String(c).toUpperCase().trim());
+        const iNome=hdrs.findIndex(h=>h.includes('NOME'));
+        const iCat=hdrs.findIndex(h=>h.includes('CAT'));
+        const iEscola=hdrs.findIndex(h=>h.includes('ESCOLA')||h.includes('INST'));
+        const iTRef=hdrs.findIndex(h=>h.includes('TEMPO')||h.includes('REF'));
+        if(iNome===-1) return;
+        if(!etapa.provas[sn]){
+          etapa.provas[sn]={atletas:[],series:[],classificacao:[],genero:'',distancia:'',estilo:'',categoria:'',criadoEm:new Date().toISOString()};
+          novasProvas++;
+        }
+        const atletas=[];
+        for(let i=hRow+1;i<rows.length;i++){
+          const row=rows[i];
+          const nome=toTitle(String(row[iNome]||'').trim());
+          if(!nome) continue;
+          atletas.push({id:uid(),nome,categoria:iCat>=0?String(row[iCat]||'').trim().toUpperCase():'',escola:iEscola>=0?toTitle(String(row[iEscola]||'').trim()):'',tempoRef:iTRef>=0?String(row[iTRef]||'').trim():'',tempo:''});
+          totalAtletas++;
+        }
+        if(atletas.length) etapa.provas[sn].atletas=[...etapa.provas[sn].atletas,...atletas];
+      });
+      markDirty(); renderProvasEtapa();
+      showToast(`✅ Importado: ${novasProvas} prova(s), ${totalAtletas} atleta(s)!`);
+    }catch(e){alert('Erro ao importar: '+e.message);}
+  };
+  r.readAsBinaryString(f); inp.value='';
+}
+
+// ══════════════════════════════════════════════════════════
+// BALIZAMENTO
+// ══════════════════════════════════════════════════════════
+function calcSeries(n,raias){
+  if(n<=0) return [];
+  if(n<=raias) return [n];
+  const full=Math.floor(n/raias),rem=n%raias;
+  let c=[];
+  if(rem===0){ for(let i=0;i<full;i++) c.push(raias); }
+  else if(rem>=3){ c.push(rem); for(let i=0;i<full;i++) c.push(raias); }
+  else {
+    if(full===0){ c.push(n); }
+    else{ const bw=3-rem; c.push(rem+bw); c.push(raias-bw); for(let i=1;i<full;i++) c.push(raias); }
+  }
+  return c;
+}
+
+function gerarBal(nome){
+  if(!nome) return;
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const p=etapa.provas[nome]; if(!p) return;
+  const raias=etapa.raias||8;
+  const lo=LANE_ORDER.slice(0,raias);
+  const spread=[...p.atletas].sort((a,b)=>tempoMs(a.tempoRef)-tempoMs(b.tempoRef));
+  const counts=calcSeries(spread.length,raias);
+  const series=[]; let pos=0;
+  counts.forEach(count=>{
+    const chunk=spread.slice(pos,pos+count); pos+=count;
+    const lanes=Array(raias).fill(null);
+    chunk.forEach((a,ci)=>{ lanes[lo[ci]-1]={...a,tempo:a.tempo||''}; });
+    series.push({lanes,provaRef:nome});
+  });
+  p.series=series; p.classificacao=[];
+  markDirty(); renderBal(nome); renderStats(nome); showToast(`Balizamento gerado: ${series.length} série(s)`);
+}
+
+function renderBal(nome){
+  const etapa=getEtapa(curEtapaId); const p=getProva(nome); const el=document.getElementById('bal-'+tid(nome));
+  if(!p||!el||!p.series||!p.series.length){if(el) el.innerHTML='';return;}
+  const raias=etapa?etapa.raias:8;
+  let html=`<div class="card" style="margin-bottom:12px;">
+    <div class="card-hd coll-hd" onclick="toggleCollapse('balbody-${tid(nome)}','balarr-${tid(nome)}')">
+      <span>⚡ Balizamento — ${esc(nome)} <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.series.length} série(s)</span></span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="btn b-pri" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();abrirSerieCombinada(${JSON.stringify(nome)})">🔀 Série combinada</button>
+        <span id="balarr-${tid(nome)}" class="coll-arrow open">▼</span>
+      </div>
+    </div>
+    <div id="balbody-${tid(nome)}" class="coll-body" style="max-height:9999px;">`;
+  p.series.forEach((serie,si)=>{
+    const cnt=serie.lanes.filter(l=>l&&!l._outra).length;
+    const combTag=serie.combinada?`<span style="font-size:9px;padding:2px 6px;background:#fbbf24;color:#78350f;border-radius:8px;margin-left:6px;">combinada</span>`:'';
+    html+=`<div style="overflow-x:auto;${si>0?'margin-top:12px;':''}">
+      <table class="tbl"><thead>
+        <tr><td colspan="${raias+3}" style="background:#374151;color:#fff;padding:6px 12px;font-size:11px;font-weight:700;">
+          SÉRIE ${si+1} ${combTag} <span style="font-weight:400;font-size:10px;opacity:.75;">${cnt} atleta(s)</span>
+        </td></tr>
+        <tr><th style="width:24px;"></th><th style="width:34px;">Raia</th><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:105px;">Tempo</th><th style="width:46px;"></th></tr>
+      </thead><tbody>`;
+    serie.lanes.forEach((a,li)=>{
+      const raia=li+1, isCen=raias>=8&&(raia===4||raia===5), cen=isCen?' rc':'';
+      if(a&&!a._outra){
+        const ok=a.tempo&&/^\d{1,2}:\d{2}[,.]\d{2}$/.test(a.tempo.trim());
+        html+=`<tr class="drag-row${cen}" draggable="true"
+          ondragstart="dstart(event,${JSON.stringify(nome)},${si},${li})" ondragover="dover(event)"
+          ondrop="ddrop(event,${JSON.stringify(nome)},${si},${li})" ondragleave="dleave(event)" ondragend="dend(event)">
+          <td class="drag-handle">⠿</td><td class="rn">${raia}</td>
+          <td><input type="text" value="${esc(a.nome)}" onchange="updBal(${JSON.stringify(nome)},${si},${li},'nome',this.value)"/></td>
+          <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
+          <td><input type="text" value="${esc(a.escola||'')}" onchange="updBal(${JSON.stringify(nome)},${si},${li},'escola',this.value)"/></td>
+          <td><input type="text" class="ti${a.tempo?(ok?' ok':' err'):''}" placeholder="00:00,00" value="${esc(a.tempo||'')}"
+            oninput="vTi(this)" onchange="updBal(${JSON.stringify(nome)},${si},${li},'tempo',this.value)"/></td>
+          <td style="text-align:center;"><button style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;padding:2px 5px;" onclick="excluirRaia(${JSON.stringify(nome)},${si},${li})">✕</button></td>
+        </tr>`;
+      } else if(a&&a._outra){
+        html+=`<tr class="${cen}" style="opacity:.45;">
+          <td></td><td class="rn" style="color:#aaa;">${raia}</td>
+          <td style="font-size:11px;font-style:italic;color:#94a3b8;">${esc(a.nome)}</td>
+          <td style="font-size:11px;text-align:center;color:#94a3b8;">${esc(a.categoria||'')}</td>
+          <td colspan="3" style="font-size:10px;color:#94a3b8;">↪ ${esc(a.provaRef||'outra prova')}</td>
+        </tr>`;
+      } else {
+        html+=`<tr class="${cen}" id="rvazia-${tid(nome)}-${si}-${li}">
+          <td></td><td class="rn" style="color:#ccc;">${raia}</td>
+          <td colspan="3" class="er">— raia vazia —</td>
+          <td style="text-align:right;" colspan="2"><button onclick="ativarRaiaVazia(${JSON.stringify(nome)},${si},${li})"
+            style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#6b7280;cursor:pointer;font-size:11px;padding:2px 8px;">+ incluir</button></td>
+        </tr>`;
+      }
+    });
+    html+=`</tbody></table></div>`;
+  });
+  html+=`<div class="card-ft">
+    <button class="btn b-pdf" onclick="printBal(${JSON.stringify(nome)})">🖨️ Imprimir balizamento</button>
+    <button class="btn b-suc" onclick="gerarClass(${JSON.stringify(nome)})">🏅 Gerar classificação →</button>
+  </div></div></div>`;
+  el.innerHTML=html;
+}
+
+const vTi=inp=>{const v=inp.value.trim();inp.classList.toggle('ok',!!v&&/^\d{1,2}:\d{2}[,.]\d{2}$/.test(v));inp.classList.toggle('err',!!v&&!/^\d{1,2}:\d{2}[,.]\d{2}$/.test(v));};
+function updBal(nome,si,li,f,v){const p=getProva(nome);if(!p||!p.series[si]) return;const a=p.series[si].lanes[li];if(!a) return;if(f==='nome'||f==='escola') v=toTitle(v);a[f]=v;markDirty();}
+function excluirRaia(nome,si,li){const p=getProva(nome);if(!p) return;p.series[si].lanes[li]=null;markDirty();renderBal(nome);}
+function ativarRaiaVazia(nome,si,li){
+  const tr=document.getElementById(`rvazia-${tid(nome)}-${si}-${li}`); if(!tr) return;
+  tr.innerHTML=`<td></td><td class="rn">${li+1}</td>
+    <td><input type="text" id="rvn-${si}-${li}" placeholder="Nome" autofocus style="width:100%;border:1px solid var(--azm);padding:3px 5px;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')confRaiaVazia(${JSON.stringify(nome)},${si},${li});if(event.key==='Escape')renderBal(${JSON.stringify(nome)});"/></td>
+    <td><input type="text" id="rvcat-${si}-${li}" placeholder="Cat." style="width:65px;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
+    <td><input type="text" id="rve-${si}-${li}" placeholder="Escola" style="width:100%;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
+    <td colspan="2" style="white-space:nowrap;">
+      <button onclick="confRaiaVazia(${JSON.stringify(nome)},${si},${li})" style="background:var(--vd);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;padding:3px 8px;margin-right:3px;">✓</button>
+      <button onclick="renderBal(${JSON.stringify(nome)})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:11px;padding:3px 6px;color:#6b7280;">✕</button>
+    </td>`;
+  document.getElementById(`rvn-${si}-${li}`)?.focus();
+}
+function confRaiaVazia(nome,si,li){
+  const n=toTitle((document.getElementById(`rvn-${si}-${li}`)?.value||'').trim()); if(!n){alert('Nome obrigatório.');return;}
+  const cat=(document.getElementById(`rvcat-${si}-${li}`)?.value||'').trim().toUpperCase();
+  const escola=toTitle((document.getElementById(`rve-${si}-${li}`)?.value||'').trim());
+  const p=getProva(nome);
+  p.series[si].lanes[li]={id:uid(),nome:n,categoria:cat,escola,tempo:''};
+  if(!p.atletas.find(a=>a.nome===n)) p.atletas.push({id:uid(),nome:n,categoria:cat,escola,tempoRef:'',tempo:''});
+  markDirty(); renderBal(nome); renderStats(nome);
+}
+
+// ══════════════════════════════════════════════════════════
+// SÉRIE COMBINADA
+// ══════════════════════════════════════════════════════════
+function abrirSerieCombinada(nomeProva){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const provas=etapa.provas, raias=etapa.raias||8;
+  let html=`<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Piscina: <strong>${raias} raias</strong>. Selecione até ${raias} atletas (de provas diferentes) para compor a série.</div>`;
+  Object.entries(provas).forEach(([n,p])=>{
+    const jaBalanceados=new Set(); (p.series||[]).forEach(s=>s.lanes.forEach(l=>{if(l&&l.nome) jaBalanceados.add(l.nome);}));
+    const disp=p.atletas.filter(a=>!jaBalanceados.has(a.nome));
+    if(!disp.length) return;
+    html+=`<div class="card" style="margin-bottom:10px;"><div class="card-hd">${esc(n)} <span class="badge badge-gray">${disp.length} disponível(is)</span></div><div style="padding:4px 0;">`;
+    disp.forEach(a=>{html+=`<label style="display:flex;align-items:center;gap:8px;padding:5px 14px;cursor:pointer;"><input type="checkbox" class="comb-chk" value="${esc(n)}||${esc(a.nome)}" style="width:14px;height:14px;"/><span style="font-size:12px;font-weight:600;">${esc(a.nome)}</span><span class="badge badge-blue">${esc(a.categoria||'?')}</span><span style="font-size:11px;color:#64748b;">${esc(a.escola||'')}</span><span style="margin-left:auto;font-size:10px;color:#94a3b8;">${esc(n)}</span></label>`;});
+    html+=`</div></div>`;
+  });
+  if(!html.includes('comb-chk')) html+='<p style="text-align:center;color:#64748b;font-size:13px;padding:20px;">Todos os atletas já estão em séries.</p>';
+  html+=`<div style="padding:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e;">⚠️ A série combinada aparece no balizamento de cada prova participante. Atletas de outras provas aparecem em cinza (não pontuam na sua prova).</div>`;
+  document.getElementById('serieCombConteudo').innerHTML=html;
+  document.getElementById('serieCombConteudo').dataset.provaRef=nomeProva;
+  abrirModal('modalSerieComb');
+}
+function confirmarSerieCombinada(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const raias=etapa.raias||8;
+  const lo=LANE_ORDER.slice(0,raias);
+  const checks=[...document.querySelectorAll('.comb-chk:checked')];
+  if(!checks.length){alert('Selecione pelo menos um atleta.');return;}
+  if(checks.length>raias){alert(`Máximo ${raias} atletas.`);return;}
+  const atletasSerie=[];
+  checks.forEach(c=>{
+    const[pn,an]=c.value.split('||');
+    const p=etapa.provas[pn]; const atl=p?.atletas.find(a=>a.nome===an);
+    if(atl) atletasSerie.push({...atl,provaRef:pn});
+  });
+  atletasSerie.sort((a,b)=>tempoMs(a.tempoRef)-tempoMs(b.tempoRef));
+  const lanes=Array(raias).fill(null);
+  atletasSerie.forEach((a,ci)=>{ if(ci<raias) lanes[lo[ci]-1]={...a,tempo:''}; });
+  const provasPartic=new Set(atletasSerie.map(a=>a.provaRef));
+  provasPartic.forEach(pn=>{
+    const p=etapa.provas[pn]; if(!p.series) p.series=[];
+    const lanesP=lanes.map(l=>{
+      if(!l) return null;
+      if(l.provaRef===pn) return {...l};
+      return {...l,_outra:true};
+    });
+    p.series.push({lanes:lanesP,combinada:true,provaRef:pn,combinadaCom:[...provasPartic].filter(x=>x!==pn)});
+  });
+  markDirty(); fecharModal('modalSerieComb');
+  const ref=document.getElementById('serieCombConteudo').dataset.provaRef;
+  renderAll(ref); showToast('Série combinada criada!');
+}
+
+// ══════════════════════════════════════════════════════════
+// DRAG & DROP
+// ══════════════════════════════════════════════════════════
+function dstart(e,nome,si,li){dragData={nome,si,li};e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','');}
+function dover(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function dleave(e){e.currentTarget.classList.remove('drag-over');}
+function dend(e){e.currentTarget.classList.remove('dragging');dragData=null;}
+function ddrop(e,nome,si,li){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if(!dragData||dragData.nome!==nome) return;
+  if(dragData.si===si&&dragData.li===li) return;
+  const p=getProva(nome);
+  const src=p.series[dragData.si].lanes[dragData.li], dst=p.series[si].lanes[li];
+  p.series[dragData.si].lanes[dragData.li]=dst; p.series[si].lanes[li]=src;
+  dragData=null; markDirty(); renderBal(nome);
+}
+
+// ══════════════════════════════════════════════════════════
+// CLASSIFICAÇÃO
+// ══════════════════════════════════════════════════════════
+function gerarClass(nome){
+  if(!nome) return;
+  const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  const all=[];
+  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) all.push({...a,serie:si+1,raia:li+1});}));
+  const comT=all.filter(a=>a.tempo&&a.tempo.trim()).sort((a,b)=>tempoMs(a.tempo)-tempoMs(b.tempo));
+  const semT=all.filter(a=>!a.tempo||!a.tempo.trim());
+  p.classificacao=[...comT,...semT];
+  renderClass(nome); markDirty(); showToast('Classificação gerada!');
+}
+function renderClass(nome){
+  const p=getProva(nome); const el=document.getElementById('cls-'+tid(nome));
+  if(!p||!el||!p.classificacao||!p.classificacao.length){if(el) el.innerHTML='';return;}
+  let pos=0;
+  const rows=p.classificacao.map((a,i)=>{
+    const st=a.status||''; const pPos=st?null:++pos; const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
+    const pts=st?0:(PONTOS_LNE[pPos-1]||0);
+    const stBadge=st?`<span class="badge ${st==='DQ'?'badge-red':st==='DNS'?'badge-amber':'badge-gray'}">${st}</span>`:'';
+    return `<tr style="${st?'opacity:.6;':''}">
+      <td><span class="pb ${st?'pn':bc}">${st?'—':pPos+'°'}</span></td>
+      <td style="font-weight:600;">${esc(a.nome)}</td>
+      <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
+      <td style="font-size:11px;">${esc(a.escola||'')}</td>
+      <td style="font-family:monospace;font-weight:600;">${st?stBadge:(a.tempo||'—')}</td>
+      <td style="text-align:center;font-weight:700;color:var(--az);">${pts||''}</td>
+      <td style="font-size:11px;color:#64748b;">S${a.serie} R${a.raia}</td>
+      <td><select onchange="setStatusCls(${JSON.stringify(nome)},${i},this.value)" style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
+        <option value="" ${!st?'selected':''}>—</option>
+        <option value="DQ" ${st==='DQ'?'selected':''}>DQ</option>
+        <option value="DNS" ${st==='DNS'?'selected':''}>DNS</option>
+        <option value="DNF" ${st==='DNF'?'selected':''}>DNF</option>
+      </select></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`<div class="card" style="margin-bottom:12px;">
+    <div class="card-hd coll-hd" style="background:#dcfce7;color:#15803d;" onclick="toggleCollapse('clsbody-${tid(nome)}','clsarr-${tid(nome)}')">
+      <span>🏅 Classificação — ${esc(nome)}</span>
+      <span id="clsarr-${tid(nome)}" class="coll-arrow open" style="color:#15803d;">▼</span>
+    </div>
+    <div id="clsbody-${tid(nome)}" class="coll-body" style="max-height:9999px;">
+      <div style="overflow-x:auto;"><table class="tbl"><thead><tr>
+        <th style="background:#15803d;">Pos.</th><th style="background:#15803d;">Atleta</th>
+        <th style="background:#15803d;width:70px;">Cat.</th><th style="background:#15803d;">Escola</th>
+        <th style="background:#15803d;width:90px;">Tempo</th><th style="background:#15803d;width:50px;">Pts</th>
+        <th style="background:#15803d;width:70px;">S/R</th><th style="background:#15803d;width:60px;">Status</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="card-ft">
+        <button class="btn b-pdf" onclick="printClass(${JSON.stringify(nome)})">🖨️ Imprimir classificação</button>
+      </div>
+    </div></div>`;
+}
+function setStatusCls(nome,i,v){const p=getProva(nome);if(!p) return;p.classificacao[i].status=v;markDirty();renderClass(nome);}
+function apagarTempos(nome){
+  if(!nome) return; const p=getProva(nome); if(!p) return;
+  let t=0; (p.series||[]).forEach(s=>s.lanes.forEach(l=>{if(l&&l.tempo){l.tempo='';t++;}}));
+  p.classificacao=[]; if(t===0){showToast('Nenhum tempo.');return;}
+  markDirty(); renderAll(nome); showToast(`${t} tempo(s) apagado(s).`);
+}
+
+// ══════════════════════════════════════════════════════════
+// TELA CHEIA TEMPOS
+// ══════════════════════════════════════════════════════════
+function abrirTelaCheia(nome){
+  if(!nome) return; const p=getProva(nome);
+  if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  fsProva=nome; fsTempos={};
+  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) fsTempos[`${si}_${li}`]=a.tempo||'';}));
+  document.getElementById('fsTitle').textContent=`⏱ Tempos — ${nome}`;
+  document.getElementById('fsSearch').value=''; fsRender(p);
+  abrirModal('fsModal');
+}
+function fsRender(p,filtro=''){
+  const body=document.getElementById('fsBody'); let html='';
+  p.series.forEach((s,si)=>{
+    const atls=s.lanes.filter(l=>l&&l.nome&&!l._outra);
+    if(!atls.length&&filtro) return;
+    html+=`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.5px;margin-bottom:6px;">SÉRIE ${si+1}</div>`;
+    s.lanes.forEach((a,li)=>{
+      if(!a||!a.nome||a._outra) return;
+      if(filtro&&!a.nome.toLowerCase().includes(filtro.toLowerCase())) return;
+      const k=`${si}_${li}`,t=fsTempos[k]||'',ok=/^\d{1,2}:\d{2}[,.]\d{2}$/.test(t);
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#334155;border-radius:7px;margin-bottom:4px;">
+        <div style="width:22px;text-align:center;font-weight:700;color:#94a3b8;font-size:12px;">${li+1}</div>
+        <div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;color:#f1f5f9;">${esc(a.nome)}</div>
+        <div style="font-size:10px;color:#64748b;">${esc(a.escola||'')} · ${esc(a.categoria||'')}</div></div>
+        <input type="text" placeholder="00:00,00" value="${esc(t)}" data-k="${k}" oninput="fsUpd(this)" onkeydown="fsTab(event,this)"
+          style="width:95px;border-radius:5px;border:1px solid ${t?(ok?'#86efac':'#fca5a5'):'#475569'};background:${t?(ok?'#052e16':'#2d0000'):'#1e293b'};color:#f1f5f9;padding:5px 8px;font-family:monospace;font-size:13px;text-align:center;"/>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  body.innerHTML=html||'<p style="color:#94a3b8;text-align:center;padding:30px;">Nenhum atleta.</p>';
+}
+function fsUpd(inp){const k=inp.dataset.k,v=inp.value.trim();fsTempos[k]=v;const ok=/^\d{1,2}:\d{2}[,.]\d{2}$/.test(v);inp.style.borderColor=v?(ok?'#86efac':'#fca5a5'):'#475569';inp.style.background=v?(ok?'#052e16':'#2d0000'):'#1e293b';}
+function fsTab(e,inp){if(e.key!=='Enter'&&e.key!=='Tab') return;e.preventDefault();const all=[...document.querySelectorAll('#fsBody input')];const idx=all.indexOf(inp);if(idx<all.length-1) all[idx+1].focus();}
+function fsFiltra(q){const p=getProva(fsProva);if(!p) return;fsRender(p,q);}
+function fsSalvar(){
+  const p=getProva(fsProva);if(!p) return;let count=0;
+  Object.keys(fsTempos).forEach(k=>{const[si,li]=k.split('_').map(Number);const a=p.series[si]?.lanes[li];if(a&&a.nome){const novo=fsTempos[k];if(a.tempo!==novo){a.tempo=novo;count++;}}});
+  markDirty();renderAll(fsProva);showToast(`${count} tempo(s) salvos!`);
+}
+function fecharTelaCheia(){fecharModal('fsModal');fsProva=null;}
+
+// ══════════════════════════════════════════════════════════
+// COLLAPSE
+// ══════════════════════════════════════════════════════════
+function toggleCollapse(bodyId,arrowId){
+  const b=document.getElementById(bodyId),a=document.getElementById(arrowId);if(!b) return;
+  if(b.style.maxHeight&&b.style.maxHeight!=='0px'){b.style.maxHeight='0px';a&&a.classList.remove('open');}
+  else{b.style.maxHeight=b.scrollHeight+'px';a&&a.classList.add('open');}
+}
+
+// ══════════════════════════════════════════════════════════
+// PLACAR / RANKING
+// ══════════════════════════════════════════════════════════
+function calcPlacarEtapa(etapaId){
+  const e=db.etapas.find(x=>x.id===etapaId);if(!e) return [];
+  const escolas={};
+  Object.values(e.provas||{}).forEach(p=>{
+    let pos=0;
+    (p.classificacao||[]).forEach(a=>{
+      if(a.status||!a.tempo||!a.tempo.trim()) return;
+      const pts=PONTOS_LNE[pos]||0,key=(a.escola||'Sem escola').trim();
+      if(!escolas[key]) escolas[key]={nome:key,pts:0,ouros:0,pratas:0,bronzes:0};
+      escolas[key].pts+=pts; if(pos===0) escolas[key].ouros++; if(pos===1) escolas[key].pratas++; if(pos===2) escolas[key].bronzes++;
+      pos++;
+    });
+  });
+  return Object.values(escolas).sort((a,b)=>b.pts-a.pts||b.ouros-a.ouros||b.pratas-a.pratas||b.bronzes-a.bronzes);
+}
+function calcRankingGeral(){
+  const totais={};
+  db.etapas.forEach(e=>{
+    calcPlacarEtapa(e.id).forEach(r=>{
+      if(!totais[r.nome]) totais[r.nome]={nome:r.nome,pts:0,ouros:0,pratas:0,bronzes:0};
+      totais[r.nome].pts+=r.pts; totais[r.nome].ouros+=r.ouros; totais[r.nome].pratas+=r.pratas; totais[r.nome].bronzes+=r.bronzes;
+    });
+  });
+  return Object.values(totais).sort((a,b)=>b.pts-a.pts||b.ouros-a.ouros||b.pratas-a.pratas||b.bronzes-a.bronzes);
+}
+function rkRow(r,i){
+  const bg=i===0?'#fffbeb':i===1?'#f8fafc':i===2?'#fff7ed':'#f9fafb';
+  const bc=i===0?'#fde68a':i===1?'#e2e8f0':i===2?'#fed7aa':'#f0f0f0';
+  const cor=i===0?'#b45309':i===1?'#475569':i===2?'#c2410c':'#64748b';
+  return `<div class="ranking-row" style="background:${bg};border:1px solid ${bc};">
+    <div style="font-size:20px;font-weight:800;width:32px;text-align:center;color:${cor};">${i+1}°</div>
+    <div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(r.nome)}</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px;">🥇${r.ouros} 🥈${r.pratas} 🥉${r.bronzes}</div></div>
+    <div style="font-size:22px;font-weight:800;color:var(--az);">${r.pts}<span style="font-size:12px;font-weight:500;color:#64748b;"> pts</span></div>
+  </div>`;
+}
+function abrirPlacarEtapa(){
+  const r=calcPlacarEtapa(curEtapaId);const e=getEtapa(curEtapaId);
+  document.getElementById('placarTitulo').textContent=`🏅 Placar — ${e?e.nome:'Etapa'}`;
+  document.getElementById('placarConteudo').innerHTML=r.length?r.map(rkRow).join(''):'<p style="text-align:center;color:#64748b;padding:20px;">Nenhum resultado ainda.</p>';
+  abrirModal('modalPlacar');
+}
+function abrirPlacarGeral(){
+  const r=calcRankingGeral();
+  document.getElementById('placarTitulo').textContent='🏆 Ranking Geral — LNE 2026';
+  document.getElementById('placarConteudo').innerHTML=r.length?r.map(rkRow).join(''):'<p style="text-align:center;color:#64748b;padding:20px;">Nenhum resultado ainda.</p>';
+  abrirModal('modalPlacar');
+}
+function renderRankingGeral(){
+  const r=calcRankingGeral();const el=document.getElementById('rankingGeral');
+  if(!r.length){el.innerHTML='<p style="text-align:center;color:#64748b;padding:40px;">Nenhum resultado ainda.</p>';return;}
+  el.innerHTML=`<div class="srow" style="margin-bottom:16px;">
+    <div class="sc"><div class="lbl">Escolas</div><div class="val">${r.length}</div></div>
+    <div class="sc"><div class="lbl">Total pontos</div><div class="val">${r.reduce((a,x)=>a+x.pts,0)}</div></div>
+    <div class="sc"><div class="lbl">Etapas</div><div class="val">${db.etapas.length}</div></div>
+  </div>
+  <div style="background:#fff;border-radius:10px;border:1px solid var(--bd);padding:14px;">${r.map(rkRow).join('')}</div>
+  <div style="margin-top:12px;font-size:11px;color:#64748b;">Pontuação LNE: 1º=13 · 2º=9 · 3º=7 · 4º=5 · 5º=4 · 6º=3 · 7º=2 · 8º ao 20º=1 ponto</div>`;
+}
+function imprimirPlacar(){
+  const titulo=document.getElementById('placarTitulo').textContent;
+  const r=titulo.includes('Geral')?calcRankingGeral():calcPlacarEtapa(curEtapaId);
+  const rows=r.map((x,i)=>`<tr><td class="c-pos">${i+1}°</td><td>${esc(x.nome)}</td><td class="c-doc">${x.ouros}</td><td class="c-doc">${x.pratas}</td><td class="c-doc">${x.bronzes}</td><td class="c-pos">${x.pts}</td></tr>`).join('');
+  const h=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>${esc(titulo)}</div><div>${new Date().toLocaleString('pt-BR')}</div></div>
+  <table><colgroup><col style="width:28pt"/><col/><col style="width:28pt"/><col style="width:28pt"/><col style="width:28pt"/><col style="width:40pt"/></colgroup>
+  <thead><tr><th class="tc">Pos.</th><th>Escola</th><th class="tc">🥇</th><th class="tc">🥈</th><th class="tc">🥉</th><th class="tc">Pts</th></tr></thead>
+  <tbody>${rows}</tbody></table></div>`;
+  fecharModal('modalPlacar'); openPrint(h);
+}
+function imprimirRanking(){
+  const r=calcRankingGeral();
+  const rows=r.map((x,i)=>`<tr><td class="c-pos">${i+1}°</td><td>${esc(x.nome)}</td><td class="c-doc">${x.ouros}</td><td class="c-doc">${x.pratas}</td><td class="c-doc">${x.bronzes}</td><td class="c-pos">${x.pts}</td></tr>`).join('');
+  const h=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>Ranking Geral por Escola</div><div>${new Date().toLocaleString('pt-BR')}</div></div>
+  <table><thead><tr><th class="tc">Pos.</th><th>Escola</th><th class="tc">🥇</th><th class="tc">🥈</th><th class="tc">🥉</th><th class="tc">Pts</th></tr></thead>
+  <tbody>${rows}</tbody></table></div>`;
+  openPrint(h);
+}
+
+// ══════════════════════════════════════════════════════════
+// ESCOLAS
+// ══════════════════════════════════════════════════════════
+function renderEscolas(){
+  const el=document.getElementById('listaEscolas');
+  if(!db.escolas.length){el.innerHTML='<p style="text-align:center;color:#64748b;padding:40px;">Nenhuma escola cadastrada.</p>';return;}
+  el.innerHTML=db.escolas.map(e=>`<div class="escola-card">
+    <div style="width:36px;height:36px;border-radius:8px;background:var(--azc);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🏫</div>
+    <div style="flex:1;"><h4 style="font-size:13px;font-weight:600;">${esc(e.nome)}</h4>
+    <small style="font-size:11px;color:#64748b;">${esc(e.responsavel)} · ${esc(e.email)} ${e.telefone?'· '+esc(e.telefone):''}</small>
+    <div style="margin-top:4px;"><span class="badge badge-purple">Código: ${esc(e.codigo)}</span></div></div>
+    <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="excluirEscola('${e.id}')">🗑️</button>
+  </div>`).join('');
+}
+function excluirEscola(id){
+  const e=db.escolas.find(x=>x.id===id);if(!e) return;
+  if(!confirm(`Excluir escola "${e.nome}"?`)) return;
+  db.escolas=db.escolas.filter(x=>x.id!==id); markDirty(); renderEscolas();
+}
+
+// ══════════════════════════════════════════════════════════
+// PORTAL DA ESCOLA
+// ══════════════════════════════════════════════════════════
+function renderPortalEscola(){
+  if(!perfil||perfil==='admin') return;
+  const escola=perfil;
+  const hoje=new Date().toISOString().split('T')[0];
+  let totalAtl=0,totalInscr=0;
+  db.etapas.forEach(e=>{ Object.values(e.provas||{}).forEach(p=>{ const at=p.atletas.filter(a=>a.escola===escola.nome); totalInscr+=at.length; }); });
+  const todosNomes=new Set(); db.etapas.forEach(e=>{ Object.values(e.provas||{}).forEach(p=>{ p.atletas.filter(a=>a.escola===escola.nome).forEach(a=>todosNomes.add(a.nome)); }); }); totalAtl=todosNomes.size;
+  let html=`<div style="background:linear-gradient(135deg,#003f8a,#0056b8);color:#fff;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+    <span style="font-size:32px;">🏫</span>
+    <div><h3 style="font-size:14px;font-weight:700;">${esc(escola.nome)}</h3>
+    <p style="font-size:11px;opacity:.8;">${esc(escola.responsavel)} · Código: ${esc(escola.codigo)}</p></div>
+  </div>
+  <div class="srow" style="margin-bottom:16px;">
+    <div class="sc"><div class="lbl">Etapas</div><div class="val">${db.etapas.length}</div></div>
+    <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${totalAtl}</div></div>
+    <div class="sc"><div class="lbl">Inscrições totais</div><div class="val">${totalInscr}</div></div>
+  </div>
+  <h3 style="font-size:14px;font-weight:700;color:var(--az);margin-bottom:10px;">📋 Inscrições por Etapa</h3>`;
+  if(!db.etapas.length) html+='<p style="text-align:center;color:#64748b;padding:30px;font-size:13px;">Nenhuma etapa disponível ainda.</p>';
+  db.etapas.forEach(e=>{
+    const prazoOk=!e.prazoInscricao||e.prazoInscricao>=hoje;
+    const provas=e.provas||{}, nomes=Object.keys(provas);
+    html+=`<div class="card" style="margin-bottom:12px;">
+      <div class="card-hd">📅 ${esc(e.nome)}
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${prazoOk?'<span class="badge badge-green">✅ Inscrições abertas</span>':'<span class="badge badge-red">🔒 Prazo encerrado</span>'}
+          ${e.prazoInscricao?`<span class="badge badge-blue">até ${fmtData(e.prazoInscricao)}</span>`:''}
+        </div>
+      </div>
+      <div class="card-bd">
+        ${(e.data||e.local||e.horaAquecimento)?`<div style="font-size:12px;color:#64748b;margin-bottom:10px;">${e.data?'📅 '+fmtData(e.data):''}${e.local?' · 📍 '+esc(e.local):''}${e.endereco?'<br>'+esc(e.endereco):''}${e.raias?' · '+e.raias+' raias '+esc(e.tamPiscina||''):''}${e.horaAquecimento?'<br>🕐 Aquecimento: <strong>'+e.horaAquecimento+'</strong>':''}${e.horaInicio?' · Início: <strong>'+e.horaInicio+'</strong>':''}</div>`:''}`;
+    if(!nomes.length){ html+='<p style="font-size:12px;color:#94a3b8;font-style:italic;">Nenhuma prova cadastrada.</p>'; }
+    else {
+      html+=`<table class="tbl"><thead><tr><th>Prova</th><th style="width:80px;text-align:center;">Inscritos</th><th style="width:130px;text-align:center;">Ação</th></tr></thead><tbody>`;
+      nomes.forEach(n=>{
+        const atlE=provas[n].atletas.filter(a=>a.escola===escola.nome);
+        html+=`<tr><td style="font-weight:500;">${esc(n)}</td>
+          <td style="text-align:center;">${atlE.length?`<span class="badge badge-green">${atlE.length}</span>`:'<span class="badge badge-gray">0</span>'}</td>
+          <td style="text-align:center;">${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:3px 9px;" onclick="gerenciarInscricao('${e.id}',${JSON.stringify(n)})">✏️ Gerenciar</button>`:'<span style="font-size:11px;color:#94a3b8;">Encerrado</span>'}</td>
+        </tr>`;
+      });
+      html+=`</tbody></table>`;
+    }
+    html+=`</div></div>`;
+  });
+  document.getElementById('portalConteudo').innerHTML=html;
+}
+function gerenciarInscricao(etapaId,nomePr){
+  const etapa=db.etapas.find(x=>x.id===etapaId);if(!etapa) return;
+  const p=etapa.provas[nomePr];if(!p) return;
+  const escola=perfil;
+  // Remove modal anterior se existir
+  document.getElementById('inscricaoModal')?.remove();
+  const modal=document.createElement('div');
+  modal.className='mover open'; modal.id='inscricaoModal';
+  modal.innerHTML=`<div class="mdl" style="max-width:580px;">
+    <div class="mdl-hd"><h3>✏️ ${esc(nomePr)}</h3><button class="mdl-x" onclick="document.getElementById('inscricaoModal').remove()">×</button></div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Escola: <strong>${esc(escola.nome)}</strong> · Etapa: <strong>${esc(etapa.nome)}</strong></p>
+    <div id="inscrAtletas" style="max-height:340px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;"></div>
+    <div class="card-ft" style="border:none;padding:10px 0 0;"><button class="btn b-out" onclick="addAtletaPortal('${etapaId}',${JSON.stringify(nomePr)})">+ Adicionar atleta</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+  renderInscrAtletas(etapaId,nomePr);
+}
+function renderInscrAtletas(etapaId,nomePr){
+  const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];const escola=perfil;
+  const el=document.getElementById('inscrAtletas');if(!el||!p) return;
+  const atls=p.atletas.filter(a=>a.escola===escola.nome);
+  if(!atls.length){el.innerHTML='<p style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;font-style:italic;">Nenhum atleta inscrito. Use "+ Adicionar atleta".</p>';return;}
+  el.innerHTML=atls.map(a=>{
+    const idx=p.atletas.indexOf(a);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0f4f8;">
+      <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${esc(a.nome)}</div>
+      <div style="font-size:11px;color:#64748b;">Cat: ${esc(a.categoria||'—')} · Tempo ref: ${esc(a.tempoRef||'—')}</div></div>
+      <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="rmAtletaPortal('${etapaId}',${JSON.stringify(nomePr)},${idx})">✕</button>
+    </div>`;
+  }).join('');
+}
+function addAtletaPortal(etapaId,nomePr){
+  const nome=prompt('Nome do atleta:');if(!nome?.trim()) return;
+  const cat=prompt('Categoria (ex: A12):','')||'';
+  const tr=prompt('Tempo de referência (ex: 00:32,50 — opcional):','')||'';
+  const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
+  p.atletas.push({id:uid(),nome:toTitle(nome.trim()),categoria:cat.trim().toUpperCase(),escola:perfil.nome,tempoRef:tr.trim(),tempo:''});
+  markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola(); showToast('Atleta adicionado!');
+}
+function rmAtletaPortal(etapaId,nomePr,idx){
+  if(!confirm('Remover atleta?')) return;
+  const etapa=db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
+  p.atletas.splice(idx,1); markDirty(); renderInscrAtletas(etapaId,nomePr); renderPortalEscola();
+}
+
+// ══════════════════════════════════════════════════════════
+// CARTÕES DE INSCRIÇÃO
+// ══════════════════════════════════════════════════════════
+const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}
+.folha{width:210mm;height:297mm;padding:5mm 6mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);gap:2mm;page-break-after:always;}
+.folha:last-child{page-break-after:auto;}
+.cartao{border:.5pt solid #888;padding:5pt 8pt 4pt;display:flex;flex-direction:column;overflow:hidden;}
+.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;color:#444;line-height:1.2;margin-bottom:1pt;}
+.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:2pt;margin-bottom:5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row3{display:grid;grid-template-columns:3fr 1fr 1fr;gap:5pt;margin-bottom:4pt;}.row3 .val{font-size:8.5pt;margin-bottom:0;}
+.sep{border:none;border-top:.5pt solid #aaa;margin:3pt 0 4pt;}
+.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.5px;margin-bottom:3pt;color:#333;}
+.cron-wrap{flex:1;display:flex;flex-direction:column;}
+table{width:100%;border-collapse:collapse;flex:1;height:100%;}
+th{border:.5pt solid #777;padding:3pt 2pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}
+tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}
+td.n{background:#e8e8e8;font-weight:bold;width:16pt;font-size:8pt;}
+@page{size:A4 portrait;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+
+function buildCartoesHtml(cartoes){
+  const PF=10; let html='';
+  for(let i=0;i<cartoes.length;i+=PF){
+    const g=cartoes.slice(i,i+PF); while(g.length<PF) g.push(null);
+    html+=`<div class="folha">`;
+    g.forEach(c=>{
+      const n=c?esc(c.nome):'&nbsp;', pr=c?esc(c.prova):'&nbsp;', sr=c?String(c.serie):'&nbsp;', ra=c?String(c.raia):'&nbsp;';
+      const vc=c?'val':'val" style="color:transparent;border-bottom:.5pt solid #aaa;';
+      html+=`<div class="cartao">
+        <div class="lbl">Nome do Atleta</div><div class="${vc}">${n}</div>
+        <div class="row3">
+          <div><div class="lbl">Prova</div><div class="${vc}">${pr}</div></div>
+          <div><div class="lbl">Série</div><div class="${vc}">${sr}</div></div>
+          <div><div class="lbl">Raia</div><div class="${vc}">${ra}</div></div>
+        </div>
+        <hr class="sep"/><div class="cron-wrap"><div class="ct">Cronômetro</div>
+        <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>
+        <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  return html;
+}
+function imprimirCartoesProva(nome){
+  if(!nome) return; const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  const cartoes=[];
+  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1});}));
+  if(!cartoes.length){alert('Nenhum atleta no balizamento.');return;}
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões — ${nome}</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
+}
+function imprimirTodosCartoes(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const cartoes=[];
+  Object.entries(etapa.provas||{}).forEach(([nome,p])=>{
+    (p.series||[]).forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1});}));
+  });
+  if(!cartoes.length){alert('Nenhum atleta com balizamento gerado.');return;}
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões — ${etapa.nome}</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
+}
+
+// ══════════════════════════════════════════════════════════
+// IMPRESSÃO (balizamento / classificação / súmula)
+// ══════════════════════════════════════════════════════════
+const PRINT_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;font-size:9pt;color:#000;background:#fff;}
+.pg{width:100%;padding:10mm 14mm;}.ph{text-align:center;margin-bottom:8pt;}.ph div{font-size:9pt;font-weight:bold;text-transform:uppercase;line-height:1.55;letter-spacing:.2px;}
+table{width:100%;border-collapse:collapse;table-layout:fixed;}
+thead th{font-size:8pt;font-weight:bold;text-transform:uppercase;padding:4pt 5pt;text-align:left;border-top:1pt solid #000;border-bottom:1pt solid #000;background:#fff;color:#000;overflow:hidden;white-space:nowrap;}
+thead th.tc{text-align:center;}td.serie-lbl{font-size:8.5pt;font-weight:bold;text-transform:uppercase;padding:7pt 5pt 2pt 0;border-bottom:none;letter-spacing:.2px;}
+td{font-size:8.5pt;padding:2.5pt 5pt;border-bottom:.3pt solid #ddd;vertical-align:middle;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+td.c-raia{text-align:center;}td.c-nome{text-align:left;}td.c-doc{text-align:center;font-size:8pt;}td.c-inst{text-align:center;}
+td.c-tempo{text-align:center;font-family:'Courier New',monospace;}td.c-pos{text-align:center;font-weight:bold;}
+@page{size:A4 portrait;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+
+function openPrint(h){ document.getElementById('pdfContent').innerHTML=h; abrirModal('pdfModal'); }
+function doPrint(){
+  const c=document.getElementById('pdfContent').innerHTML;
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LNE 2026</title><style>${PRINT_CSS}</style></head><body>${c}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
+}
+function printBal(nome){
+  if(!nome) return; const p=getProva(nome); const etapa=getEtapa(curEtapaId);
+  if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  const raias=etapa?etapa.raias:8;
+  let h=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>Balizamento — ${esc(nome)}</div>${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}</div>`:''}</div>
+  <table><colgroup><col style="width:28pt"/><col style="width:180pt"/><col style="width:60pt"/><col/><col style="width:55pt"/></colgroup>
+  <thead><tr><th class="tc">Raia</th><th>Nome do Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th></tr></thead><tbody>`;
+  p.series.forEach((s,si)=>{
+    h+=`<tr><td class="serie-lbl" colspan="5">Série ${si+1}${s.combinada?' (combinada)':''}</td></tr>`;
+    s.lanes.forEach((a,li)=>{
+      if(a&&!a._outra) h+=`<tr><td class="c-raia">${li+1}</td><td class="c-nome">${esc(a.nome)}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${esc(a.tempo||'')}</td></tr>`;
+      else h+=`<tr><td class="c-raia">${li+1}</td><td></td><td></td><td></td><td></td></tr>`;
+    });
+  });
+  h+=`</tbody></table></div>`; openPrint(h);
+}
+function printClass(nome){
+  if(!nome) return; const p=getProva(nome); if(!p||!p.classificacao||!p.classificacao.length){alert('Gere a classificação primeiro.');return;}
+  const etapa=getEtapa(curEtapaId); let pos=0;
+  let h=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>Classificação — ${esc(nome)}</div>${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}</div>`:''}</div>
+  <table><colgroup><col style="width:28pt"/><col style="width:170pt"/><col style="width:60pt"/><col/><col style="width:55pt"/><col style="width:36pt"/></colgroup>
+  <thead><tr><th class="tc">Pos.</th><th>Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th><th class="tc">Pts</th></tr></thead><tbody>`;
+  p.classificacao.forEach(a=>{
+    const st=a.status||'',ptsN=st?0:(PONTOS_LNE[pos]||0);
+    if(!st) pos++;
+    h+=`<tr><td class="c-pos">${st?st:pos+'°'}</td><td class="c-nome">${esc(a.nome)}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${a.tempo||'—'}</td><td class="c-pos">${ptsN||'—'}</td></tr>`;
+  });
+  h+=`</tbody></table></div>`; openPrint(h);
+}
+function abrirSumula(){
+  document.getElementById('sumData').value=new Date().toISOString().split('T')[0];
+  document.getElementById('sumLocal').value=''; document.getElementById('sumJuiz').value='';
+  abrirModal('modalSumulaForm');
+}
+function imprimirSumula(){
+  const nome=curProva; if(!nome) return;
+  const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  const etapa=getEtapa(curEtapaId);
+  const dataFmt=document.getElementById('sumData').value?new Date(document.getElementById('sumData').value+'T12:00:00').toLocaleDateString('pt-BR'):'___/___/______';
+  const local=document.getElementById('sumLocal').value||'___________________________';
+  const juiz=document.getElementById('sumJuiz').value||'___________________________';
+  const SCSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;font-size:9pt;color:#000;padding:8mm 10mm;}
+  .tit{text-align:center;font-size:10pt;font-weight:bold;text-transform:uppercase;margin-bottom:2pt;}
+  .sub{text-align:center;font-size:9pt;font-weight:bold;margin-bottom:2pt;}
+  .info{display:flex;gap:20pt;margin:6pt 0;font-size:8.5pt;}.info span{border-bottom:.5pt solid #000;flex:1;padding-bottom:1pt;}.info label{font-weight:bold;white-space:nowrap;margin-right:4pt;}
+  .stit{background:#444;color:#fff;padding:3pt 6pt;font-weight:bold;font-size:8.5pt;margin:6pt 0 0;}
+  table{width:100%;border-collapse:collapse;margin-bottom:4pt;}th{border:.5pt solid #555;padding:3pt 5pt;text-align:left;font-size:7.5pt;font-weight:bold;background:#ddd;}
+  td{border:.5pt solid #888;padding:3pt 5pt;font-size:8.5pt;}.raia-col{text-align:center;width:22pt;}.tempo-col{width:60pt;text-align:center;}
+  .assinatura{display:flex;gap:30pt;margin-top:20pt;}.ass-campo{flex:1;text-align:center;}.ass-linha{border-top:.5pt solid #000;margin-bottom:3pt;}.ass-label{font-size:7.5pt;color:#333;}
+  @page{size:A4 portrait;margin:0;}`;
+  let html=`<div class="tit">Súmula Oficial — Liga de Natação Escolar — LNE 2026</div>
+  <div class="sub">${esc(nome)}</div>
+  <div class="info"><div><label>Data:</label><span>${dataFmt}</span></div><div><label>Local:</label><span>${esc(local)}</span></div><div><label>Etapa:</label><span>${esc(etapa?etapa.nome:'')}</span></div></div>`;
+  p.series.forEach((s,si)=>{
+    html+=`<div class="stit">Série ${si+1}${s.combinada?' (combinada)':''}</div>
+    <table><thead><tr><th class="raia-col">Raia</th><th>Nome do Atleta</th><th>Categoria</th><th>Escola</th><th class="tempo-col">Tempo</th></tr></thead><tbody>`;
+    s.lanes.forEach((a,li)=>{html+=`<tr><td class="raia-col">${li+1}</td><td>${a&&!a._outra?esc(a.nome):''}</td><td style="text-align:center;">${a&&!a._outra?esc(a.categoria||''):''}</td><td>${a&&!a._outra?esc(a.escola||''):''}</td><td class="tempo-col" style="font-family:monospace;">${a&&!a._outra?esc(a.tempo||''):''}</td></tr>`;});
+    html+=`</tbody></table>`;
+  });
+  html+=`<div class="assinatura"><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Árbitro / Juiz</div><div style="font-size:8.5pt;margin-top:2pt;">${esc(juiz)}</div></div><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Cronometrista 1</div></div><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Cronometrista 2</div></div><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Responsável</div></div></div>`;
+  fecharModal('modalSumulaForm');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Súmula</title><style>${SCSS}</style></head><body>${html}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Espera Firebase — se não carregar em 8s, libera login com aviso
+  setTimeout(() => {
+    if (!fbReady) {
+      loading(false);
+      setSyncStatus('error');
+      showToast('⚠️ Firebase não conectou. Verifique a internet.');
+    }
+  }, 8000);
+});
+</script>
+</body>
+</html>
