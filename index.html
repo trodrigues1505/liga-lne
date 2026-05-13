@@ -447,6 +447,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
           <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar Etapa</button>
           <button class="btn" style="background:#1e40af;color:#fff;" onclick="abrirPlacarGeral()">🏆 Ranking</button>
           <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirTodosCartoes()">🪪 Todos Cartões</button>
+          <button id="btnLiberarBal" class="btn" style="background:#15803d;color:#fff;" onclick="toggleLiberarBalizamento()">🔓 Liberar balizamento p/ escolas</button>
         </div>
       </div>
       <div class="card" id="provasContainer" style="display:none;">
@@ -866,6 +867,12 @@ function abrirModalNovaEtapa(){
   document.getElementById('etapaAquec').value='13:00';
   document.getElementById('etapaInicio').value='13:30';
   document.getElementById('etapaCriarProvas').checked=true;
+  // Garante modo criação
+  document.querySelector('#modalNovaEtapa .mdl-hd h3').textContent='📅 Nova Etapa';
+  document.getElementById('etapaCriarProvas').closest('div[style*="background"]').style.display='';
+  const btnSalvar=document.querySelector('#modalNovaEtapa button.b-pri');
+  btnSalvar.textContent='✅ Criar Etapa';
+  btnSalvar.onclick=salvarEtapa;
   abrirModal('modalNovaEtapa');
   setTimeout(()=>document.getElementById('etapaNome').focus(),100);
 }
@@ -972,18 +979,59 @@ function renderEtapas(){
         </div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="btn b-out" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();editarPrazo('${e.id}')">✏️ Prazo</button>
-        <button class="btn b-red" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();excluirEtapa('${e.id}')">🗑️</button>
+        <button class="btn b-out" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();editarEtapa('${e.id}')">✏️ Editar</button>
+        <button class="btn b-red" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();excluirEtapa('${e.id}')">🗑️ Excluir</button>
       </div>
     </div>`;
   }).join('');
 }
-function editarPrazo(id){
+function editarEtapa(id){
   const e=getEtapa(id); if(!e) return;
-  const novo=prompt('Novo prazo de inscrições (AAAA-MM-DD):',e.prazoInscricao||'');
-  if(novo===null) return;
-  e.prazoInscricao=novo; markDirty(); renderEtapas(); showToast('Prazo atualizado!');
+  // Reutiliza o modal de nova etapa preenchido
+  document.getElementById('etapaNome').value=e.nome||'';
+  document.getElementById('etapaData').value=e.data||'';
+  document.getElementById('etapaLocal').value=e.local||'';
+  document.getElementById('etapaEndereco').value=e.endereco||'';
+  document.getElementById('etapaRaias').value=e.raias||8;
+  document.getElementById('etapaTam').value=e.tamPiscina||'25m';
+  document.getElementById('etapaPrazo').value=e.prazoInscricao||'';
+  document.getElementById('etapaAquec').value=e.horaAquecimento||'13:00';
+  document.getElementById('etapaInicio').value=e.horaInicio||'13:30';
+  document.getElementById('etapaCriarProvas').checked=false;
+  // Muda título e botão do modal para modo edição
+  document.querySelector('#modalNovaEtapa .mdl-hd h3').textContent='✏️ Editar Etapa';
+  document.getElementById('etapaCriarProvas').closest('div[style]').style.display='none';
+  const btnSalvar=document.querySelector('#modalNovaEtapa button.b-pri');
+  btnSalvar.textContent='💾 Salvar alterações';
+  btnSalvar.onclick=()=>salvarEdicaoEtapa(id);
+  abrirModal('modalNovaEtapa');
+  setTimeout(()=>document.getElementById('etapaNome').focus(),100);
 }
+function salvarEdicaoEtapa(id){
+  const nome=document.getElementById('etapaNome').value.trim();
+  if(!nome){alert('Nome obrigatório.');return;}
+  const e=getEtapa(id); if(!e) return;
+  e.nome=nome;
+  e.data=document.getElementById('etapaData').value;
+  e.local=document.getElementById('etapaLocal').value.trim();
+  e.endereco=document.getElementById('etapaEndereco').value.trim();
+  e.raias=+document.getElementById('etapaRaias').value;
+  e.tamPiscina=document.getElementById('etapaTam').value;
+  e.prazoInscricao=document.getElementById('etapaPrazo').value;
+  e.horaAquecimento=document.getElementById('etapaAquec').value;
+  e.horaInicio=document.getElementById('etapaInicio').value;
+  markDirty(); fecharModal('modalNovaEtapa'); renderEtapas();
+  // Atualiza header se esta etapa está aberta
+  if(curEtapaId===id){
+    document.getElementById('balEtapaNome').textContent=e.nome;
+    document.getElementById('balEtapaInfo').textContent=
+      [e.data?fmtData(e.data):'',e.local||'',e.endereco||'',e.raias+' raias '+e.tamPiscina,
+       e.horaAquecimento?'Aquec. '+e.horaAquecimento:'',e.horaInicio?'Início '+e.horaInicio:'',
+       e.prazoInscricao?'Prazo: '+fmtData(e.prazoInscricao):''].filter(Boolean).join(' · ');
+  }
+  showToast(`Etapa "${nome}" atualizada!`);
+}
+// Reseta modal para modo criação ao abrir normalmente
 function abrirEtapa(id){
   curEtapaId=id; const e=getEtapa(id); if(!e) return;
   document.getElementById('balEtapaNome').textContent=e.nome;
@@ -998,6 +1046,24 @@ function abrirEtapa(id){
   document.getElementById('page-balizamento').classList.add('active');
   document.querySelectorAll('.nav-btn[data-page]').forEach(b=>b.classList.remove('active'));
   renderProvasEtapa();
+  setTimeout(atualizarBtnLiberar, 50);
+}
+function toggleLiberarBalizamento(){
+  const e=getEtapa(curEtapaId); if(!e) return;
+  e.balizamentoLiberado=!e.balizamentoLiberado;
+  markDirty(); atualizarBtnLiberar();
+  showToast(e.balizamentoLiberado?'✅ Balizamento liberado para as escolas!':'🔒 Balizamento ocultado das escolas.');
+}
+function atualizarBtnLiberar(){
+  const e=getEtapa(curEtapaId); if(!e) return;
+  const btn=document.getElementById('btnLiberarBal'); if(!btn) return;
+  if(e.balizamentoLiberado){
+    btn.textContent='🔒 Ocultar balizamento das escolas';
+    btn.style.background='#dc2626';
+  } else {
+    btn.textContent='🔓 Liberar balizamento p/ escolas';
+    btn.style.background='#15803d';
+  }
 }
 function voltarEtapas(){ curEtapaId=null; curProva=null; document.getElementById('etapaSticky').classList.remove('visible'); navegarPara('etapas'); }
 
@@ -1256,9 +1322,18 @@ function renderBal(nome){
           <td><input type="text" value="${esc(a.nome)}" onchange="updBal(${JSON.stringify(nome)},${si},${li},'nome',this.value)"/></td>
           <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
           <td><input type="text" value="${esc(a.escola||'')}" onchange="updBal(${JSON.stringify(nome)},${si},${li},'escola',this.value)"/></td>
-          <td><input type="text" class="ti${a.tempo?(ok?' ok':' err'):''}" placeholder="00:00,00" value="${esc(a.tempo||'')}"
-            oninput="vTi(this)" onchange="updBal(${JSON.stringify(nome)},${si},${li},'tempo',this.value)"/></td>
-          <td style="text-align:center;"><button style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;padding:2px 5px;" onclick="excluirRaia(${JSON.stringify(nome)},${si},${li})">✕</button></td>
+          <td>
+            <input type="text" class="ti${a.tempo?(ok?' ok':' err'):''}" placeholder="00:00,00" value="${esc(a.tempo||'')}"
+              inputmode="decimal"
+              oninput="vTi(this)"
+              onchange="updBal(${JSON.stringify(nome)},${si},${li},'tempo',this.value)"
+              style="width:95px;"/>
+          </td>
+          <td style="text-align:center;white-space:nowrap;">
+            <button onclick="excluirRaia(${JSON.stringify(nome)},${si},${li})"
+              title="Remover desta raia"
+              style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:4px 8px;border-radius:5px;font-weight:600;touch-action:manipulation;">✕</button>
+          </td>
         </tr>`;
       } else if(a&&a._outra){
         html+=`<tr class="${cen}" style="opacity:.45;">
@@ -1396,10 +1471,11 @@ function renderClass(nome){
   const p=getProva(nome); const el=document.getElementById('cls-'+tid(nome));
   if(!p||!el||!p.classificacao||!p.classificacao.length){if(el) el.innerHTML='';return;}
   let pos=0;
+  const STATUS_TITLE={DQ:'Desclassificado — infração de regra técnica',DNS:'Não largou (Did Not Start)',DNF:'Não terminou a prova (Did Not Finish)'};
   const rows=p.classificacao.map((a,i)=>{
     const st=a.status||''; const pPos=st?null:++pos; const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
     const pts=st?0:(PONTOS_LNE[pPos-1]||0);
-    const stBadge=st?`<span class="badge ${st==='DQ'?'badge-red':st==='DNS'?'badge-amber':'badge-gray'}">${st}</span>`:'';
+    const stBadge=st?`<span class="badge ${st==='DQ'?'badge-red':st==='DNS'?'badge-amber':'badge-gray'}" title="${STATUS_TITLE[st]||st}" style="cursor:help;">${st} ℹ️</span>`:'';
     return `<tr style="${st?'opacity:.6;':''}">
       <td><span class="pb ${st?'pn':bc}">${st?'—':pPos+'°'}</span></td>
       <td style="font-weight:600;">${esc(a.nome)}</td>
@@ -1408,12 +1484,16 @@ function renderClass(nome){
       <td style="font-family:monospace;font-weight:600;">${st?stBadge:(a.tempo||'—')}</td>
       <td style="text-align:center;font-weight:700;color:var(--az);">${pts||''}</td>
       <td style="font-size:11px;color:#64748b;">S${a.serie} R${a.raia}</td>
-      <td><select onchange="setStatusCls(${JSON.stringify(nome)},${i},this.value)" style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
-        <option value="" ${!st?'selected':''}>—</option>
-        <option value="DQ" ${st==='DQ'?'selected':''}>DQ</option>
-        <option value="DNS" ${st==='DNS'?'selected':''}>DNS</option>
-        <option value="DNF" ${st==='DNF'?'selected':''}>DNF</option>
-      </select></td>
+      <td>
+        <select onchange="setStatusCls(${JSON.stringify(nome)},${i},this.value)"
+          title="DQ=Desclassificado · DNS=Não largou · DNF=Não terminou"
+          style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
+          <option value="" ${!st?'selected':''}>—</option>
+          <option value="DQ" ${st==='DQ'?'selected':''} title="Desclassificado">DQ</option>
+          <option value="DNS" ${st==='DNS'?'selected':''} title="Não largou">DNS</option>
+          <option value="DNF" ${st==='DNF'?'selected':''} title="Não terminou">DNF</option>
+        </select>
+      </td>
     </tr>`;
   }).join('');
   el.innerHTML=`<div class="card" style="margin-bottom:12px;">
@@ -1422,11 +1502,15 @@ function renderClass(nome){
       <span id="clsarr-${tid(nome)}" class="coll-arrow open" style="color:#15803d;">▼</span>
     </div>
     <div id="clsbody-${tid(nome)}" class="coll-body" style="max-height:9999px;">
-      <div style="overflow-x:auto;"><table class="tbl"><thead><tr>
-        <th style="background:#15803d;">Pos.</th><th style="background:#15803d;">Atleta</th>
-        <th style="background:#15803d;width:70px;">Cat.</th><th style="background:#15803d;">Escola</th>
-        <th style="background:#15803d;width:90px;">Tempo</th><th style="background:#15803d;width:50px;">Pts</th>
-        <th style="background:#15803d;width:70px;">S/R</th><th style="background:#15803d;width:60px;">Status</th>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="tbl"><thead><tr>
+        <th style="background:#15803d;width:40px;">Pos.</th>
+        <th style="background:#15803d;">Atleta</th>
+        <th style="background:#15803d;width:55px;">Cat.</th>
+        <th style="background:#15803d;">Escola</th>
+        <th style="background:#15803d;width:90px;">Tempo</th>
+        <th style="background:#15803d;width:42px;">Pts</th>
+        <th style="background:#15803d;width:60px;">S/R</th>
+        <th style="background:#15803d;width:80px;" title="DQ=Desclassificado · DNS=Não largou · DNF=Não terminou">Status ℹ️</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
       <div class="card-ft">
         <button class="btn b-pdf" onclick="printClass(${JSON.stringify(nome)})">🖨️ Imprimir classificação</button>
@@ -1501,12 +1585,16 @@ function calcPlacarEtapa(etapaId){
   const e=db.etapas.find(x=>x.id===etapaId);if(!e) return [];
   const escolas={};
   Object.values(e.provas||{}).forEach(p=>{
+    if(!p.classificacao||!p.classificacao.length) return; // pula provas sem classificação
     let pos=0;
-    (p.classificacao||[]).forEach(a=>{
+    p.classificacao.forEach(a=>{
       if(a.status||!a.tempo||!a.tempo.trim()) return;
-      const pts=PONTOS_LNE[pos]||0,key=(a.escola||'Sem escola').trim();
+      const pts=PONTOS_LNE[pos]||0, key=(a.escola||'Sem escola').trim();
       if(!escolas[key]) escolas[key]={nome:key,pts:0,ouros:0,pratas:0,bronzes:0};
-      escolas[key].pts+=pts; if(pos===0) escolas[key].ouros++; if(pos===1) escolas[key].pratas++; if(pos===2) escolas[key].bronzes++;
+      escolas[key].pts+=pts;
+      if(pos===0) escolas[key].ouros++;
+      if(pos===1) escolas[key].pratas++;
+      if(pos===2) escolas[key].bronzes++;
       pos++;
     });
   });
@@ -1658,30 +1746,79 @@ function renderPortalEscola(){
   db.etapas.forEach(e=>{
     const prazoOk=!e.prazoInscricao||e.prazoInscricao>=hoje;
     const provas=e.provas||{}, nomes=Object.keys(provas);
+    const temResultados=Object.values(provas).some(p=>p.classificacao&&p.classificacao.length);
     html+=`<div class="card" style="margin-bottom:12px;">
       <div class="card-hd">📅 ${esc(e.nome)}
-        <div style="display:flex;gap:6px;align-items:center;">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           ${prazoOk?'<span class="badge badge-green">✅ Inscrições abertas</span>':'<span class="badge badge-red">🔒 Prazo encerrado</span>'}
           ${e.prazoInscricao?`<span class="badge badge-blue">até ${fmtData(e.prazoInscricao)}</span>`:''}
+          ${e.balizamentoLiberado?'<span class="badge badge-purple">🏊 Balizamento disponível</span>':''}
         </div>
       </div>
       <div class="card-bd">
         ${(e.data||e.local||e.horaAquecimento)?`<div style="font-size:12px;color:#64748b;margin-bottom:10px;">${e.data?'📅 '+fmtData(e.data):''}${e.local?' · 📍 '+esc(e.local):''}${e.endereco?'<br>'+esc(e.endereco):''}${e.raias?' · '+e.raias+' raias '+esc(e.tamPiscina||''):''}${e.horaAquecimento?'<br>🕐 Aquecimento: <strong>'+e.horaAquecimento+'</strong>':''}${e.horaInicio?' · Início: <strong>'+e.horaInicio+'</strong>':''}</div>`:''}`;
     if(!nomes.length){ html+='<p style="font-size:12px;color:#94a3b8;font-style:italic;">Nenhuma prova cadastrada.</p>'; }
     else {
-      html+=`<table class="tbl"><thead><tr><th>Prova</th><th style="width:80px;text-align:center;">Inscritos</th><th style="width:130px;text-align:center;">Ação</th></tr></thead><tbody>`;
+      html+=`<div style="overflow-x:auto;margin-bottom:10px;"><table class="tbl"><thead><tr>
+        <th>Prova</th>
+        <th style="width:80px;text-align:center;">Inscritos</th>
+        <th style="text-align:center;">Ações</th>
+      </tr></thead><tbody>`;
       nomes.forEach(n=>{
         const atlE=provas[n].atletas.filter(a=>a.escola===escola.nome);
-        html+=`<tr><td style="font-weight:500;">${esc(n)}</td>
+        const temBal=e.balizamentoLiberado&&(provas[n].series||[]).length>0;
+        // Filtra categorias disponíveis para esta prova
+        const catsDaProva=(provas[n].categoria||'').split(',').map(c=>c.trim()).filter(Boolean);
+        html+=`<tr>
+          <td>
+            <div style="font-weight:500;font-size:12px;">${esc(n)}</div>
+            ${catsDaProva.length?`<div style="font-size:10px;color:#64748b;margin-top:2px;">${catsDaProva.map(c=>`<span class="badge badge-blue" style="font-size:9px;">${esc(c)}</span>`).join(' ')}</div>`:''}
+          </td>
           <td style="text-align:center;">${atlE.length?`<span class="badge badge-green">${atlE.length}</span>`:'<span class="badge badge-gray">0</span>'}</td>
-          <td style="text-align:center;">${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:3px 9px;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="gerenciarInscricaoBtn(this)">✏️ Gerenciar</button>`:'<span style="font-size:11px;color:#94a3b8;">Encerrado</span>'}</td>
+          <td style="text-align:center;">
+            <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
+              ${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:4px 9px;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="gerenciarInscricaoBtn(this)">✏️ Inscrever</button>`:'<span style="font-size:10px;color:#94a3b8;">Encerrado</span>'}
+              ${temBal?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#7c3aed;color:#fff;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="verBalizamentoEscola(this)">🏊 Ver balizamento</button>`:''}
+            </div>
+          </td>
         </tr>`;
       });
-      html+=`</tbody></table>`;
+      html+=`</tbody></table></div>`;
+      if(temResultados){
+        html+=`<button class="btn" style="background:#854d0e;color:#fff;font-size:11px;width:100%;justify-content:center;" onclick="abrirPlacarEtapaEscola('${e.id}')">🏅 Ver Placar desta Etapa</button>`;
+      }
     }
     html+=`</div></div>`;
   });
   document.getElementById('portalConteudo').innerHTML=html;
+}
+function abrirPlacarEtapaEscola(etapaId){
+  const e=db.etapas.find(x=>x.id===etapaId); if(!e) return;
+  const r=calcPlacarEtapa(etapaId);
+  document.getElementById('placarTitulo').textContent=`🏅 Placar — ${e.nome}`;
+  document.getElementById('placarConteudo').innerHTML=r.length?r.map(rkRow).join(''):'<p style="text-align:center;color:#64748b;padding:20px;">Nenhum resultado ainda.</p>';
+  abrirModal('modalPlacar');
+}
+function verBalizamentoEscola(btn){
+  const etapaId=btn.dataset.etapa, nomePr=btn.dataset.prova;
+  const etapa=db.etapas.find(x=>x.id===etapaId); if(!etapa) return;
+  const p=etapa.provas[nomePr]; if(!p||!p.series||!p.series.length) return;
+  const raias=etapa.raias||8;
+  let html=`<div style="font-size:12px;font-weight:700;color:var(--az);margin-bottom:10px;">🏊 Balizamento — ${esc(nomePr)}</div>`;
+  p.series.forEach((s,si)=>{
+    html+=`<div style="overflow-x:auto;margin-bottom:12px;"><table class="tbl"><thead>
+      <tr><td colspan="${raias+2}" style="background:#374151;color:#fff;padding:6px 12px;font-size:11px;font-weight:700;">SÉRIE ${si+1}</td></tr>
+      <tr><th style="width:34px;">Raia</th><th>Atleta</th><th style="width:55px;">Cat.</th><th>Escola</th></tr>
+    </thead><tbody>`;
+    s.lanes.forEach((a,li)=>{
+      if(a&&!a._outra) html+=`<tr><td class="rn">${li+1}</td><td style="font-weight:500;">${esc(a.nome)}</td><td style="text-align:center;font-size:11px;">${esc(a.categoria||'')}</td><td style="font-size:11px;">${esc(a.escola||'')}</td></tr>`;
+      else html+=`<tr><td class="rn" style="color:#ccc;">${li+1}</td><td colspan="3" class="er">— raia vazia —</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+  document.getElementById('placarTitulo').textContent=`🏊 Balizamento — ${esc(nomePr)}`;
+  document.getElementById('placarConteudo').innerHTML=html;
+  abrirModal('modalPlacar');
 }
 function gerenciarInscricaoBtn(btn){
   const etapaId=btn.dataset.etapa;
@@ -1690,6 +1827,20 @@ function gerenciarInscricaoBtn(btn){
 }
 // Variáveis temporárias para o modal de inscrição (evita quebra com caracteres especiais nos nomes)
 let _inscEtapaId = null, _inscNomePr = null;
+
+function buildCatOptions(provaCats){
+  // Todas as categorias LNE
+  const TODAS=[
+    {v:'A7',l:'A7 — nasc. 2019'},{v:'A8',l:'A8 — nasc. 2018'},{v:'A9',l:'A9 — nasc. 2017'},
+    {v:'A10',l:'A10 — nasc. 2016'},{v:'A11',l:'A11 — nasc. 2015'},{v:'A12',l:'A12 — nasc. 2014'},
+    {v:'A13',l:'A13 — nasc. 2013'},{v:'A14',l:'A14 — nasc. 2012'},{v:'A15',l:'A15 — nasc. 2011'},
+    {v:'A16-17',l:'A16-17 — nasc. 2009-10'}
+  ];
+  // Se a prova tem categorias definidas, filtra; senão mostra todas
+  const filtro=provaCats?provaCats.split(',').map(c=>c.trim()).filter(Boolean):[];
+  const disponiveis=filtro.length?TODAS.filter(c=>filtro.includes(c.v)):TODAS;
+  return '<option value="">Selecione...</option>'+disponiveis.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
+}
 
 function gerenciarInscricao(etapaId,nomePr){
   const etapa=db.etapas.find(x=>x.id===etapaId);if(!etapa) return;
@@ -1721,17 +1872,7 @@ function gerenciarInscricao(etapaId,nomePr){
           <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
             <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;">Categoria *</label>
             <select id="inscrCat" style="border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:15px;font-family:inherit;color:var(--cz);background:#fff;outline:none;">
-              <option value="">Selecione...</option>
-              <option value="A7">A7 — nasc. 2019</option>
-              <option value="A8">A8 — nasc. 2018</option>
-              <option value="A9">A9 — nasc. 2017</option>
-              <option value="A10">A10 — nasc. 2016</option>
-              <option value="A11">A11 — nasc. 2015</option>
-              <option value="A12">A12 — nasc. 2014</option>
-              <option value="A13">A13 — nasc. 2013</option>
-              <option value="A14">A14 — nasc. 2012</option>
-              <option value="A15">A15 — nasc. 2011</option>
-              <option value="A16-17">A16-17 — nasc. 2009-10</option>
+              ${buildCatOptions(p.categoria)}
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;">
@@ -1920,20 +2061,29 @@ function doPrint(){
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
 function printBal(nome){
-  if(!nome) return; const p=getProva(nome); const etapa=getEtapa(curEtapaId);
-  if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  if(!nome){showToast('⚠️ Nenhuma prova selecionada.');return;}
+  const p=getProva(nome); const etapa=getEtapa(curEtapaId);
+  if(!p){showToast('⚠️ Prova não encontrada.');return;}
+  if(!p.series||!p.series.length){showToast('⚠️ Gere o balizamento primeiro.');return;}
   const raias=etapa?etapa.raias:8;
-  let h=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>Balizamento — ${esc(nome)}</div>${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}</div>`:''}</div>
-  <table><colgroup><col style="width:28pt"/><col style="width:180pt"/><col style="width:60pt"/><col/><col style="width:55pt"/></colgroup>
-  <thead><tr><th class="tc">Raia</th><th>Nome do Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th></tr></thead><tbody>`;
+  let h=`<div class="pg"><div class="ph">
+    <div>Liga de Natação Escolar — LNE 2026</div>
+    <div>Balizamento — ${esc(nome)}</div>
+    ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
+  </div>
+  <table><colgroup><col style="width:28pt"/><col style="width:175pt"/><col style="width:55pt"/><col/><col style="width:60pt"/></colgroup>
+  <thead><tr>
+    <th class="tc">Raia</th><th>Nome do Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th>
+  </tr></thead><tbody>`;
   p.series.forEach((s,si)=>{
     h+=`<tr><td class="serie-lbl" colspan="5">Série ${si+1}${s.combinada?' (combinada)':''}</td></tr>`;
     s.lanes.forEach((a,li)=>{
       if(a&&!a._outra) h+=`<tr><td class="c-raia">${li+1}</td><td class="c-nome">${esc(a.nome)}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${esc(a.tempo||'')}</td></tr>`;
-      else h+=`<tr><td class="c-raia">${li+1}</td><td></td><td></td><td></td><td></td></tr>`;
+      else h+=`<tr><td class="c-raia" style="color:#ccc;">${li+1}</td><td colspan="4" style="color:#bbb;font-style:italic;">— raia vazia —</td></tr>`;
     });
   });
-  h+=`</tbody></table></div>`; openPrint(h);
+  h+=`</tbody></table></div>`;
+  openPrint(h);
 }
 function printClass(nome){
   if(!nome) return; const p=getProva(nome); if(!p||!p.classificacao||!p.classificacao.length){alert('Gere a classificação primeiro.');return;}
