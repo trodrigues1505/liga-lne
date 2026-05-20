@@ -442,6 +442,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
         <div style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;">
           <button class="btn b-pri" onclick="abrirModalNovaProva()">+ Nova Prova</button>
           <button class="btn" style="background:#0f766e;color:#fff;" onclick="criarProvasPadraoLNE()">🏊 Provas padrão LNE</button>
+          <button class="btn" style="background:#475569;color:#fff;" onclick="abrirReordenar()">↕️ Reordenar</button>
           <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
           <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="importarExcel(this)">
           <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar Etapa</button>
@@ -899,31 +900,31 @@ function abrirModalNovaEtapa(){
   abrirModal('modalNovaEtapa');
   setTimeout(()=>document.getElementById('etapaNome').focus(),100);
 }
-// ── Provas padrão LNE (20 provas do regulamento) ──
+// ── Provas padrão LNE (20 provas do regulamento — ordem exata do PDF) ──
 const PROVAS_PADRAO_LNE = [
-  // A7 e A8 — 25m Livre e Costas
-  {nome:'25m Livre A7-A8 Feminino',  distancia:'25m', estilo:'Livre',   genero:'Feminino',  categoria:'A7, A8'},
-  {nome:'25m Livre A7-A8 Masculino', distancia:'25m', estilo:'Livre',   genero:'Masculino', categoria:'A7, A8'},
-  {nome:'25m Costas A7-A8 Feminino', distancia:'25m', estilo:'Costas',  genero:'Feminino',  categoria:'A7, A8'},
-  {nome:'25m Costas A7-A8 Masculino',distancia:'25m', estilo:'Costas',  genero:'Masculino', categoria:'A7, A8'},
-  // A9–A12 — 50m Livre, Costas, Peito + 100m Livre
-  {nome:'50m Livre A9-A12 Feminino',  distancia:'50m', estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'50m Livre A9-A12 Masculino', distancia:'50m', estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'50m Costas A9-A12 Feminino', distancia:'50m', estilo:'Costas', genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'50m Costas A9-A12 Masculino',distancia:'50m', estilo:'Costas', genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'50m Peito A9-A12 Feminino',  distancia:'50m', estilo:'Peito',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'50m Peito A9-A12 Masculino', distancia:'50m', estilo:'Peito',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'100m Livre A9-A12 Feminino', distancia:'100m',estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'100m Livre A9-A12 Masculino',distancia:'100m',estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  // A13–A16-17 — 50m Livre, Costas, Peito + 100m Livre
-  {nome:'50m Livre A13-A17 Feminino',  distancia:'50m', estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Livre A13-A17 Masculino', distancia:'50m', estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Costas A13-A17 Feminino', distancia:'50m', estilo:'Costas', genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Costas A13-A17 Masculino',distancia:'50m', estilo:'Costas', genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Peito A13-A17 Feminino',  distancia:'50m', estilo:'Peito',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Peito A13-A17 Masculino', distancia:'50m', estilo:'Peito',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'100m Livre A13-A17 Feminino', distancia:'100m',estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'100m Livre A13-A17 Masculino',distancia:'100m',estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  // 1ª–4ª: A7 e A8 — 25m Livre Fem/Masc e 25m Costas Fem/Masc
+  {nome:'1ª Prova — 25m Livre A7-A8 Feminino',   distancia:'25m', estilo:'Livre',  genero:'Feminino',  categoria:'A7, A8'},
+  {nome:'2ª Prova — 25m Livre A7-A8 Masculino',  distancia:'25m', estilo:'Livre',  genero:'Masculino', categoria:'A7, A8'},
+  {nome:'3ª Prova — 25m Costas A7-A8 Feminino',  distancia:'25m', estilo:'Costas', genero:'Feminino',  categoria:'A7, A8'},
+  {nome:'4ª Prova — 25m Costas A7-A8 Masculino', distancia:'25m', estilo:'Costas', genero:'Masculino', categoria:'A7, A8'},
+  // 5ª–12ª: A9–A12 — 50m Livre, Costas, Peito + 100m Livre
+  {nome:'5ª Prova — 50m Livre A9-A12 Feminino',   distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'6ª Prova — 50m Livre A9-A12 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'7ª Prova — 50m Costas A9-A12 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'8ª Prova — 50m Costas A9-A12 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'9ª Prova — 50m Peito A9-A12 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'10ª Prova — 50m Peito A9-A12 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'11ª Prova — 100m Livre A9-A12 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'12ª Prova — 100m Livre A9-A12 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  // 13ª–20ª: A13–A16-17 — 50m Livre, Costas, Peito + 100m Livre
+  {nome:'13ª Prova — 50m Livre A13-A17 Feminino',   distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'14ª Prova — 50m Livre A13-A17 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'15ª Prova — 50m Costas A13-A17 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'16ª Prova — 50m Costas A13-A17 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'17ª Prova — 50m Peito A13-A17 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'18ª Prova — 50m Peito A13-A17 Masculino',  distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'19ª Prova — 100m Livre A13-A17 Feminino',  distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'20ª Prova — 100m Livre A13-A17 Masculino', distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
 ];
 
 // Categorias LNE e anos de nascimento correspondentes
@@ -931,6 +932,17 @@ const CATEGORIAS_LNE = {
   'A7':'2019','A8':'2018','A9':'2017','A10':'2016','A11':'2015',
   'A12':'2014','A13':'2013','A14':'2012','A15':'2011','A16-17':'2009-2010'
 };
+
+// Retorna nomes das provas respeitando a ordem armazenada em etapa.provasOrdem
+function getProvasOrdenadas(etapa){
+  if(!etapa) return [];
+  const provas=etapa.provas||{};
+  const ordem=etapa.provasOrdem||[];
+  // Inclui provas na ordem salva, depois quaisquer novas não listadas
+  const vistas=new Set(ordem);
+  const extras=Object.keys(provas).filter(n=>!vistas.has(n));
+  return [...ordem.filter(n=>provas[n]), ...extras];
+}
 
 function salvarEtapa(){
   const nome=document.getElementById('etapaNome').value.trim();
@@ -946,7 +958,7 @@ function salvarEtapa(){
     prazoInscricao:document.getElementById('etapaPrazo').value,
     horaAquecimento:document.getElementById('etapaAquec').value,
     horaInicio:document.getElementById('etapaInicio').value,
-    provas:{}, criadoEm:new Date().toISOString()
+    provas:{}, provasOrdem:[], criadoEm:new Date().toISOString()
   };
   // Criar provas padrão LNE se marcado
   if(criarPadrao){
@@ -954,6 +966,7 @@ function salvarEtapa(){
       e.provas[p.nome]={atletas:[],series:[],classificacao:[],
         genero:p.genero,distancia:p.distancia,estilo:p.estilo,
         categoria:p.categoria,criadoEm:new Date().toISOString()};
+      e.provasOrdem.push(p.nome);
     });
   }
   db.etapas.push(e);
@@ -967,10 +980,12 @@ function criarProvasPadraoLNE(){
   const novas=PROVAS_PADRAO_LNE.filter(p=>!etapa.provas[p.nome]);
   if(!novas.length){showToast('Todas as provas padrão já existem nesta etapa.');return;}
   if(!confirm(`Adicionar ${novas.length} provas padrão LNE a esta etapa?\n(${existentes.length} provas existentes serão mantidas)`)) return;
+  if(!etapa.provasOrdem) etapa.provasOrdem=getProvasOrdenadas(etapa);
   novas.forEach(p=>{
     etapa.provas[p.nome]={atletas:[],series:[],classificacao:[],
       genero:p.genero,distancia:p.distancia,estilo:p.estilo,
       categoria:p.categoria,criadoEm:new Date().toISOString()};
+    etapa.provasOrdem.push(p.nome);
   });
   markDirty(); renderProvasEtapa();
   showToast(`${novas.length} provas adicionadas!`);
@@ -1116,6 +1131,8 @@ function salvarProva(){
   if(!nome) nome=`${dist} ${estilo}${cat?' '+cat:''} ${genero}`;
   if(etapa.provas[nome]){alert('Já existe uma prova com este nome nesta etapa.');return;}
   etapa.provas[nome]={atletas:[],series:[],classificacao:[],genero,distancia:dist,estilo,categoria:cat,criadoEm:new Date().toISOString()};
+  if(!etapa.provasOrdem) etapa.provasOrdem=getProvasOrdenadas(etapa);
+  etapa.provasOrdem.push(nome);
   markDirty(); fecharModal('modalNovaProva'); renderProvasEtapa(); switchProvaTab(nome);
   showToast(`Prova "${nome}" criada!`);
 }
@@ -1123,13 +1140,15 @@ function excluirProva(nome){
   if(!nome) return;
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   if(!confirm(`Excluir a prova "${nome}"?`)) return;
-  delete etapa.provas[nome]; curProva=null;
+  delete etapa.provas[nome];
+  if(etapa.provasOrdem) etapa.provasOrdem=etapa.provasOrdem.filter(n=>n!==nome);
+  curProva=null;
   markDirty(); renderProvasEtapa(); document.getElementById('etapaSticky').classList.remove('visible');
   showToast('Prova excluída.');
 }
 function renderProvasEtapa(){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
-  const provas=etapa.provas||{}, nomes=Object.keys(provas);
+  const provas=etapa.provas||{}, nomes=getProvasOrdenadas(etapa);
   const tabsEl=document.getElementById('provasTabs');
   const contEl=document.getElementById('provasConteudo');
   if(!nomes.length){ document.getElementById('provasContainer').style.display='none'; document.getElementById('semProvas').style.display='block'; return; }
@@ -2159,6 +2178,76 @@ function imprimirSumula(){
 }
 
 // ══════════════════════════════════════════════════════════
+// REORDENAR PROVAS
+// ══════════════════════════════════════════════════════════
+let reordenarDragIdx = null;
+
+function abrirReordenar(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const nomes=getProvasOrdenadas(etapa);
+  if(!nomes.length){showToast('Nenhuma prova para reordenar.');return;}
+  renderReordenarLista(nomes);
+  abrirModal('modalReordenar');
+}
+
+function renderReordenarLista(nomes){
+  const el=document.getElementById('reordenarLista');
+  el.innerHTML=nomes.map((n,i)=>`
+    <div class="drag-row" draggable="true" data-idx="${i}"
+      style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border:1px solid var(--bd);border-radius:7px;margin-bottom:6px;cursor:default;"
+      ondragstart="roDragStart(event,${i})"
+      ondragover="roDragOver(event,${i})"
+      ondrop="roDrop(event,${i})"
+      ondragend="roDragEnd()">
+      <span style="cursor:grab;color:#94a3b8;font-size:16px;flex-shrink:0;" title="Arraste para reordenar">⠿</span>
+      <span style="background:var(--az);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${i+1}</span>
+      <span style="font-size:12px;flex:1;">${esc(n)}</span>
+      <span style="display:flex;flex-direction:column;gap:2px;">
+        <button onclick="roMoveUp(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;line-height:1.4;" ${i===0?'disabled':''}>▲</button>
+        <button onclick="roMoveDown(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;line-height:1.4;" ${i===nomes.length-1?'disabled':''}>▼</button>
+      </span>
+    </div>`).join('');
+}
+
+function getReordenarNomes(){
+  return [...document.querySelectorAll('#reordenarLista .drag-row')].map(r=>r.querySelector('span:nth-child(3)').textContent);
+}
+
+function roMoveUp(i){
+  const nomes=getReordenarNomes(); if(i===0) return;
+  [nomes[i-1],nomes[i]]=[nomes[i],nomes[i-1]]; renderReordenarLista(nomes);
+}
+function roMoveDown(i){
+  const nomes=getReordenarNomes(); if(i>=nomes.length-1) return;
+  [nomes[i],nomes[i+1]]=[nomes[i+1],nomes[i]]; renderReordenarLista(nomes);
+}
+
+function roDragStart(ev,i){ reordenarDragIdx=i; ev.currentTarget.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; }
+function roDragOver(ev,i){ ev.preventDefault(); ev.dataTransfer.dropEffect='move';
+  document.querySelectorAll('#reordenarLista .drag-over').forEach(r=>r.classList.remove('drag-over'));
+  if(i!==reordenarDragIdx) ev.currentTarget.classList.add('drag-over');
+}
+function roDrop(ev,i){
+  ev.preventDefault();
+  if(reordenarDragIdx===null||reordenarDragIdx===i) return;
+  const nomes=getReordenarNomes();
+  const [moved]=nomes.splice(reordenarDragIdx,1);
+  nomes.splice(i,0,moved);
+  renderReordenarLista(nomes);
+}
+function roDragEnd(){
+  reordenarDragIdx=null;
+  document.querySelectorAll('#reordenarLista .dragging,.drag-over').forEach(r=>r.classList.remove('dragging','drag-over'));
+}
+
+function salvarOrdem(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  etapa.provasOrdem=getReordenarNomes();
+  markDirty(); fecharModal('modalReordenar'); renderProvasEtapa();
+  showToast('✅ Ordem das provas salva!');
+}
+
+// ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
 window.addEventListener('load', () => {
@@ -2172,5 +2261,18 @@ window.addEventListener('load', () => {
   }, 8000);
 });
 </script>
+
+<!-- Modal Reordenar Provas -->
+<div class="mover" id="modalReordenar">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>↕️ Reordenar Provas</h3><button class="mdl-x" onclick="fecharModal('modalReordenar')">×</button></div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Arraste as provas para definir a ordem, ou use as setas ▲▼.</p>
+    <div id="reordenarLista" style="max-height:60vh;overflow-y:auto;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn b-out" onclick="fecharModal('modalReordenar')">Cancelar</button>
+      <button class="btn b-pri" onclick="salvarOrdem()">💾 Salvar Ordem</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
