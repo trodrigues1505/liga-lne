@@ -442,6 +442,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
         <div style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;">
           <button class="btn b-pri" onclick="abrirModalNovaProva()">+ Nova Prova</button>
           <button class="btn" style="background:#0f766e;color:#fff;" onclick="criarProvasPadraoLNE()">🏊 Provas padrão LNE</button>
+          <button class="btn" style="background:#475569;color:#fff;" onclick="abrirReordenar()">↕️ Reordenar</button>
           <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
           <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="importarExcel(this)">
           <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar Etapa</button>
@@ -899,31 +900,28 @@ function abrirModalNovaEtapa(){
   abrirModal('modalNovaEtapa');
   setTimeout(()=>document.getElementById('etapaNome').focus(),100);
 }
-// ── Provas padrão LNE (20 provas do regulamento) ──
+// ── Provas padrão LNE (20 provas do regulamento — ordem exata do PDF) ──
 const PROVAS_PADRAO_LNE = [
-  // A7 e A8 — 25m Livre e Costas
-  {nome:'25m Livre A7-A8 Feminino',  distancia:'25m', estilo:'Livre',   genero:'Feminino',  categoria:'A7, A8'},
-  {nome:'25m Livre A7-A8 Masculino', distancia:'25m', estilo:'Livre',   genero:'Masculino', categoria:'A7, A8'},
-  {nome:'25m Costas A7-A8 Feminino', distancia:'25m', estilo:'Costas',  genero:'Feminino',  categoria:'A7, A8'},
-  {nome:'25m Costas A7-A8 Masculino',distancia:'25m', estilo:'Costas',  genero:'Masculino', categoria:'A7, A8'},
-  // A9–A12 — 50m Livre, Costas, Peito + 100m Livre
-  {nome:'50m Livre A9-A12 Feminino',  distancia:'50m', estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'50m Livre A9-A12 Masculino', distancia:'50m', estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'50m Costas A9-A12 Feminino', distancia:'50m', estilo:'Costas', genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'50m Costas A9-A12 Masculino',distancia:'50m', estilo:'Costas', genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'50m Peito A9-A12 Feminino',  distancia:'50m', estilo:'Peito',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'50m Peito A9-A12 Masculino', distancia:'50m', estilo:'Peito',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'100m Livre A9-A12 Feminino', distancia:'100m',estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'100m Livre A9-A12 Masculino',distancia:'100m',estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  // A13–A16-17 — 50m Livre, Costas, Peito + 100m Livre
-  {nome:'50m Livre A13-A17 Feminino',  distancia:'50m', estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Livre A13-A17 Masculino', distancia:'50m', estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Costas A13-A17 Feminino', distancia:'50m', estilo:'Costas', genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Costas A13-A17 Masculino',distancia:'50m', estilo:'Costas', genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Peito A13-A17 Feminino',  distancia:'50m', estilo:'Peito',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'50m Peito A13-A17 Masculino', distancia:'50m', estilo:'Peito',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'100m Livre A13-A17 Feminino', distancia:'100m',estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'100m Livre A13-A17 Masculino',distancia:'100m',estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'1ª Prova — 25m Livre A7-A8 Feminino',   distancia:'25m',  estilo:'Livre',  genero:'Feminino',  categoria:'A7, A8'},
+  {nome:'2ª Prova — 25m Livre A7-A8 Masculino',  distancia:'25m',  estilo:'Livre',  genero:'Masculino', categoria:'A7, A8'},
+  {nome:'3ª Prova — 25m Costas A7-A8 Feminino',  distancia:'25m',  estilo:'Costas', genero:'Feminino',  categoria:'A7, A8'},
+  {nome:'4ª Prova — 25m Costas A7-A8 Masculino', distancia:'25m',  estilo:'Costas', genero:'Masculino', categoria:'A7, A8'},
+  {nome:'5ª Prova — 50m Livre A9-A12 Feminino',   distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'6ª Prova — 50m Livre A9-A12 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'7ª Prova — 50m Costas A9-A12 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'8ª Prova — 50m Costas A9-A12 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'9ª Prova — 50m Peito A9-A12 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'10ª Prova — 50m Peito A9-A12 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'11ª Prova — 100m Livre A9-A12 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
+  {nome:'12ª Prova — 100m Livre A9-A12 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
+  {nome:'13ª Prova — 50m Livre A13-A17 Feminino',   distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'14ª Prova — 50m Livre A13-A17 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'15ª Prova — 50m Costas A13-A17 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'16ª Prova — 50m Costas A13-A17 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'17ª Prova — 50m Peito A13-A17 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'18ª Prova — 50m Peito A13-A17 Masculino',  distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  {nome:'19ª Prova — 100m Livre A13-A17 Feminino',  distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
+  {nome:'20ª Prova — 100m Livre A13-A17 Masculino', distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
 ];
 
 // Categorias LNE e anos de nascimento correspondentes
@@ -931,6 +929,16 @@ const CATEGORIAS_LNE = {
   'A7':'2019','A8':'2018','A9':'2017','A10':'2016','A11':'2015',
   'A12':'2014','A13':'2013','A14':'2012','A15':'2011','A16-17':'2009-2010'
 };
+
+// Retorna nomes das provas respeitando a ordem armazenada em etapa.provasOrdem
+function getProvasOrdenadas(etapa){
+  if(!etapa) return [];
+  const provas=etapa.provas||{};
+  const ordem=etapa.provasOrdem||[];
+  const vistas=new Set(ordem);
+  const extras=Object.keys(provas).filter(n=>!vistas.has(n));
+  return [...ordem.filter(n=>provas[n]), ...extras];
+}
 
 function salvarEtapa(){
   const nome=document.getElementById('etapaNome').value.trim();
@@ -946,14 +954,14 @@ function salvarEtapa(){
     prazoInscricao:document.getElementById('etapaPrazo').value,
     horaAquecimento:document.getElementById('etapaAquec').value,
     horaInicio:document.getElementById('etapaInicio').value,
-    provas:{}, criadoEm:new Date().toISOString()
+    provas:{}, provasOrdem:[], criadoEm:new Date().toISOString()
   };
-  // Criar provas padrão LNE se marcado
   if(criarPadrao){
     PROVAS_PADRAO_LNE.forEach(p=>{
       e.provas[p.nome]={atletas:[],series:[],classificacao:[],
         genero:p.genero,distancia:p.distancia,estilo:p.estilo,
         categoria:p.categoria,criadoEm:new Date().toISOString()};
+      e.provasOrdem.push(p.nome);
     });
   }
   db.etapas.push(e);
@@ -967,10 +975,12 @@ function criarProvasPadraoLNE(){
   const novas=PROVAS_PADRAO_LNE.filter(p=>!etapa.provas[p.nome]);
   if(!novas.length){showToast('Todas as provas padrão já existem nesta etapa.');return;}
   if(!confirm(`Adicionar ${novas.length} provas padrão LNE a esta etapa?\n(${existentes.length} provas existentes serão mantidas)`)) return;
+  if(!etapa.provasOrdem) etapa.provasOrdem=getProvasOrdenadas(etapa);
   novas.forEach(p=>{
     etapa.provas[p.nome]={atletas:[],series:[],classificacao:[],
       genero:p.genero,distancia:p.distancia,estilo:p.estilo,
       categoria:p.categoria,criadoEm:new Date().toISOString()};
+    etapa.provasOrdem.push(p.nome);
   });
   markDirty(); renderProvasEtapa();
   showToast(`${novas.length} provas adicionadas!`);
@@ -1116,6 +1126,8 @@ function salvarProva(){
   if(!nome) nome=`${dist} ${estilo}${cat?' '+cat:''} ${genero}`;
   if(etapa.provas[nome]){alert('Já existe uma prova com este nome nesta etapa.');return;}
   etapa.provas[nome]={atletas:[],series:[],classificacao:[],genero,distancia:dist,estilo,categoria:cat,criadoEm:new Date().toISOString()};
+  if(!etapa.provasOrdem) etapa.provasOrdem=getProvasOrdenadas(etapa);
+  etapa.provasOrdem.push(nome);
   markDirty(); fecharModal('modalNovaProva'); renderProvasEtapa(); switchProvaTab(nome);
   showToast(`Prova "${nome}" criada!`);
 }
@@ -1123,13 +1135,15 @@ function excluirProva(nome){
   if(!nome) return;
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   if(!confirm(`Excluir a prova "${nome}"?`)) return;
-  delete etapa.provas[nome]; curProva=null;
+  delete etapa.provas[nome];
+  if(etapa.provasOrdem) etapa.provasOrdem=etapa.provasOrdem.filter(n=>n!==nome);
+  curProva=null;
   markDirty(); renderProvasEtapa(); document.getElementById('etapaSticky').classList.remove('visible');
   showToast('Prova excluída.');
 }
 function renderProvasEtapa(){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
-  const provas=etapa.provas||{}, nomes=Object.keys(provas);
+  const provas=etapa.provas||{}, nomes=getProvasOrdenadas(etapa);
   const tabsEl=document.getElementById('provasTabs');
   const contEl=document.getElementById('provasConteudo');
   if(!nomes.length){ document.getElementById('provasContainer').style.display='none'; document.getElementById('semProvas').style.display='block'; return; }
@@ -1181,23 +1195,29 @@ function renderAtletas(nome){
     <td><input type="text" value="${esc(a.nome)}" onchange="updAtl(${jstr(nome)},${i},'nome',this.value)" placeholder="Nome"/></td>
     <td><input type="text" value="${esc(a.categoria||'')}" onchange="updAtl(${jstr(nome)},${i},'categoria',this.value)" placeholder="A12" style="width:65px;"/></td>
     <td><input type="text" value="${esc(a.escola||'')}" onchange="updAtl(${jstr(nome)},${i},'escola',this.value)" placeholder="Escola"/></td>
+    <td style="text-align:center;">
+      <label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;">
+        <input type="checkbox" ${a.federado?'checked':''} onchange="updAtl(${jstr(nome)},${i},'federado',this.checked)" style="width:14px;height:14px;accent-color:var(--azm);"/>
+        ${a.federado?'<span class="badge badge-purple" style="font-size:9px;">FED</span>':'<span style="color:#94a3b8;font-size:10px;">Não</span>'}
+      </label>
+    </td>
     <td style="font-family:monospace;font-size:11px;color:#64748b;">${esc(a.tempoRef||'')}</td>
     <td><button class="btn b-red" style="font-size:10px;padding:2px 7px;" onclick="rmAtl(${jstr(nome)},${i})">✕</button></td>
   </tr>`).join('');
   el.innerHTML=`<div class="card" style="margin-bottom:12px;">
     <div class="card-hd coll-hd" onclick="toggleCollapse('atlbody-${tid(nome)}','atlarr-${tid(nome)}')">
-      <span>👤 Atletas inscritos <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.atletas.length}</span></span>
+      <span>👤 Atletas inscritos <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.atletas.length}</span>${p.atletas.filter(a=>a.federado).length?`<span class="badge badge-purple" style="margin-left:6px;font-size:9px;">⭐ ${p.atletas.filter(a=>a.federado).length} fed.</span>`:''}</span>
       <span id="atlarr-${tid(nome)}" class="coll-arrow ${collapsed?'':'open'}">▼</span>
     </div>
     <div id="atlbody-${tid(nome)}" class="coll-body" style="max-height:${collapsed?'0px':'9999px'};">
       <div style="overflow-x:auto;"><table class="tbl">
-        <thead><tr><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:90px;">Tempo Ref.</th><th style="width:40px;"></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;font-style:italic;">Nenhum atleta. Use "+ Atleta" ou importe Excel.</td></tr>'}</tbody>
+        <thead><tr><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:80px;text-align:center;">Federado</th><th style="width:90px;">Tempo Ref.</th><th style="width:40px;"></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;font-style:italic;">Nenhum atleta. Use "+ Atleta" ou importe Excel.</td></tr>'}</tbody>
       </table></div>
       <div class="card-ft"><button class="btn b-out" onclick="addAtleta(${jstr(nome)})">+ Atleta</button></div>
     </div></div>`;
 }
-function updAtl(nome,i,f,v){ const p=getProva(nome); if(!p) return; if(f==='nome'||f==='escola') v=toTitle(v); p.atletas[i][f]=v; markDirty(); }
+function updAtl(nome,i,f,v){ const p=getProva(nome); if(!p) return; if(f==='nome'||f==='escola') v=toTitle(v); if(f==='federado') v=!!v; p.atletas[i][f]=v; markDirty(); renderAtletas(nome); }
 function rmAtl(nome,i){ const p=getProva(nome); if(!p) return; p.atletas.splice(i,1); markDirty(); renderAtletas(nome); renderStats(nome); }
 
 function addAtleta(nome){
@@ -1209,7 +1229,16 @@ function addAtleta(nome){
       <div class="fg"><label>Categoria *</label><input type="text" id="addCat" placeholder="Ex: A12"/></div>
       <div class="fg grow"><label>Escola</label><input type="text" id="addEscola" value="${esc(escola)}" placeholder="Nome da escola"/></div>
     </div>
-    <div class="frow"><div class="fg"><label>Tempo de referência</label><input type="text" id="addTRef" placeholder="00:00,00"/></div></div>
+    <div class="frow">
+      <div class="fg"><label>Tempo de referência</label><input type="text" id="addTRef" placeholder="00:00,00"/></div>
+      <div class="fg" style="justify-content:flex-end;">
+        <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;">Vínculo</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--bd);border-radius:6px;background:#fff;transition:all .15s;" id="fedLabel">
+          <input type="checkbox" id="addFederado" style="width:16px;height:16px;accent-color:#7c3aed;" onchange="document.getElementById('fedLabel').style.borderColor=this.checked?'#7c3aed':'var(--bd)';document.getElementById('fedLabel').style.background=this.checked?'#f3e8ff':'#fff';document.getElementById('fedTexto').textContent=this.checked?'Federado / Vinculado':'Não federado';"/>
+          <span id="fedTexto" style="font-size:12px;font-weight:600;">Não federado</span>
+        </label>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
       <button class="btn b-out" onclick="fecharModal('modalAddAtleta')">Cancelar</button>
       <button class="btn b-pri" onclick="confirmarAddAtleta(${jstr(nome)})">+ Adicionar</button>
@@ -1223,7 +1252,8 @@ function confirmarAddAtleta(nome){
   const cat=(document.getElementById('addCat').value||'').trim().toUpperCase();
   const escola=toTitle((document.getElementById('addEscola').value||'').trim());
   const tr=(document.getElementById('addTRef').value||'').trim();
-  getProva(nome).atletas.push({id:uid(),nome:n,categoria:cat,escola,tempoRef:tr,tempo:''});
+  const federado=!!document.getElementById('addFederado').checked;
+  getProva(nome).atletas.push({id:uid(),nome:n,categoria:cat,escola,tempoRef:tr,tempo:'',federado});
   markDirty(); fecharModal('modalAddAtleta'); renderAll(nome); showToast(`${n} adicionado(a)!`);
 }
 
@@ -1253,6 +1283,7 @@ function importarExcel(inp){
         const iCat=hdrs.findIndex(h=>h.includes('CAT'));
         const iEscola=hdrs.findIndex(h=>h.includes('ESCOLA')||h.includes('INST'));
         const iTRef=hdrs.findIndex(h=>h.includes('TEMPO')||h.includes('REF'));
+        const iFed=hdrs.findIndex(h=>h.includes('FED')||h.includes('VINC'));
         if(iNome===-1) return;
         if(!etapa.provas[sn]){
           etapa.provas[sn]={atletas:[],series:[],classificacao:[],genero:'',distancia:'',estilo:'',categoria:'',criadoEm:new Date().toISOString()};
@@ -1263,7 +1294,7 @@ function importarExcel(inp){
           const row=rows[i];
           const nome=toTitle(String(row[iNome]||'').trim());
           if(!nome) continue;
-          atletas.push({id:uid(),nome,categoria:iCat>=0?String(row[iCat]||'').trim().toUpperCase():'',escola:iEscola>=0?toTitle(String(row[iEscola]||'').trim()):'',tempoRef:iTRef>=0?String(row[iTRef]||'').trim():'',tempo:''});
+          atletas.push({id:uid(),nome,categoria:iCat>=0?String(row[iCat]||'').trim().toUpperCase():'',escola:iEscola>=0?toTitle(String(row[iEscola]||'').trim()):'',tempoRef:iTRef>=0?String(row[iTRef]||'').trim():'',federado:iFed>=0?['S','SIM','X','1','FED','VINC','FEDERADO','VINCULADO'].includes(String(row[iFed]||'').trim().toUpperCase()):false,tempo:''});
           totalAtletas++;
         }
         if(atletas.length) etapa.provas[sn].atletas=[...etapa.provas[sn].atletas,...atletas];
@@ -1342,7 +1373,7 @@ function renderBal(nome){
           ondragstart="dstart(event,${jstr(nome)},${si},${li})" ondragover="dover(event)"
           ondrop="ddrop(event,${jstr(nome)},${si},${li})" ondragleave="dleave(event)" ondragend="dend(event)">
           <td class="drag-handle">⠿</td><td class="rn">${raia}</td>
-          <td><input type="text" value="${esc(a.nome)}" onchange="updBal(${jstr(nome)},${si},${li},'nome',this.value)"/></td>
+          <td><input type="text" value="${esc(a.nome)}" onchange="updBal(${jstr(nome)},${si},${li},'nome',this.value)"/>${a.federado?`<span class="badge badge-purple" style="font-size:9px;margin-left:4px;vertical-align:middle;">FED</span>`:''}</td>
           <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
           <td><input type="text" value="${esc(a.escola||'')}" onchange="updBal(${jstr(nome)},${si},${li},'escola',this.value)"/></td>
           <td>
@@ -1485,62 +1516,95 @@ function gerarClass(nome){
   const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
   const all=[];
   p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) all.push({...a,serie:si+1,raia:li+1});}));
-  const comT=all.filter(a=>a.tempo&&a.tempo.trim()).sort((a,b)=>tempoMs(a.tempo)-tempoMs(b.tempo));
-  const semT=all.filter(a=>!a.tempo||!a.tempo.trim());
-  p.classificacao=[...comT,...semT];
+  const sort=(arr)=>{
+    const comT=arr.filter(a=>a.tempo&&a.tempo.trim()).sort((a,b)=>tempoMs(a.tempo)-tempoMs(b.tempo));
+    const semT=arr.filter(a=>!a.tempo||!a.tempo.trim());
+    return [...comT,...semT];
+  };
+  p.classificacao=sort(all);
+  p.classificacaoFed=sort(all.filter(a=>a.federado));
+  p.classificacaoNFed=sort(all.filter(a=>!a.federado));
   renderClass(nome); markDirty(); showToast('Classificação gerada!');
 }
-function renderClass(nome){
-  const p=getProva(nome); const el=document.getElementById('cls-'+tid(nome));
-  if(!p||!el||!p.classificacao||!p.classificacao.length){if(el) el.innerHTML='';return;}
-  let pos=0;
+function _buildClassRows(classArr,pontuarPts){
   const STATUS_TITLE={DQ:'Desclassificado — infração de regra técnica',DNS:'Não largou (Did Not Start)',DNF:'Não terminou a prova (Did Not Finish)'};
-  const rows=p.classificacao.map((a,i)=>{
+  let pos=0;
+  return classArr.map((a,i)=>{
     const st=a.status||''; const pPos=st?null:++pos; const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
-    const pts=st?0:(PONTOS_LNE[pPos-1]||0);
+    const pts=(!pontuarPts||st)?0:(PONTOS_LNE[pPos-1]||0);
     const stBadge=st?`<span class="badge ${st==='DQ'?'badge-red':st==='DNS'?'badge-amber':'badge-gray'}" title="${STATUS_TITLE[st]||st}" style="cursor:help;">${st} ℹ️</span>`:'';
-    return `<tr style="${st?'opacity:.6;':''}">
+    const fedBadge=a.federado?`<span class="badge badge-purple" style="font-size:9px;margin-left:3px;">FED</span>`:'';
+    return {html:`<tr style="${st?'opacity:.6;':''}">
       <td><span class="pb ${st?'pn':bc}">${st?'—':pPos+'°'}</span></td>
-      <td style="font-weight:600;">${esc(a.nome)}</td>
+      <td style="font-weight:600;">${esc(a.nome)}${fedBadge}</td>
       <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
       <td style="font-size:11px;">${esc(a.escola||'')}</td>
       <td style="font-family:monospace;font-weight:600;">${st?stBadge:(a.tempo||'—')}</td>
       <td style="text-align:center;font-weight:700;color:var(--az);">${pts||''}</td>
       <td style="font-size:11px;color:#64748b;">S${a.serie} R${a.raia}</td>
       <td>
-        <select onchange="setStatusCls(${jstr(nome)},${i},this.value)"
-          title="DQ=Desclassificado · DNS=Não largou · DNF=Não terminou"
+        <select onchange="setStatusClsGroup(${JSON.stringify(a._clsKey||'')},${i},this.value,${JSON.stringify(nome)})"
           style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
           <option value="" ${!st?'selected':''}>—</option>
-          <option value="DQ" ${st==='DQ'?'selected':''} title="Desclassificado">DQ</option>
-          <option value="DNS" ${st==='DNS'?'selected':''} title="Não largou">DNS</option>
-          <option value="DNF" ${st==='DNF'?'selected':''} title="Não terminou">DNF</option>
+          <option value="DQ" ${st==='DQ'?'selected':''}>DQ</option>
+          <option value="DNS" ${st==='DNS'?'selected':''}>DNS</option>
+          <option value="DNF" ${st==='DNF'?'selected':''}>DNF</option>
         </select>
       </td>
-    </tr>`;
-  }).join('');
-  el.innerHTML=`<div class="card" style="margin-bottom:12px;">
-    <div class="card-hd coll-hd" style="background:#dcfce7;color:#15803d;" onclick="toggleCollapse('clsbody-${tid(nome)}','clsarr-${tid(nome)}')">
-      <span>🏅 Classificação — ${esc(nome)}</span>
-      <span id="clsarr-${tid(nome)}" class="coll-arrow open" style="color:#15803d;">▼</span>
+    </tr>`, atleta:a, idx:i};
+  });
+}
+function _classSection(nome,classArr,label,color,bgColor,pontuarPts,clsKey){
+  if(!classArr||!classArr.length) return '';
+  const tagged=classArr.map(a=>({...a,_clsKey:clsKey}));
+  const rows=_buildClassRows(tagged,pontuarPts).map(r=>r.html).join('');
+  const tid2=tid(nome);
+  return `<div class="card" style="margin-bottom:12px;">
+    <div class="card-hd coll-hd" style="background:${bgColor};color:${color};" onclick="toggleCollapse('cls${clsKey}body-${tid2}','cls${clsKey}arr-${tid2}')">
+      <span>${label}</span>
+      <span id="cls${clsKey}arr-${tid2}" class="coll-arrow open" style="color:${color};">▼</span>
     </div>
-    <div id="clsbody-${tid(nome)}" class="coll-body" style="max-height:9999px;">
+    <div id="cls${clsKey}body-${tid2}" class="coll-body" style="max-height:9999px;">
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="tbl"><thead><tr>
-        <th style="background:#15803d;width:40px;">Pos.</th>
-        <th style="background:#15803d;">Atleta</th>
-        <th style="background:#15803d;width:55px;">Cat.</th>
-        <th style="background:#15803d;">Escola</th>
-        <th style="background:#15803d;width:90px;">Tempo</th>
-        <th style="background:#15803d;width:42px;">Pts</th>
-        <th style="background:#15803d;width:60px;">S/R</th>
-        <th style="background:#15803d;width:80px;" title="DQ=Desclassificado · DNS=Não largou · DNF=Não terminou">Status ℹ️</th>
+        <th style="background:${color};width:40px;">Pos.</th>
+        <th style="background:${color};">Atleta</th>
+        <th style="background:${color};width:55px;">Cat.</th>
+        <th style="background:${color};">Escola</th>
+        <th style="background:${color};width:90px;">Tempo</th>
+        <th style="background:${color};width:42px;">Pts</th>
+        <th style="background:${color};width:60px;">S/R</th>
+        <th style="background:${color};width:80px;">Status ℹ️</th>
       </tr></thead><tbody>${rows}</tbody></table></div>
       <div class="card-ft">
         <button class="btn b-pdf" onclick="printClass(${jstr(nome)})">🖨️ Imprimir classificação</button>
       </div>
     </div></div>`;
 }
-function setStatusCls(nome,i,v){const p=getProva(nome);if(!p) return;p.classificacao[i].status=v;markDirty();renderClass(nome);}
+function renderClass(nome){
+  const p=getProva(nome); const el=document.getElementById('cls-'+tid(nome));
+  if(!p||!el) return;
+  const hasFed=(p.classificacaoFed||[]).length>0;
+  const hasNFed=(p.classificacaoNFed||[]).length>0;
+  const hasBoth=hasFed&&hasNFed;
+  if(!p.classificacao||!p.classificacao.length){if(el) el.innerHTML=''; return;}
+  let html='';
+  if(hasBoth){
+    html+=_classSection(nome,p.classificacaoNFed,'🏅 Classificação — Não Federados','#15803d','#dcfce7',true,'nfed');
+    html+=_classSection(nome,p.classificacaoFed,'⭐ Classificação — Federados / Vinculados','#6d28d9','#f3e8ff',false,'fed');
+  } else {
+    html+=_classSection(nome,p.classificacao,'🏅 Classificação — '+esc(nome),'#15803d','#dcfce7',true,'all');
+  }
+  el.innerHTML=html;
+}
+function setStatusClsGroup(clsKey,i,v,nomePrv){
+  const p=getProva(nomePrv); if(!p) return;
+  const arr=clsKey==='fed'?p.classificacaoFed:clsKey==='nfed'?p.classificacaoNFed:p.classificacao;
+  if(arr&&arr[i]) arr[i].status=v;
+  const atlNome=arr&&arr[i]?arr[i].nome:'';
+  if(atlNome&&p.classificacao){const gi=p.classificacao.findIndex(a=>a.nome===atlNome);if(gi>=0) p.classificacao[gi].status=v;}
+  markDirty(); renderClass(nomePrv);
+}
+function setStatusCls(nome,i,v){setStatusClsGroup('all',i,v,nome);}
 function apagarTempos(nome){
   if(!nome) return; const p=getProva(nome); if(!p) return;
   let t=0; (p.series||[]).forEach(s=>s.lanes.forEach(l=>{if(l&&l.tempo){l.tempo='';t++;}}));
@@ -2110,16 +2174,30 @@ function printBal(nome){
 }
 function printClass(nome){
   if(!nome) return; const p=getProva(nome); if(!p||!p.classificacao||!p.classificacao.length){alert('Gere a classificação primeiro.');return;}
-  const etapa=getEtapa(curEtapaId); let pos=0;
-  let h=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>Classificação — ${esc(nome)}</div>${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}</div>`:''}</div>
-  <table><colgroup><col style="width:28pt"/><col style="width:170pt"/><col style="width:60pt"/><col/><col style="width:55pt"/><col style="width:36pt"/></colgroup>
-  <thead><tr><th class="tc">Pos.</th><th>Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th><th class="tc">Pts</th></tr></thead><tbody>`;
-  p.classificacao.forEach(a=>{
-    const st=a.status||'',ptsN=st?0:(PONTOS_LNE[pos]||0);
-    if(!st) pos++;
-    h+=`<tr><td class="c-pos">${st?st:pos+'°'}</td><td class="c-nome">${esc(a.nome)}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${a.tempo||'—'}</td><td class="c-pos">${ptsN||'—'}</td></tr>`;
-  });
-  h+=`</tbody></table></div>`; openPrint(h);
+  const etapa=getEtapa(curEtapaId);
+  const hasFed=(p.classificacaoFed||[]).length>0;
+  const hasNFed=(p.classificacaoNFed||[]).length>0;
+  const hasBoth=hasFed&&hasNFed;
+  const buildRows=(arr,pontuarPts)=>{
+    let pos=0,rows='';
+    arr.forEach(a=>{
+      const st=a.status||'',ptsN=(!pontuarPts||st)?0:(PONTOS_LNE[pos]||0);
+      if(!st) pos++;
+      rows+=`<tr><td class="c-pos">${st?st:pos+'°'}</td><td class="c-nome">${esc(a.nome)}${a.federado?' ⭐':''}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${a.tempo||'—'}</td><td class="c-pos">${ptsN||'—'}</td></tr>`;
+    });
+    return rows;
+  };
+  const colgroup=`<colgroup><col style="width:28pt"/><col style="width:170pt"/><col style="width:60pt"/><col/><col style="width:55pt"/><col style="width:36pt"/></colgroup>`;
+  const thead=`<thead><tr><th class="tc">Pos.</th><th>Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th><th class="tc">Pts</th></tr></thead>`;
+  const header=`<div class="pg"><div class="ph"><div>Liga de Natação Escolar — LNE 2026</div><div>Classificação — ${esc(nome)}</div>${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}</div>`:''}</div>`;
+  let h=header;
+  if(hasBoth){
+    h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:8pt 0 3pt;border-bottom:1pt solid #000;padding-bottom:2pt;">Não Federados</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoNFed,true)}</tbody></table>`;
+    h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:10pt 0 3pt;border-bottom:1pt solid #666;padding-bottom:2pt;color:#555;">Federados / Vinculados ⭐ (fora de pontuação)</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoFed,false)}</tbody></table>`;
+  } else {
+    h+=`<table>${colgroup}${thead}<tbody>${buildRows(p.classificacao,true)}</tbody></table>`;
+  }
+  h+=`</div>`; openPrint(h);
 }
 function abrirSumula(){
   document.getElementById('sumData').value=new Date().toISOString().split('T')[0];
@@ -2159,6 +2237,48 @@ function imprimirSumula(){
 }
 
 // ══════════════════════════════════════════════════════════
+// REORDENAR PROVAS
+// ══════════════════════════════════════════════════════════
+let reordenarDragIdx=null;
+function abrirReordenar(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const nomes=getProvasOrdenadas(etapa);
+  if(!nomes.length){showToast('Nenhuma prova para reordenar.');return;}
+  renderReordenarLista(nomes); abrirModal('modalReordenar');
+}
+function renderReordenarLista(nomes){
+  const el=document.getElementById('reordenarLista');
+  el.innerHTML=nomes.map((n,i)=>`
+    <div class="drag-row" draggable="true" data-idx="${i}"
+      style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border:1px solid var(--bd);border-radius:7px;margin-bottom:6px;"
+      ondragstart="roDragStart(event,${i})" ondragover="roDragOver(event,${i})"
+      ondrop="roDrop(event,${i})" ondragend="roDragEnd()">
+      <span style="cursor:grab;color:#94a3b8;font-size:16px;flex-shrink:0;">⠿</span>
+      <span style="background:var(--az);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${i+1}</span>
+      <span style="font-size:12px;flex:1;">${esc(n)}</span>
+      <span style="display:flex;flex-direction:column;gap:2px;">
+        <button onclick="roMoveUp(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;" ${i===0?'disabled':''}>▲</button>
+        <button onclick="roMoveDown(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;" ${i===nomes.length-1?'disabled':''}>▼</button>
+      </span>
+    </div>`).join('');
+}
+function getReordenarNomes(){
+  return [...document.querySelectorAll('#reordenarLista .drag-row')].map(r=>r.querySelector('span:nth-child(3)').textContent);
+}
+function roMoveUp(i){const n=getReordenarNomes();if(i===0)return;[n[i-1],n[i]]=[n[i],n[i-1]];renderReordenarLista(n);}
+function roMoveDown(i){const n=getReordenarNomes();if(i>=n.length-1)return;[n[i],n[i+1]]=[n[i+1],n[i]];renderReordenarLista(n);}
+function roDragStart(ev,i){reordenarDragIdx=i;ev.currentTarget.classList.add('dragging');ev.dataTransfer.effectAllowed='move';}
+function roDragOver(ev,i){ev.preventDefault();document.querySelectorAll('#reordenarLista .drag-over').forEach(r=>r.classList.remove('drag-over'));if(i!==reordenarDragIdx)ev.currentTarget.classList.add('drag-over');}
+function roDrop(ev,i){ev.preventDefault();if(reordenarDragIdx===null||reordenarDragIdx===i)return;const n=getReordenarNomes();const[m]=n.splice(reordenarDragIdx,1);n.splice(i,0,m);renderReordenarLista(n);}
+function roDragEnd(){reordenarDragIdx=null;document.querySelectorAll('#reordenarLista .dragging,.drag-over').forEach(r=>r.classList.remove('dragging','drag-over'));}
+function salvarOrdem(){
+  const etapa=getEtapa(curEtapaId);if(!etapa)return;
+  etapa.provasOrdem=getReordenarNomes();
+  markDirty();fecharModal('modalReordenar');renderProvasEtapa();
+  showToast('✅ Ordem das provas salva!');
+}
+
+// ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
 window.addEventListener('load', () => {
@@ -2172,5 +2292,17 @@ window.addEventListener('load', () => {
   }, 8000);
 });
 </script>
+<!-- Modal Reordenar Provas -->
+<div class="mover" id="modalReordenar">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>↕️ Reordenar Provas</h3><button class="mdl-x" onclick="fecharModal('modalReordenar')">×</button></div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Arraste as provas para definir a ordem, ou use as setas ▲▼.</p>
+    <div id="reordenarLista" style="max-height:60vh;overflow-y:auto;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn b-out" onclick="fecharModal('modalReordenar')">Cancelar</button>
+      <button class="btn b-pri" onclick="salvarOrdem()">💾 Salvar Ordem</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
