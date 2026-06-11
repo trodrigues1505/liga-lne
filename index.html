@@ -445,6 +445,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
           <button class="btn" style="background:#475569;color:#fff;" onclick="abrirReordenar()">↕️ Reordenar</button>
           <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
           <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="importarExcel(this)">
+          <button class="btn" style="background:#0e7490;color:#fff;" onclick="abrirRelatorio()">📊 Relatório</button>
           <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar Etapa</button>
           <button class="btn" style="background:#1e40af;color:#fff;" onclick="abrirPlacarGeral()">🏆 Ranking</button>
           <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirTodosCartoes()">🪪 Todos Cartões</button>
@@ -2304,5 +2305,307 @@ window.addEventListener('load', () => {
     </div>
   </div>
 </div>
+<!-- Modal Relatório de Atletas -->
+<div class="mover" id="modalRelatorio">
+  <div class="mdl" style="max-width:820px;">
+    <div class="mdl-hd">
+      <h3>📊 Relatório de Atletas Inscritos</h3>
+      <button class="mdl-x" onclick="fecharModal('modalRelatorio')">×</button>
+    </div>
+
+    <!-- Filtros -->
+    <div style="background:#f8fafc;border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">Filtros</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;">Prova</label>
+          <select id="relFiltroProva" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;min-width:220px;">
+            <option value="">Todas as provas</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;">Escola</label>
+          <select id="relFiltroEscola" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;min-width:180px;">
+            <option value="">Todas as escolas</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;">Categoria</label>
+          <select id="relFiltroCat" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;min-width:120px;">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;">Vínculo</label>
+          <select id="relFiltroFed" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;">
+            <option value="">Todos</option>
+            <option value="nao">Não federados</option>
+            <option value="fed">Federados/Vinculados</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;">Agrupar por</label>
+          <select id="relAgrupar" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;">
+            <option value="prova">Prova</option>
+            <option value="escola">Escola</option>
+            <option value="categoria">Categoria</option>
+            <option value="nenhum">Sem agrupamento (lista)</option>
+          </select>
+        </div>
+        <button class="btn b-out" style="font-size:11px;" onclick="limparFiltrosRel()">✕ Limpar</button>
+      </div>
+    </div>
+
+    <!-- Resumo rápido -->
+    <div id="relResumo" class="srow" style="margin-bottom:12px;"></div>
+
+    <!-- Resultado -->
+    <div id="relConteudo" style="max-height:52vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;">
+      <button class="btn b-out" onclick="fecharModal('modalRelatorio')">Fechar</button>
+      <button class="btn b-pdf" onclick="imprimirRelatorio()">🖨️ Imprimir / PDF</button>
+      <button class="btn b-suc" onclick="exportarRelatorioXlsx()">📥 Exportar Excel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// RELATÓRIO DE ATLETAS
+// ══════════════════════════════════════════════════════════
+
+function abrirRelatorio(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const provas=etapa.provas||{};
+  const nomes=getProvasOrdenadas(etapa);
+
+  // Preenche selects de filtro
+  const selP=document.getElementById('relFiltroProva');
+  selP.innerHTML='<option value="">Todas as provas</option>'+
+    nomes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+
+  // Escolas únicas
+  const escolas=new Set();
+  Object.values(provas).forEach(p=>p.atletas.forEach(a=>{if(a.escola) escolas.add(a.escola);}));
+  const selE=document.getElementById('relFiltroEscola');
+  selE.innerHTML='<option value="">Todas as escolas</option>'+
+    [...escolas].sort().map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
+
+  // Categorias únicas
+  const cats=new Set();
+  Object.values(provas).forEach(p=>p.atletas.forEach(a=>{if(a.categoria) cats.add(a.categoria);}));
+  const selC=document.getElementById('relFiltroCat');
+  selC.innerHTML='<option value="">Todas</option>'+
+    [...cats].sort().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+  // Reset outros filtros
+  document.getElementById('relFiltroFed').value='';
+  document.getElementById('relAgrupar').value='prova';
+
+  renderRelatorio();
+  abrirModal('modalRelatorio');
+}
+
+function limparFiltrosRel(){
+  ['relFiltroProva','relFiltroEscola','relFiltroCat','relFiltroFed'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('relAgrupar').value='prova';
+  renderRelatorio();
+}
+
+// Coleta todos os registros aplicando filtros
+function coletarDadosRel(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return [];
+  const nomes=getProvasOrdenadas(etapa);
+  const fProva=document.getElementById('relFiltroProva').value;
+  const fEscola=document.getElementById('relFiltroEscola').value;
+  const fCat=document.getElementById('relFiltroCat').value;
+  const fFed=document.getElementById('relFiltroFed').value;
+
+  const rows=[];
+  nomes.forEach(nomeProva=>{
+    if(fProva && nomeProva!==fProva) return;
+    const p=etapa.provas[nomeProva]; if(!p) return;
+    p.atletas.forEach(a=>{
+      if(fEscola && a.escola!==fEscola) return;
+      if(fCat && a.categoria!==fCat) return;
+      if(fFed==='fed' && !a.federado) return;
+      if(fFed==='nao' && a.federado) return;
+      rows.push({prova:nomeProva, nome:a.nome, categoria:a.categoria||'', escola:a.escola||'', tempoRef:a.tempoRef||'', federado:!!a.federado});
+    });
+  });
+  return rows;
+}
+
+function renderRelatorio(){
+  const rows=coletarDadosRel();
+  const agrupar=document.getElementById('relAgrupar').value;
+
+  // Resumo
+  const escUniq=new Set(rows.map(r=>r.escola)).size;
+  const provUniq=new Set(rows.map(r=>r.prova)).size;
+  const fedCount=rows.filter(r=>r.federado).length;
+  document.getElementById('relResumo').innerHTML=`
+    <div class="sc"><div class="lbl">Total atletas</div><div class="val">${rows.length}</div></div>
+    <div class="sc"><div class="lbl">Escolas</div><div class="val">${escUniq}</div></div>
+    <div class="sc"><div class="lbl">Provas</div><div class="val">${provUniq}</div></div>
+    <div class="sc"><div class="lbl">Federados</div><div class="val" style="color:#6d28d9;">${fedCount}</div></div>
+    <div class="sc"><div class="lbl">Não federados</div><div class="val">${rows.length-fedCount}</div></div>`;
+
+  if(!rows.length){
+    document.getElementById('relConteudo').innerHTML='<p style="text-align:center;color:#94a3b8;padding:30px;font-size:13px;">Nenhum atleta encontrado com estes filtros.</p>';
+    return;
+  }
+
+  let html='';
+  if(agrupar==='nenhum'){
+    html=_relTabela(rows, false);
+  } else {
+    // Agrupa
+    const grupos={};
+    const chave = r => agrupar==='prova'?r.prova : agrupar==='escola'?r.escola : r.categoria;
+    // Mantém ordem das provas se agrupando por prova
+    const ordemGrupos = agrupar==='prova'
+      ? [...new Set(rows.map(r=>r.prova))]  // já está na ordem de getProvasOrdenadas
+      : [...new Set(rows.map(chave))].sort();
+    rows.forEach(r=>{ const k=chave(r); if(!grupos[k]) grupos[k]=[]; grupos[k].push(r); });
+
+    ordemGrupos.forEach(k=>{
+      const gr=grupos[k]||[];
+      const fedGr=gr.filter(r=>r.federado).length;
+      const escGr=new Set(gr.map(r=>r.escola)).size;
+      html+=`<div style="background:var(--czc);padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:2;">
+        <span style="font-size:12px;font-weight:700;color:var(--az);flex:1;">${esc(k||'(sem '+agrupar+')')}</span>
+        <span class="badge badge-blue">${gr.length} atleta(s)</span>
+        ${fedGr?`<span class="badge badge-purple">${fedGr} fed.</span>`:''}
+        ${agrupar!=='escola'?`<span class="badge badge-gray">${escGr} escola(s)</span>`:''}
+      </div>`;
+      html+=_relTabela(gr, agrupar==='prova');
+    });
+  }
+  document.getElementById('relConteudo').innerHTML=html;
+}
+
+function _relTabela(rows, hideProva){
+  if(!rows.length) return '';
+  const cols = hideProva
+    ? ['Nome','Categoria','Escola','Tempo Ref.','Vínculo']
+    : ['Prova','Nome','Categoria','Escola','Tempo Ref.','Vínculo'];
+  let h=`<div style="overflow-x:auto;"><table class="tbl">
+    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const fedBadge=r.federado?`<span class="badge badge-purple" style="font-size:9px;">FED</span>`:`<span style="color:#94a3b8;font-size:11px;">—</span>`;
+    h+=`<tr>
+      ${hideProva?'':'<td style="font-size:11px;color:#64748b;">'+esc(r.prova)+'</td>'}
+      <td style="font-weight:500;">${esc(r.nome)}</td>
+      <td style="text-align:center;">${esc(r.categoria)}</td>
+      <td>${esc(r.escola)}</td>
+      <td style="font-family:monospace;font-size:11px;">${esc(r.tempoRef)}</td>
+      <td style="text-align:center;">${fedBadge}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  return h;
+}
+
+function imprimirRelatorio(){
+  const rows=coletarDadosRel();
+  if(!rows.length){showToast('Nenhum dado para imprimir.');return;}
+  const etapa=getEtapa(curEtapaId);
+  const agrupar=document.getElementById('relAgrupar').value;
+  const fProva=document.getElementById('relFiltroProva').value;
+  const fEscola=document.getElementById('relFiltroEscola').value;
+  const fCat=document.getElementById('relFiltroCat').value;
+  const fFed=document.getElementById('relFiltroFed').value;
+
+  const fedCount=rows.filter(r=>r.federado).length;
+  const filtrosDesc=[
+    fProva?'Prova: '+fProva:'',
+    fEscola?'Escola: '+fEscola:'',
+    fCat?'Categoria: '+fCat:'',
+    fFed?'Vínculo: '+(fFed==='fed'?'Federados':'Não federados'):'',
+  ].filter(Boolean).join(' · ');
+
+  const colgroup=`<colgroup><col style="width:200pt"/><col style="width:35pt"/><col style="width:120pt"/><col style="width:45pt"/><col style="width:35pt"/></colgroup>`;
+  const thead=`<thead><tr><th>Nome</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Ref.</th><th class="tc">Fed.</th></tr></thead>`;
+
+  let h=`<div class="pg"><div class="ph">
+    <div>Liga de Natação Escolar — LNE 2026</div>
+    <div>Relatório de Atletas Inscritos</div>
+    ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}</div>`:''}
+    ${filtrosDesc?`<div style="font-size:8pt;font-weight:normal;">${esc(filtrosDesc)}</div>`:''}
+  </div>
+  <div style="display:flex;gap:20pt;margin-bottom:8pt;font-size:8pt;">
+    <span><strong>${rows.length}</strong> atleta(s)</span>
+    <span><strong>${new Set(rows.map(r=>r.escola)).size}</strong> escola(s)</span>
+    <span><strong>${new Set(rows.map(r=>r.prova)).size}</strong> prova(s)</span>
+    <span><strong>${fedCount}</strong> federado(s)</span>
+    <span><strong>${rows.length-fedCount}</strong> não federado(s)</span>
+  </div>`;
+
+  if(agrupar==='nenhum'){
+    h+=`<table><colgroup><col style="width:160pt"/>${colgroup.replace('<colgroup>','')}<tbody>`;
+    h+=`<thead><tr><th>Prova</th><th>Nome</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Ref.</th><th class="tc">Fed.</th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      h+=`<tr><td style="font-size:7.5pt;color:#666;">${esc(r.prova)}</td><td>${esc(r.nome)}</td><td class="c-doc">${esc(r.categoria)}</td><td class="c-inst">${esc(r.escola)}</td><td class="c-tempo">${esc(r.tempoRef)}</td><td class="c-doc">${r.federado?'⭐':''}</td></tr>`;
+    });
+    h+=`</tbody></table>`;
+  } else {
+    const chave = r => agrupar==='prova'?r.prova : agrupar==='escola'?r.escola : r.categoria;
+    const ordemGrupos = agrupar==='prova'
+      ? [...new Set(rows.map(r=>r.prova))]
+      : [...new Set(rows.map(chave))].sort();
+    const grupos={};
+    rows.forEach(r=>{ const k=chave(r); if(!grupos[k]) grupos[k]=[]; grupos[k].push(r); });
+    ordemGrupos.forEach(k=>{
+      const gr=grupos[k]||[];
+      h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:8pt 0 2pt;border-bottom:1pt solid #000;padding-bottom:1pt;">${esc(k||'(sem '+agrupar+')')} <span style="font-weight:normal;">(${gr.length} atleta(s))</span></div>`;
+      h+=`<table>${colgroup}${thead}<tbody>`;
+      gr.forEach(r=>{
+        h+=`<tr><td>${esc(r.nome)}</td><td class="c-doc">${esc(r.categoria)}</td><td class="c-inst">${esc(r.escola)}</td><td class="c-tempo">${esc(r.tempoRef)}</td><td class="c-doc">${r.federado?'⭐':''}</td></tr>`;
+      });
+      h+=`</tbody></table>`;
+    });
+  }
+  h+=`</div>`;
+  openPrint(h);
+}
+
+function exportarRelatorioXlsx(){
+  const rows=coletarDadosRel();
+  if(!rows.length){showToast('Nenhum dado para exportar.');return;}
+  if(typeof XLSX==='undefined'){showToast('XLSX não carregado.');return;}
+  const etapa=getEtapa(curEtapaId);
+  const agrupar=document.getElementById('relAgrupar').value;
+
+  const wsData=[['Prova','Nome','Categoria','Escola','Tempo Ref.','Federado']];
+  rows.forEach(r=>wsData.push([r.prova, r.nome, r.categoria, r.escola, r.tempoRef, r.federado?'Sim':'Não']));
+
+  const wb=XLSX.utils.book_new();
+
+  if(agrupar==='prova'){
+    // Uma aba por prova
+    const grupos={};
+    rows.forEach(r=>{ if(!grupos[r.prova]) grupos[r.prova]=[]; grupos[r.prova].push(r); });
+    Object.entries(grupos).forEach(([prova,gr])=>{
+      const sheetData=[['Nome','Categoria','Escola','Tempo Ref.','Federado']];
+      gr.forEach(r=>sheetData.push([r.nome, r.categoria, r.escola, r.tempoRef, r.federado?'Sim':'Não']));
+      const ws=XLSX.utils.aoa_to_sheet(sheetData);
+      const sheetName=prova.replace(/[\\/*?:[\]]/g,'').slice(0,31);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+    // Aba resumo geral
+    const wsGeral=XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, wsGeral, 'Geral');
+  } else {
+    const ws=XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Atletas');
+  }
+
+  const nome=etapa?(etapa.nome||'etapa').replace(/[^a-zA-Z0-9]/g,'_'):'etapa';
+  XLSX.writeFile(wb, `relatorio_atletas_${nome}.xlsx`);
+  showToast('✅ Excel exportado!');
+}
+</script>
 </body>
-</html>
+</html>    
