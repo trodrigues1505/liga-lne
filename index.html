@@ -2521,6 +2521,14 @@ window.addEventListener('load', () => {
             <option value="nenhum">Sem agrupamento (lista)</option>
           </select>
         </div>
+        <div id="relOrdenarWrap" style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;font-weight:600;color:#475569;">Ordenar por</label>
+          <select id="relOrdenar" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;">
+            <option value="nome">Nome</option>
+            <option value="escola">Escola</option>
+            <option value="categoria">Categoria</option>
+          </select>
+        </div>
         <button class="btn b-out" style="font-size:11px;" onclick="limparFiltrosRel()">✕ Limpar</button>
       </div>
     </div>
