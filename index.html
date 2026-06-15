@@ -1594,7 +1594,7 @@ function renderClass(nome){
   let html='';
   if(hasBoth){
     html+=_classSection(nome,p.classificacaoNFed,'🏅 Classificação — Não Federados','#15803d','#dcfce7',true,'nfed');
-    html+=_classSection(nome,p.classificacaoFed,'⭐ Classificação — Federados / Vinculados','#6d28d9','#f3e8ff',false,'fed');
+    html+=_classSection(nome,p.classificacaoFed,'⭐ Classificação — Federados / Vinculados','#6d28d9','#f3e8ff',true,'fed');
   } else {
     html+=_classSection(nome,p.classificacao,'🏅 Classificação — '+esc(nome),'#15803d','#dcfce7',true,'all');
   }
@@ -2203,7 +2203,7 @@ function printClass(nome){
   let h=header;
   if(hasBoth){
     h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:8pt 0 3pt;border-bottom:1pt solid #000;padding-bottom:2pt;">Não Federados</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoNFed,true)}</tbody></table>`;
-    h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:10pt 0 3pt;border-bottom:1pt solid #666;padding-bottom:2pt;color:#555;">Federados / Vinculados ⭐ (fora de pontuação)</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoFed,false)}</tbody></table>`;
+    h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:10pt 0 3pt;border-bottom:1pt solid #666;padding-bottom:2pt;color:#555;">Federados / Vinculados ⭐</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoFed,true)}</tbody></table>`;
   } else {
     h+=`<table>${colgroup}${thead}<tbody>${buildRows(p.classificacao,true)}</tbody></table>`;
   }
@@ -2617,4 +2617,4 @@ function exportarRelatorioXlsx(){
 }
 </script>
 </body>
-</html>   
+</html>
