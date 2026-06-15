@@ -2512,6 +2512,7 @@ window.addEventListener('load', () => {
         <div style="display:flex;flex-direction:column;gap:4px;">
           <label style="font-size:11px;font-weight:600;color:#475569;">Agrupar por</label>
           <select id="relAgrupar" onchange="renderRelatorio()" style="border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:12px;">
+            <option value="atleta">Por atleta</option>
             <option value="prova">Prova</option>
             <option value="escola">Escola</option>
             <option value="categoria">Categoria</option>
@@ -2567,7 +2568,7 @@ function abrirRelatorio(){
 
   // Reset outros filtros
   document.getElementById('relFiltroFed').value='';
-  document.getElementById('relAgrupar').value='prova';
+  document.getElementById('relAgrupar').value='atleta';
 
   renderRelatorio();
   abrirModal('modalRelatorio');
@@ -2611,8 +2612,10 @@ function renderRelatorio(){
   const escUniq=new Set(rows.map(r=>r.escola)).size;
   const provUniq=new Set(rows.map(r=>r.prova)).size;
   const fedCount=rows.filter(r=>r.federado).length;
+  const atletasUniq=new Set(rows.map(r=>r.nome.toLowerCase().trim())).size;
   document.getElementById('relResumo').innerHTML=`
-    <div class="sc"><div class="lbl">Total atletas</div><div class="val">${rows.length}</div></div>
+    <div class="sc"><div class="lbl">Inscrições</div><div class="val">${rows.length}</div></div>
+    <div class="sc"><div class="lbl">Atletas únicos</div><div class="val" style="color:var(--vd);">${atletasUniq}</div></div>
     <div class="sc"><div class="lbl">Escolas</div><div class="val">${escUniq}</div></div>
     <div class="sc"><div class="lbl">Provas</div><div class="val">${provUniq}</div></div>
     <div class="sc"><div class="lbl">Federados</div><div class="val" style="color:#6d28d9;">${fedCount}</div></div>
@@ -2624,7 +2627,36 @@ function renderRelatorio(){
   }
 
   let html='';
-  if(agrupar==='nenhum'){
+  if(agrupar==='atleta'){
+    // Agrupa por nome do atleta — mostra cada atleta uma vez com suas provas
+    const porAtleta={};
+    rows.forEach(r=>{
+      const k=r.nome.toLowerCase().trim();
+      if(!porAtleta[k]) porAtleta[k]={nome:r.nome,escola:r.escola,categoria:r.categoria,federado:r.federado,provas:[]};
+      porAtleta[k].provas.push(r.prova);
+    });
+    const atletasOrdenados=Object.values(porAtleta).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    html+=`<div style="overflow-x:auto;"><table class="tbl">
+      <thead><tr>
+        <th>Nome</th>
+        <th style="width:60px;">Cat.</th>
+        <th>Escola</th>
+        <th>Provas inscritas</th>
+        <th style="width:65px;text-align:center;">Vínculo</th>
+      </tr></thead><tbody>`;
+    atletasOrdenados.forEach((a,i)=>{
+      const fedBadge=a.federado?`<span class="badge badge-purple" style="font-size:9px;">FED</span>`:`<span style="color:#94a3b8;font-size:11px;">—</span>`;
+      const provasBadges=a.provas.map(p=>`<span style="display:inline-block;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:4px;padding:1px 6px;font-size:10px;margin:1px;">${esc(p)}</span>`).join(' ');
+      html+=`<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
+        <td style="font-weight:600;">${esc(a.nome)}</td>
+        <td style="text-align:center;">${esc(a.categoria)}</td>
+        <td style="font-size:11px;">${esc(a.escola)}</td>
+        <td style="line-height:1.8;">${provasBadges}</td>
+        <td style="text-align:center;">${fedBadge}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  } else if(agrupar==='nenhum'){
     html=_relTabela(rows, false);
   } else {
     // Agrupa
@@ -2685,6 +2717,7 @@ function imprimirRelatorio(){
   const fFed=document.getElementById('relFiltroFed').value;
 
   const fedCount=rows.filter(r=>r.federado).length;
+  const atletasUniq=new Set(rows.map(r=>r.nome.toLowerCase().trim())).size;
   const filtrosDesc=[
     fProva?'Prova: '+fProva:'',
     fEscola?'Escola: '+fEscola:'',
@@ -2702,14 +2735,29 @@ function imprimirRelatorio(){
     ${filtrosDesc?`<div style="font-size:8pt;font-weight:normal;">${esc(filtrosDesc)}</div>`:''}
   </div>
   <div style="display:flex;gap:20pt;margin-bottom:8pt;font-size:8pt;">
-    <span><strong>${rows.length}</strong> atleta(s)</span>
+    <span><strong>${rows.length}</strong> inscrição(ões)</span>
+    <span><strong>${atletasUniq}</strong> atleta(s) único(s)</span>
     <span><strong>${new Set(rows.map(r=>r.escola)).size}</strong> escola(s)</span>
     <span><strong>${new Set(rows.map(r=>r.prova)).size}</strong> prova(s)</span>
     <span><strong>${fedCount}</strong> federado(s)</span>
     <span><strong>${rows.length-fedCount}</strong> não federado(s)</span>
   </div>`;
 
-  if(agrupar==='nenhum'){
+  if(agrupar==='atleta'){
+    const porAtleta={};
+    rows.forEach(r=>{
+      const k=r.nome.toLowerCase().trim();
+      if(!porAtleta[k]) porAtleta[k]={nome:r.nome,escola:r.escola,categoria:r.categoria,federado:r.federado,provas:[]};
+      porAtleta[k].provas.push(r.prova);
+    });
+    const atletasOrdenados=Object.values(porAtleta).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    h+=`<table><colgroup><col style="width:160pt"/><col style="width:40pt"/><col style="width:100pt"/><col/><col style="width:20pt"/></colgroup>
+    <thead><tr><th>Nome</th><th class="tc">Cat.</th><th class="tc">Escola</th><th>Provas</th><th class="tc">Fed.</th></tr></thead><tbody>`;
+    atletasOrdenados.forEach(a=>{
+      h+=`<tr><td>${esc(a.nome)}</td><td class="c-doc">${esc(a.categoria)}</td><td class="c-inst">${esc(a.escola)}</td><td style="font-size:7.5pt;">${a.provas.map(p=>esc(p)).join(' · ')}</td><td class="c-doc">${a.federado?'⭐':''}</td></tr>`;
+    });
+    h+=`</tbody></table>`;
+  } else if(agrupar==='nenhum'){
     h+=`<table><colgroup><col style="width:160pt"/>${colgroup.replace('<colgroup>','')}<tbody>`;
     h+=`<thead><tr><th>Prova</th><th>Nome</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Ref.</th><th class="tc">Fed.</th></tr></thead><tbody>`;
     rows.forEach(r=>{
