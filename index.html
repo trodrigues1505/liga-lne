@@ -1435,8 +1435,11 @@ function confRaiaVazia(nome,si,li){
   const cat=(document.getElementById(`rvcat-${si}-${li}`)?.value||'').trim().toUpperCase();
   const escola=toTitle((document.getElementById(`rve-${si}-${li}`)?.value||'').trim());
   const p=getProva(nome);
-  p.series[si].lanes[li]={id:uid(),nome:n,categoria:cat,escola,tempo:''};
-  if(!p.atletas.find(a=>a.nome===n)) p.atletas.push({id:uid(),nome:n,categoria:cat,escola,tempoRef:'',tempo:''});
+  // Tenta encontrar o atleta já cadastrado para preservar o campo federado
+  const atlExist=p.atletas.find(a=>a.nome.toLowerCase()===n.toLowerCase());
+  const federado=atlExist?!!atlExist.federado:false;
+  p.series[si].lanes[li]={id:uid(),nome:n,categoria:cat,escola,tempo:'',federado};
+  if(!atlExist) p.atletas.push({id:uid(),nome:n,categoria:cat,escola,tempoRef:'',tempo:'',federado});
   markDirty(); renderBal(nome); renderStats(nome);
 }
 
@@ -2073,6 +2076,9 @@ const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:
 .lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;color:#444;line-height:1.2;margin-bottom:1pt;}
 .val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:2pt;margin-bottom:5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .row3{display:grid;grid-template-columns:3fr 1fr 1fr;gap:5pt;margin-bottom:4pt;}.row3 .val{font-size:8.5pt;margin-bottom:0;}
+.row4{display:grid;grid-template-columns:3fr 1fr 1fr 1.4fr;gap:5pt;margin-bottom:4pt;}.row4 .val{font-size:8.5pt;margin-bottom:0;}
+.val-fed{font-size:8.5pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fed-sim{background:#e9d5ff;color:#5b21b6;padding:1pt 4pt;border-radius:2pt;}
 .sep{border:none;border-top:.5pt solid #aaa;margin:3pt 0 4pt;}
 .ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.5px;margin-bottom:3pt;color:#333;}
 .cron-wrap{flex:1;display:flex;flex-direction:column;}
@@ -2090,12 +2096,15 @@ function buildCartoesHtml(cartoes){
     g.forEach(c=>{
       const n=c?esc(c.nome):'&nbsp;', pr=c?esc(c.prova):'&nbsp;', sr=c?String(c.serie):'&nbsp;', ra=c?String(c.raia):'&nbsp;';
       const vc=c?'val':'val" style="color:transparent;border-bottom:.5pt solid #aaa;';
+      const fedVal=c?(c.federado?'<span class="fed-sim">⭐ Federado/Vinc.</span>':'Não federado'):'&nbsp;';
+      const fedStyle=c?'val-fed':'val-fed" style="color:transparent;border-bottom:.5pt solid #aaa;';
       html+=`<div class="cartao">
         <div class="lbl">Nome do Atleta</div><div class="${vc}">${n}</div>
-        <div class="row3">
+        <div class="row4">
           <div><div class="lbl">Prova</div><div class="${vc}">${pr}</div></div>
           <div><div class="lbl">Série</div><div class="${vc}">${sr}</div></div>
           <div><div class="lbl">Raia</div><div class="${vc}">${ra}</div></div>
+          <div><div class="lbl">Vínculo</div><div class="${fedStyle}">${fedVal}</div></div>
         </div>
         <hr class="sep"/><div class="cron-wrap"><div class="ct">Cronômetro</div>
         <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>
@@ -2110,7 +2119,7 @@ function buildCartoesHtml(cartoes){
 function imprimirCartoesProva(nome){
   if(!nome) return; const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
   const cartoes=[];
-  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1});}));
+  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1,federado:!!a.federado});}));
   if(!cartoes.length){alert('Nenhum atleta no balizamento.');return;}
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões — ${nome}</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
@@ -2120,7 +2129,7 @@ function imprimirTodosCartoes(){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   const cartoes=[];
   Object.entries(etapa.provas||{}).forEach(([nome,p])=>{
-    (p.series||[]).forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1});}));
+    (p.series||[]).forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1,federado:!!a.federado});}));
   });
   if(!cartoes.length){alert('Nenhum atleta com balizamento gerado.');return;}
   const w=window.open('','_blank');
@@ -2608,4 +2617,4 @@ function exportarRelatorioXlsx(){
 }
 </script>
 </body>
-</html>    
+</html>   
