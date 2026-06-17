@@ -2499,79 +2499,7 @@ function doPrint(){
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LNE 2026</title><style>${PRINT_CSS}</style></head><body>${c}</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
-function printBal(nome){
-  if(!nome){showToast('⚠️ Nenhuma prova selecionada.');return;}
-  const p=getProva(nome); const etapa=getEtapa(curEtapaId);
-  if(!p){showToast('⚠️ Prova não encontrada.');return;}
-  if(!p.series||!p.series.length){showToast('⚠️ Gere o balizamento primeiro.');return;}
-  const raias=etapa?etapa.raias:8;
-  let h=`<div class="pg"><div class="ph">
-    <div>Liga de Natação Escolar — LNE 2026</div>
-    <div>Balizamento — ${esc(nome)}</div>
-    ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
-  </div>
-  <table><colgroup><col style="width:28pt"/><col style="width:175pt"/><col style="width:55pt"/><col/><col style="width:60pt"/></colgroup>
-  <thead><tr>
-    <th class="tc">Raia</th><th>Nome do Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th>
-  </tr></thead><tbody>`;
-  p.series.forEach((s,si)=>{
-    h+=`<tr><td class="serie-lbl" colspan="5">Série ${si+1}${s.combinada?' (combinada)':''}</td></tr>`;
-    s.lanes.forEach((a,li)=>{
-      if(a&&!a._outra) h+=`<tr><td class="c-raia">${li+1}</td><td class="c-nome">${esc(a.nome)}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${esc(a.tempo||'')}</td></tr>`;
-      else h+=`<tr><td class="c-raia" style="color:#ccc;">${li+1}</td><td colspan="4" style="color:#bbb;font-style:italic;">— raia vazia —</td></tr>`;
-    });
-  });
-  h+=`</tbody></table></div>`;
-  openPrint(h);
-}
-  function printBalizamentosSelecionados(){
-
-  const etapa = getEtapa(curEtapaId);
-
-  if(!etapa){
-    showToast('⚠️ Nenhuma etapa selecionada.');
-    return;
-  }
-
-  const provas = getProvasOrdenadas(etapa);
-
-  let lista = '';
-
-  provas.forEach((nome,i)=>{
-    lista += `${i+1} - ${nome}\n`;
-  });
-
-  const resposta = prompt(
-`Digite os números das provas separados por vírgula.
-
-Exemplo:
-1,2,5,8
-
-Provas disponíveis:
-
-${lista}`
-  );
-
-  if(!resposta) return;
-
-  const indices = resposta
-    .split(',')
-    .map(v=>parseInt(v.trim(),10)-1)
-    .filter(v=>!isNaN(v));
-
-  const selecionadas = indices
-    .map(i=>provas[i])
-    .filter(Boolean);
-
-  if(!selecionadas.length){
-    showToast('⚠️ Nenhuma prova válida selecionada.');
-    return;
-  }
-
-  executarImpressaoSelecionada(selecionadas);
-}
-
-  function executarImpressaoSelecionada(selecionadas){
+function executarImpressaoSelecionada(selecionadas){
 
   const etapa = getEtapa(curEtapaId);
 
@@ -2579,51 +2507,70 @@ ${lista}`
 
   selecionadas.forEach(nome=>{
 
-    const p = etapa.provas[nome];
+    const p = getProva(nome);
 
     if(!p || !p.series || !p.series.length) return;
 
-    h += `
-      <div class="bloco-prova">
+    h += `<div class="pg"><div class="ph">
+      <div>Liga de Natação Escolar — LNE 2026</div>
+      <div>Balizamento — ${esc(nome)}</div>
+      ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
+    </div>
 
-      <h2>${esc(nome)}</h2>
+    <table>
+      <colgroup>
+        <col style="width:28pt"/>
+        <col style="width:175pt"/>
+        <col style="width:55pt"/>
+        <col/>
+        <col style="width:60pt"/>
+      </colgroup>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Raia</th>
-            <th>Nome</th>
-            <th>Cat.</th>
-            <th>Escola</th>
-            <th>Tempo</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
+      <thead>
+        <tr>
+          <th class="tc">Raia</th>
+          <th>Nome do Atleta</th>
+          <th class="tc">Cat.</th>
+          <th class="tc">Escola</th>
+          <th class="tc">Tempo</th>
+        </tr>
+      </thead>
+
+      <tbody>`;
 
     p.series.forEach((s,si)=>{
 
-      h += `
-      <tr>
-        <td colspan="5" style="font-weight:bold;background:#eee;">
-          Série ${si+1}
+      h += `<tr>
+        <td class="serie-lbl" colspan="5">
+          Série ${si+1}${s.combinada?' (combinada)':''}
         </td>
-      </tr>
-      `;
+      </tr>`;
 
       s.lanes.forEach((a,li)=>{
 
-        if(!a || a._outra) return;
+        if(a && !a._outra){
 
-        h += `
-        <tr>
-          <td>${li+1}</td>
-          <td>${esc(a.nome||'')}</td>
-          <td>${esc(a.categoria||'')}</td>
-          <td>${esc(a.escola||'')}</td>
-          <td>${esc(a.tempo||'')}</td>
-        </tr>
-        `;
+          h += `<tr>
+            <td class="c-raia">${li+1}</td>
+            <td class="c-nome">${esc(a.nome)}</td>
+            <td class="c-doc">${esc(a.categoria||'')}</td>
+            <td class="c-inst">${esc(a.escola||'')}</td>
+            <td class="c-tempo">${esc(a.tempo||'')}</td>
+          </tr>`;
+
+        }else{
+
+          h += `<tr>
+            <td class="c-raia" style="color:#ccc;">
+              ${li+1}
+            </td>
+            <td colspan="4"
+                style="color:#bbb;font-style:italic;">
+              — raia vazia —
+            </td>
+          </tr>`;
+        }
+
       });
 
     });
@@ -2631,36 +2578,14 @@ ${lista}`
     h += `
       </tbody>
       </table>
-
-      <br><br>
-
       </div>
+
+      <div style="height:12px"></div>
     `;
   });
 
-  openPrint(`
-  <style>
-    .bloco-prova{
-      page-break-inside:avoid;
-      break-inside:avoid;
-      margin-bottom:20px;
-    }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-    }
-
-    th,td{
-      border:1px solid #000;
-      padding:4px;
-    }
-  </style>
-
-  ${h}
-  `);
+  openPrint(h);
 }
-  
 
 function printClass(nome){
   if(!nome) return; const p=getProva(nome); if(!p||!p.classificacao||!p.classificacao.length){alert('Gere a classificação primeiro.');return;}
