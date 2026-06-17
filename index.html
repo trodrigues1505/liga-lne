@@ -2499,24 +2499,67 @@ function doPrint(){
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LNE 2026</title><style>${PRINT_CSS}</style></head><body>${c}</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
+  
+function printBalizamentosSelecionados(){
+
+  const etapa=getEtapa(curEtapaId);
+
+  if(!etapa){
+    showToast('⚠️ Nenhuma etapa selecionada.');
+    return;
+  }
+
+  const provas=getProvasOrdenadas(etapa);
+
+  let lista='';
+
+  provas.forEach((nome,i)=>{
+    lista+=`${i+1} - ${nome}\n`;
+  });
+
+  const resposta=prompt(
+`Digite os números das provas separados por vírgula.
+
+Exemplo:
+1,2,5
+
+${lista}`
+  );
+
+  if(!resposta) return;
+
+  const selecionadas=resposta
+    .split(',')
+    .map(v=>parseInt(v.trim(),10)-1)
+    .filter(v=>!isNaN(v))
+    .map(i=>provas[i])
+    .filter(Boolean);
+
+  if(!selecionadas.length){
+    showToast('⚠️ Nenhuma prova válida selecionada.');
+    return;
+  }
+
+  executarImpressaoSelecionada(selecionadas);
+}
+
 function executarImpressaoSelecionada(selecionadas){
 
-  const etapa = getEtapa(curEtapaId);
+  const etapa=getEtapa(curEtapaId);
 
   let h='';
 
   selecionadas.forEach(nome=>{
 
-    const p = getProva(nome);
+    const p=getProva(nome);
 
     if(!p || !p.series || !p.series.length) return;
 
-    h += `<div class="pg"><div class="ph">
+    h+=`<div class="pg"><div class="ph">
       <div>Liga de Natação Escolar — LNE 2026</div>
       <div>Balizamento — ${esc(nome)}</div>
       ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
     </div>
-
     <table>
       <colgroup>
         <col style="width:28pt"/>
@@ -2525,7 +2568,6 @@ function executarImpressaoSelecionada(selecionadas){
         <col/>
         <col style="width:60pt"/>
       </colgroup>
-
       <thead>
         <tr>
           <th class="tc">Raia</th>
@@ -2535,12 +2577,10 @@ function executarImpressaoSelecionada(selecionadas){
           <th class="tc">Tempo</th>
         </tr>
       </thead>
-
       <tbody>`;
 
     p.series.forEach((s,si)=>{
-
-      h += `<tr>
+      h+=`<tr>
         <td class="serie-lbl" colspan="5">
           Série ${si+1}${s.combinada?' (combinada)':''}
         </td>
@@ -2548,24 +2588,18 @@ function executarImpressaoSelecionada(selecionadas){
 
       s.lanes.forEach((a,li)=>{
 
-        if(a && !a._outra){
-
-          h += `<tr>
+        if(a&&!a._outra){
+          h+=`<tr>
             <td class="c-raia">${li+1}</td>
             <td class="c-nome">${esc(a.nome)}</td>
             <td class="c-doc">${esc(a.categoria||'')}</td>
             <td class="c-inst">${esc(a.escola||'')}</td>
             <td class="c-tempo">${esc(a.tempo||'')}</td>
           </tr>`;
-
         }else{
-
-          h += `<tr>
-            <td class="c-raia" style="color:#ccc;">
-              ${li+1}
-            </td>
-            <td colspan="4"
-                style="color:#bbb;font-style:italic;">
+          h+=`<tr>
+            <td class="c-raia" style="color:#ccc;">${li+1}</td>
+            <td colspan="4" style="color:#bbb;font-style:italic;">
               — raia vazia —
             </td>
           </tr>`;
@@ -2575,13 +2609,7 @@ function executarImpressaoSelecionada(selecionadas){
 
     });
 
-    h += `
-      </tbody>
-      </table>
-      </div>
-
-      <div style="height:12px"></div>
-    `;
+    h+=`</tbody></table></div><br>`;
   });
 
   openPrint(h);
