@@ -412,7 +412,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
     <div class="sep"></div>
     <!-- Imprimir -->
     <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Imprimir</span>
-   <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Bal.</button>
+    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Bal.</button>
 
 <button class="btn"
         style="background:#0f766e;color:#fff;"
@@ -2479,96 +2479,6 @@ function imprimirTodosCartoes(){
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
 
-  function abrirModalImprimirBalizamentos(){
-  const etapa=getEtapa(curEtapaId); if(!etapa) return;
-  const nomes=getProvasOrdenadas(etapa);
-  if(!nomes.length){showToast('Nenhuma prova cadastrada.');return;}
-
-  const rows=nomes.map(n=>{
-    const p=etapa.provas[n];
-    const temBal=(p.series||[]).length>0;
-    const nAtl=p.atletas.length;
-    return {nome:n, temBal, nAtl};
-  });
-
-  let html=`<p style="font-size:12px;color:#64748b;margin-bottom:12px;">Selecione as provas cujo balizamento deseja imprimir. Apenas provas com ⚡ já possuem balizamento gerado.</p>
-  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-    <button class="btn b-out" style="font-size:11px;" onclick="impBalSelecionarTodas(true)">✅ Todas</button>
-    <button class="btn b-out" style="font-size:11px;" onclick="impBalSelecionarTodas(false)">☐ Nenhuma</button>
-    <button class="btn b-out" style="font-size:11px;" onclick="impBalSelecionarComBal()">⚡ Só com balizamento</button>
-  </div>
-  <div style="max-height:50vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
-
-  rows.forEach((r,i)=>{
-    const bg=i%2===0?'#fff':'#f8fafc';
-    const semBal=!r.temBal;
-    html+=`<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${bg};cursor:${semBal?'not-allowed':'pointer'};border-bottom:1px solid #f0f4f8;opacity:${semBal?'.4':'1'};">
-      <input type="checkbox" class="impbal-chk" value="${esc(r.nome)}" ${semBal?'disabled':''} style="width:15px;height:15px;accent-color:var(--azm);flex-shrink:0;"/>
-      <span style="flex:1;font-size:12px;font-weight:500;">${esc(r.nome)}</span>
-      <span style="font-size:11px;color:#64748b;white-space:nowrap;">${r.nAtl} atl.</span>
-      ${r.temBal
-        ?`<span style="font-size:10px;background:#fef9c3;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;white-space:nowrap;">⚡ balizamento gerado</span>`
-        :`<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;white-space:nowrap;">sem balizamento</span>`}
-    </label>`;
-  });
-
-  html+=`</div>`;
-  document.getElementById('modalImprimirBalConteudo').innerHTML=html;
-  // Pré-seleciona só as que têm balizamento
-  setTimeout(()=>impBalSelecionarComBal(), 50);
-  abrirModal('modalImprimirBal');
-}
-
-function impBalSelecionarTodas(v){
-  document.querySelectorAll('.impbal-chk:not(:disabled)').forEach(c=>c.checked=v);
-}
-function impBalSelecionarComBal(){
-  document.querySelectorAll('.impbal-chk:not(:disabled)').forEach(c=>c.checked=true);
-  // as disabled já são as sem balizamento, então marcar todas habilitadas = só com bal
-}
-
-function confirmarImprimirBalizamentos(){
-  const etapa=getEtapa(curEtapaId); if(!etapa) return;
-  const selecionadas=[...document.querySelectorAll('.impbal-chk:checked')].map(c=>c.value);
-  if(!selecionadas.length){showToast('Selecione pelo menos uma prova.');return;}
-
-  let h='';
-  selecionadas.forEach(nome=>{
-    const p=etapa.provas[nome]; if(!p||!p.series||!p.series.length) return;
-    let seriesHtml='';
-    p.series.forEach((s,si)=>{
-      seriesHtml+=`<tr><td class="serie-lbl" colspan="5">Série ${si+1}${s.combinada?' (combinada)':''}</td></tr>`;
-      s.lanes.forEach((a,li)=>{
-        if(a&&!a._outra)
-          seriesHtml+=`<tr><td class="c-raia">${li+1}</td><td class="c-nome">${esc(a.nome)}${a.federado?' ⭐':''}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${esc(a.tempo||'')}</td></tr>`;
-        else
-          seriesHtml+=`<tr><td class="c-raia" style="color:#ccc;">${li+1}</td><td colspan="4" style="color:#bbb;font-style:italic;">— raia vazia —</td></tr>`;
-      });
-    });
-    h+=`<div class="pg">
-      <div class="ph">
-        <div>Liga de Natação Escolar — LNE 2026</div>
-        <div>Balizamento — ${esc(nome)}</div>
-        ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
-      </div>
-      <table>
-        <colgroup><col style="width:28pt"/><col style="width:175pt"/><col style="width:55pt"/><col/><col style="width:60pt"/></colgroup>
-        <thead><tr>
-          <th class="tc">Raia</th><th>Nome do Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th>
-        </tr></thead>
-        <tbody>${seriesHtml}</tbody>
-      </table>
-    </div>`;
-  });
-
-  if(!h){showToast('Nenhuma prova selecionada tem balizamento.');return;}
-
-  fecharModal('modalImprimirBal');
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Balizamentos — ${esc(etapa.nome)}</title><style>${PRINT_CSS}</style></head><body>${h}</body></html>`);
-  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}
-
 // ══════════════════════════════════════════════════════════
 // IMPRESSÃO (balizamento / classificação / súmula)
 // ══════════════════════════════════════════════════════════
@@ -2612,6 +2522,93 @@ function printBal(nome){
     });
   });
   h+=`</tbody></table></div>`;
+  openPrint(h);
+}
+  function printTodosBalizamentos(){
+  const etapa=getEtapa(curEtapaId);
+
+  if(!etapa){
+    showToast('⚠️ Nenhuma etapa selecionada.');
+    return;
+  }
+
+  const nomes=getProvasOrdenadas(etapa);
+
+  let h='';
+
+  nomes.forEach(nome=>{
+
+    const p=etapa.provas[nome];
+
+    if(!p || !p.series || !p.series.length) return;
+
+    h+=`<div class="pg"><div class="ph">
+      <div>Liga de Natação Escolar — LNE 2026</div>
+      <div>Balizamento — ${esc(nome)}</div>
+      ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
+    </div>
+
+    <table>
+      <colgroup>
+        <col style="width:28pt"/>
+        <col style="width:175pt"/>
+        <col style="width:55pt"/>
+        <col/>
+        <col style="width:60pt"/>
+      </colgroup>
+
+      <thead>
+        <tr>
+          <th class="tc">Raia</th>
+          <th>Nome do Atleta</th>
+          <th class="tc">Cat.</th>
+          <th class="tc">Escola</th>
+          <th class="tc">Tempo</th>
+        </tr>
+      </thead>
+
+      <tbody>`;
+
+    p.series.forEach((s,si)=>{
+
+      h+=`<tr>
+        <td class="serie-lbl" colspan="5">
+          Série ${si+1}${s.combinada?' (combinada)':''}
+        </td>
+      </tr>`;
+
+      s.lanes.forEach((a,li)=>{
+
+        if(a && !a._outra){
+          h+=`<tr>
+            <td class="c-raia">${li+1}</td>
+            <td class="c-nome">${esc(a.nome)}</td>
+            <td class="c-doc">${esc(a.categoria||'')}</td>
+            <td class="c-inst">${esc(a.escola||'')}</td>
+            <td class="c-tempo">${esc(a.tempo||'')}</td>
+          </tr>`;
+        }else{
+          h+=`<tr>
+            <td class="c-raia" style="color:#ccc;">${li+1}</td>
+            <td colspan="4" style="color:#bbb;font-style:italic;">
+              — raia vazia —
+            </td>
+          </tr>`;
+        }
+
+      });
+
+    });
+
+    h+=`</tbody></table></div>
+    <div style="page-break-after:always;"></div>`;
+  });
+
+  if(!h){
+    showToast('⚠️ Nenhum balizamento encontrado.');
+    return;
+  }
+
   openPrint(h);
 }
 function printClass(nome){
@@ -3961,20 +3958,5 @@ function excluirAtletaEditar(nomeProva, idx){
   showToast('Atleta excluído.');
 }
 </script>
-
-  <!-- Modal Imprimir Balizamentos -->
-<div class="mover" id="modalImprimirBal">
-  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
-    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);">
-      <h3>🖨️ Imprimir Balizamentos</h3>
-      <button class="mdl-x" onclick="fecharModal('modalImprimirBal')">×</button>
-    </div>
-    <div style="padding:14px 18px;" id="modalImprimirBalConteudo"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;">
-      <button class="btn b-out" onclick="fecharModal('modalImprimirBal')">Cancelar</button>
-      <button class="btn b-pdf" onclick="confirmarImprimirBalizamentos()">🖨️ Imprimir selecionadas</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
