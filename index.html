@@ -402,7 +402,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
   <div class="etapa-sticky no-print" id="etapaSticky">
     <span id="stickyEtapaNome" style="font-size:12px;font-weight:700;color:var(--az);margin-right:4px;"></span>
     <div class="sep"></div>
-    <button class="btn b-pri" onclick="gerarBal(curProva)">⚡ Gerar Balizamento</button>
+    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Gerar Balizamento</button>
     <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Classificação</button>
     <button class="btn" style="background:#6b7280;color:#fff;" onclick="apagarTempos(curProva)">⏱️ Apagar Tempos</button>
     <div class="sep"></div>
@@ -412,6 +412,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
     <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirCartoesProva(curProva)">🪪 Cartões</button>
     <div class="sep"></div>
     <button class="btn b-out" onclick="addAtleta(curProva)">+ Atleta</button>
+    <button class="btn b-out" onclick="abrirBuscaAtleta()">🔎 Buscar</button>
     <button class="btn b-out" onclick="abrirTelaCheia(curProva)">⛶ Tempos</button>
     <button class="btn b-red" style="font-size:11px;padding:5px 10px;" onclick="excluirProva(curProva)">🗑️ Excluir</button>
   </div>
@@ -1481,8 +1482,7 @@ function calcSeries(n,raias){
   return c;
 }
 
-function gerarBal(nome){
-  if(!nome) return;
+function _executarBal(nome){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   const p=etapa.provas[nome]; if(!p) return;
   const raias=etapa.raias||8;
@@ -1497,7 +1497,108 @@ function gerarBal(nome){
     series.push({lanes,provaRef:nome});
   });
   p.series=series; p.classificacao=[];
-  markDirty(); renderBal(nome); renderStats(nome); showToast(`Balizamento gerado: ${series.length} série(s)`);
+}
+
+function gerarBal(nome){
+  if(!nome) return;
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const p=etapa.provas[nome]; if(!p) return;
+  _executarBal(nome);
+  markDirty(); renderBal(nome); renderStats(nome); showToast(`Balizamento gerado: ${(etapa.provas[nome].series||[]).length} série(s)`);
+}
+
+function abrirModalBalizamento(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const nomes=getProvasOrdenadas(etapa);
+  if(!nomes.length){showToast('Nenhuma prova cadastrada.');return;}
+
+  const rows=nomes.map(n=>{
+    const p=etapa.provas[n];
+    const temBal=(p.series||[]).length>0;
+    const nAtl=p.atletas.length;
+    return {nome:n, temBal, nAtl};
+  });
+
+  const temAlgumBal=rows.some(r=>r.temBal);
+
+  let html=`<p style="font-size:12px;color:#64748b;margin-bottom:12px;">Selecione as provas para gerar balizamento. Provas com ⚡ já possuem balizamento.</p>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="btn b-out" style="font-size:11px;" onclick="balSelecionarTodas(true)">✅ Todas</button>
+    <button class="btn b-out" style="font-size:11px;" onclick="balSelecionarTodas(false)">☐ Nenhuma</button>
+    <button class="btn b-out" style="font-size:11px;" onclick="balSelecionarSemBal()">🆕 Só sem balizamento</button>
+  </div>
+  <div style="max-height:50vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
+
+  rows.forEach((r,i)=>{
+    const bg=i%2===0?'#fff':'#f8fafc';
+    const semAtl=r.nAtl===0;
+    html+=`<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${bg};cursor:${semAtl?'not-allowed':'pointer'};border-bottom:1px solid #f0f4f8;opacity:${semAtl?'.45':'1'};">
+      <input type="checkbox" class="bal-chk" value="${esc(r.nome)}" ${semAtl?'disabled':''} style="width:15px;height:15px;accent-color:var(--azm);flex-shrink:0;"/>
+      <span style="flex:1;font-size:12px;font-weight:500;">${esc(r.nome)}</span>
+      <span style="font-size:11px;color:#64748b;white-space:nowrap;">${r.nAtl} atl.</span>
+      ${r.temBal?`<span style="font-size:10px;background:#fef9c3;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;white-space:nowrap;">⚡ já gerado</span>`:'<span style="font-size:10px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:4px;padding:1px 6px;white-space:nowrap;">🆕 novo</span>'}
+    </label>`;
+  });
+  html+=`</div>`;
+
+  if(temAlgumBal){
+    html+=`<div style="margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠️ Para provas com balizamento já gerado:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+          <input type="radio" name="balModo" value="substituir" checked style="accent-color:var(--azm);"/> Substituir (gera novo do zero)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+          <input type="radio" name="balModo" value="pular" style="accent-color:var(--azm);"/> Pular (mantém o existente)
+        </label>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('modalBalConteudo').innerHTML=html;
+  // Pré-seleciona só as sem balizamento
+  setTimeout(()=>balSelecionarSemBal(), 50);
+  abrirModal('modalBalizamento');
+}
+
+function balSelecionarTodas(v){
+  document.querySelectorAll('.bal-chk:not(:disabled)').forEach(c=>c.checked=v);
+}
+function balSelecionarSemBal(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  document.querySelectorAll('.bal-chk:not(:disabled)').forEach(c=>{
+    const p=etapa.provas[c.value];
+    c.checked=!(p?.series?.length>0);
+  });
+}
+
+function confirmarBalizamento(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const selecionadas=[...document.querySelectorAll('.bal-chk:checked')].map(c=>c.value);
+  if(!selecionadas.length){showToast('Selecione pelo menos uma prova.');return;}
+
+  const modoEl=document.querySelector('input[name="balModo"]:checked');
+  const modo=modoEl?modoEl.value:'substituir';
+
+  let geradas=0, puladas=0;
+  selecionadas.forEach(nome=>{
+    const p=etapa.provas[nome]; if(!p) return;
+    if(p.atletas.length===0) return;
+    const temBal=(p.series||[]).length>0;
+    if(temBal&&modo==='pular'){puladas++;return;}
+    _executarBal(nome);
+    geradas++;
+  });
+
+  markDirty();
+  // Re-render prova atual se foi balanceada
+  if(curProva&&selecionadas.includes(curProva)){
+    renderBal(curProva); renderStats(curProva);
+  }
+  renderProvasEtapa();
+  fecharModal('modalBalizamento');
+  const msg=[geradas?`⚡ ${geradas} balizamento(s) gerado(s)`:'', puladas?`⏭️ ${puladas} pulado(s)`:''  ].filter(Boolean).join(' · ');
+  showToast(msg||'Nenhuma alteração.');
 }
 
 function renderBal(nome){
@@ -3288,5 +3389,254 @@ function confirmarMesclar(){
   showToast(`✅ Mesclagem concluída! ${novos.length} atleta(s) transferido(s) para "${dest}"`);
 }
 </script>
+<!-- Modal Balizamento em lote -->
+<div class="mover" id="modalBalizamento">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);">
+      <h3>⚡ Gerar Balizamento</h3>
+      <button class="mdl-x" onclick="fecharModal('modalBalizamento')">×</button>
+    </div>
+    <div style="padding:14px 18px;" id="modalBalConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;">
+      <button class="btn b-out" onclick="fecharModal('modalBalizamento')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarBalizamento()">⚡ Gerar selecionadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Busca de Atletas -->
+<div class="mover" id="modalBuscaAtleta">
+  <div class="mdl" style="max-width:860px;padding:0;overflow:hidden;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);">
+      <h3>🔎 Buscar e Editar Atletas</h3>
+      <button class="mdl-x" onclick="fecharModal('modalBuscaAtleta')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:180px;">
+        <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;display:block;margin-bottom:3px;">Buscar</label>
+        <input type="text" id="buscaAtletaQ" placeholder="Nome ou escola…" oninput="renderBuscaAtleta()"
+          style="width:100%;border:1.5px solid var(--azm);border-radius:6px;padding:7px 10px;font-size:13px;"/>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;display:block;margin-bottom:3px;">Prova</label>
+        <select id="buscaAtletaProva" onchange="renderBuscaAtleta()" style="border:1px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;min-width:220px;">
+          <option value="">Todas as provas</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;display:block;margin-bottom:3px;">Escola</label>
+        <select id="buscaAtletaEscola" onchange="renderBuscaAtleta()" style="border:1px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;min-width:160px;">
+          <option value="">Todas</option>
+        </select>
+      </div>
+    </div>
+    <div id="buscaAtletaResumo" style="padding:8px 18px;font-size:11px;color:#64748b;border-bottom:1px solid var(--bd);background:#f8fafc;"></div>
+    <div id="buscaAtletaResultados" style="max-height:58vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- Modal Editar Atleta (inline) -->
+<div class="mover" id="modalEditarAtleta">
+  <div class="mdl" style="max-width:560px;">
+    <div class="mdl-hd"><h3 id="editarAtletaTitulo">✏️ Editar Atleta</h3><button class="mdl-x" onclick="fecharModal('modalEditarAtleta')">×</button></div>
+    <div id="editarAtletaConteudo"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// BUSCA E EDIÇÃO DE ATLETAS
+// ══════════════════════════════════════════════════════════
+
+function abrirBuscaAtleta(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const nomes=getProvasOrdenadas(etapa);
+
+  // Popular selects
+  document.getElementById('buscaAtletaProva').innerHTML=
+    '<option value="">Todas as provas</option>'+
+    nomes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+
+  const escolas=new Set();
+  nomes.forEach(n=>etapa.provas[n].atletas.forEach(a=>{if(a.escola) escolas.add(a.escola);}));
+  document.getElementById('buscaAtletaEscola').innerHTML=
+    '<option value="">Todas</option>'+
+    [...escolas].sort().map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
+
+  document.getElementById('buscaAtletaQ').value='';
+  renderBuscaAtleta();
+  abrirModal('modalBuscaAtleta');
+  setTimeout(()=>document.getElementById('buscaAtletaQ').focus(),100);
+}
+
+function renderBuscaAtleta(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const q=(document.getElementById('buscaAtletaQ').value||'').trim().toLowerCase();
+  const fProva=document.getElementById('buscaAtletaProva').value;
+  const fEscola=document.getElementById('buscaAtletaEscola').value;
+  const nomes=getProvasOrdenadas(etapa);
+
+  // Coleta resultados
+  const resultados=[];
+  nomes.forEach(nomeProva=>{
+    if(fProva&&nomeProva!==fProva) return;
+    const p=etapa.provas[nomeProva]; if(!p) return;
+    p.atletas.forEach((a,idx)=>{
+      if(fEscola&&a.escola!==fEscola) return;
+      if(q&&!a.nome.toLowerCase().includes(q)&&!(a.escola||'').toLowerCase().includes(q)) return;
+      resultados.push({prova:nomeProva, idx, atleta:a});
+    });
+  });
+
+  document.getElementById('buscaAtletaResumo').textContent=
+    `${resultados.length} resultado(s)${q?' para "'+q+'"':''}`;
+
+  if(!resultados.length){
+    document.getElementById('buscaAtletaResultados').innerHTML=
+      '<p style="text-align:center;color:#94a3b8;padding:30px;font-size:13px;">Nenhum atleta encontrado.</p>';
+    return;
+  }
+
+  let html=`<table class="tbl"><thead><tr>
+    <th>Nome</th><th style="width:60px;">Cat.</th><th>Escola</th>
+    <th style="width:70px;text-align:center;">Federado</th>
+    <th style="font-size:10px;">Prova</th>
+    <th style="width:70px;"></th>
+  </tr></thead><tbody>`;
+
+  resultados.forEach(({prova,idx,atleta},i)=>{
+    const fedBadge=atleta.federado
+      ?`<span class="badge badge-purple" style="font-size:9px;">FED</span>`
+      :`<span style="color:#94a3b8;font-size:10px;">—</span>`;
+    html+=`<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
+      <td style="font-weight:500;">${esc(atleta.nome)}</td>
+      <td style="text-align:center;">${esc(atleta.categoria||'')}</td>
+      <td style="font-size:11px;">${esc(atleta.escola||'')}</td>
+      <td style="text-align:center;">${fedBadge}</td>
+      <td style="font-size:10px;color:#64748b;">${esc(prova)}</td>
+      <td style="text-align:center;">
+        <button class="btn b-out" style="font-size:10px;padding:3px 9px;"
+          onclick="abrirEditarAtleta(${JSON.stringify(prova)},${idx})">✏️ Editar</button>
+      </td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('buscaAtletaResultados').innerHTML=html;
+}
+
+function abrirEditarAtleta(nomeProva, idx){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const p=etapa.provas[nomeProva]; if(!p) return;
+  const a=p.atletas[idx]; if(!a) return;
+  const nomes=getProvasOrdenadas(etapa);
+
+  document.getElementById('editarAtletaTitulo').textContent=`✏️ Editar — ${a.nome}`;
+
+  // Opções de provas para mover
+  const provasOpts=nomes.map(n=>
+    `<option value="${esc(n)}" ${n===nomeProva?'selected':''}>${esc(n)}</option>`).join('');
+
+  document.getElementById('editarAtletaConteudo').innerHTML=`
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#1e40af;">
+      Prova atual: <strong>${esc(nomeProva)}</strong>
+    </div>
+    <div class="frow">
+      <div class="fg grow"><label>Nome *</label>
+        <input type="text" id="eaNome" value="${esc(a.nome)}"/>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Categoria</label>
+        <input type="text" id="eaCat" value="${esc(a.categoria||'')}" style="width:90px;"/>
+      </div>
+      <div class="fg grow"><label>Escola</label>
+        <input type="text" id="eaEscola" value="${esc(a.escola||'')}"/>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Tempo de referência</label>
+        <input type="text" id="eaTRef" value="${esc(a.tempoRef||'')}" placeholder="00:00,00"/>
+      </div>
+      <div class="fg">
+        <label>Federado / Vinculado</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--bd);border-radius:6px;background:#fff;" id="eaFedLabel">
+          <input type="checkbox" id="eaFederado" ${a.federado?'checked':''} style="width:15px;height:15px;accent-color:#7c3aed;"
+            onchange="this.closest('label').style.borderColor=this.checked?'#7c3aed':'var(--bd)';this.closest('label').style.background=this.checked?'#f3e8ff':'#fff'"/>
+          <span style="font-size:12px;font-weight:600;">${a.federado?'Federado':'Não federado'}</span>
+        </label>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Mover para outra prova</label>
+        <select id="eaProva" style="border:1.5px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;">
+          ${provasOpts}
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
+      <button class="btn b-red" style="font-size:11px;" onclick="excluirAtletaEditar(${JSON.stringify(nomeProva)},${idx})">🗑️ Excluir atleta</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn b-out" onclick="fecharModal('modalEditarAtleta')">Cancelar</button>
+        <button class="btn b-pri" onclick="salvarEdicaoAtleta(${JSON.stringify(nomeProva)},${idx})">💾 Salvar</button>
+      </div>
+    </div>`;
+
+  // Aplica cor inicial no fedLabel
+  if(a.federado){
+    setTimeout(()=>{
+      const lbl=document.getElementById('eaFedLabel');
+      if(lbl){lbl.style.borderColor='#7c3aed';lbl.style.background='#f3e8ff';}
+    },50);
+  }
+  abrirModal('modalEditarAtleta');
+}
+
+function salvarEdicaoAtleta(nomeProvaAtual, idx){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const pAtual=etapa.provas[nomeProvaAtual]; if(!pAtual) return;
+  const a=pAtual.atletas[idx]; if(!a) return;
+
+  const nome=toTitle((document.getElementById('eaNome').value||'').trim());
+  if(!nome){alert('Nome obrigatório.');return;}
+  const cat=(document.getElementById('eaCat').value||'').trim().toUpperCase();
+  const escola=toTitle((document.getElementById('eaEscola').value||'').trim());
+  const tRef=(document.getElementById('eaTRef').value||'').trim();
+  const fed=!!document.getElementById('eaFederado').checked;
+  const novaProva=document.getElementById('eaProva').value;
+
+  // Atualiza campos
+  a.nome=nome; a.categoria=cat; a.escola=escola; a.tempoRef=tRef; a.federado=fed;
+
+  // Move de prova se necessário
+  if(novaProva&&novaProva!==nomeProvaAtual){
+    const pDest=etapa.provas[novaProva]; if(!pDest){alert('Prova destino não encontrada.');return;}
+    // Remove da atual e adiciona no destino
+    pAtual.atletas.splice(idx,1);
+    pDest.atletas.push({...a});
+    showToast(`✅ ${nome} movido(a) para "${novaProva}"`);
+  } else {
+    showToast(`✅ ${nome} atualizado(a)`);
+  }
+
+  markDirty();
+  fecharModal('modalEditarAtleta');
+  renderBuscaAtleta(); // atualiza resultados da busca
+  if(curProva===nomeProvaAtual||curProva===novaProva) renderAll(curProva);
+}
+
+function excluirAtletaEditar(nomeProva, idx){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const p=etapa.provas[nomeProva]; if(!p) return;
+  const a=p.atletas[idx];
+  if(!confirm(`Excluir ${a?.nome} de "${nomeProva}"?`)) return;
+  p.atletas.splice(idx,1);
+  markDirty();
+  fecharModal('modalEditarAtleta');
+  renderBuscaAtleta();
+  if(curProva===nomeProva) renderAll(curProva);
+  showToast('Atleta excluído.');
+}
+</script>
 </body>
-</html>   
+</html>
