@@ -2411,7 +2411,7 @@ function trocarCodigoEscola(){
 // ══════════════════════════════════════════════════════════
 // CARTÕES DE INSCRIÇÃO
 // ══════════════════════════════════════════════════════════
-const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}.folha:last-child{page-break-after:auto;}.cartao{border:.5pt solid #888;padding:3pt 4pt 2pt;display:flex;flex-direction:column;overflow:hidden;height:100%;}.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;color:#444;line-height:1.1;margin-bottom:1pt;}.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;margin-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.row4{display:grid;grid-template-columns:2fr 0.7fr 0.7fr 1.6fr;gap:2pt;margin-bottom:2pt;}.row4 .val{font-size:10pt;margin-bottom:0;}.val-fed{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.fed-sim{background:#e9d5ff;color:#5b21b6;padding:0pt 2pt;border-radius:1pt;}.sep{border:none;border-top:.5pt solid #aaa;margin:1.5pt 0 1.5pt;}.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.4px;margin-bottom:1.5pt;color:#333;}.cron-wrap{flex:1;display:flex;flex-direction:column;min-height:0;}table{width:100%;border-collapse:collapse;flex:1;height:100%;}th{border:.5pt solid #777;padding:2pt 1pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}td.n{background:#e8e8e8;font-weight:bold;width:11pt;font-size:10pt;}@page{size:A4 landscape;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}.folha:last-child{page-break-after:auto;}.cartao{border:.5pt solid #888;padding:3pt 4pt 2pt;display:flex;flex-direction:column;overflow:hidden;height:100%;}.cartao-vazio{border:.5pt solid #ddd;background:#fafafa;}.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;color:#444;line-height:1.1;margin-bottom:1pt;}.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;margin-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.row4{display:grid;grid-template-columns:2fr 0.7fr 0.7fr 1.6fr;gap:2pt;margin-bottom:2pt;}.row4 .val{font-size:10pt;margin-bottom:0;}.val-fed{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.fed-sim{background:#e9d5ff;color:#5b21b6;padding:0pt 2pt;border-radius:1pt;}.sep{border:none;border-top:.5pt solid #aaa;margin:1.5pt 0 1.5pt;}.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.4px;margin-bottom:1.5pt;color:#333;}.cron-wrap{flex:1;display:flex;flex-direction:column;min-height:0;}table{width:100%;border-collapse:collapse;flex:1;height:100%;}th{border:.5pt solid #777;padding:2pt 1pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}td.n{background:#e8e8e8;font-weight:bold;width:11pt;font-size:10pt;}@page{size:A4 landscape;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
 
 function buildCartoesHtml(cartoes){
   const PF=16; let html='';
@@ -2419,17 +2419,15 @@ function buildCartoesHtml(cartoes){
     const g=cartoes.slice(i,i+PF); while(g.length<PF) g.push(null);
     html+=`<div class="folha">`;
     g.forEach(c=>{
-      const n=c?esc(c.nome):'&nbsp;', pr=c?esc(c.prova):'&nbsp;', sr=c?String(c.serie):'&nbsp;', ra=c?String(c.raia):'&nbsp;';
-      const vc=c?'val':'val" style="color:transparent;border-bottom:.5pt solid #aaa;';
-      const fedVal=c?(c.federado?'<span class="fed-sim">⭐ Federado/Vinc.</span>':'Não fed.'):'&nbsp;';
-      const fedStyle=c?'val-fed':'val-fed" style="color:transparent;border-bottom:.5pt solid #aaa;';
+      if(!c){ html+=`<div class="cartao-vazio"></div>`; return; }
+      const fedVal=c.federado?'<span class="fed-sim">⭐ Federado/Vinc.</span>':'Não fed.';
       html+=`<div class="cartao">
-        <div class="lbl">Nome do Atleta</div><div class="${vc}">${n}</div>
+        <div class="lbl">Nome do Atleta</div><div class="val">${esc(c.nome)}</div>
         <div class="row4">
-          <div><div class="lbl">Prova</div><div class="${vc}">${pr}</div></div>
-          <div><div class="lbl">Série</div><div class="${vc}">${sr}</div></div>
-          <div><div class="lbl">Raia</div><div class="${vc}">${ra}</div></div>
-          <div><div class="lbl">Vínculo</div><div class="${fedStyle}">${fedVal}</div></div>
+          <div><div class="lbl">Prova</div><div class="val">${esc(c.prova)}</div></div>
+          <div><div class="lbl">Série</div><div class="val">${c.serie}</div></div>
+          <div><div class="lbl">Raia</div><div class="val">${c.raia}</div></div>
+          <div><div class="lbl">Vínculo</div><div class="val-fed">${fedVal}</div></div>
         </div>
         <hr class="sep"/><div class="cron-wrap"><div class="ct">Cronômetro</div>
         <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>
@@ -3964,4 +3962,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>   
+</html>
