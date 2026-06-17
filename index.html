@@ -1,4 +1,4 @@
-<!DOCTYPE html>    
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -613,22 +613,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
     <div class="frow"><div class="fg grow"><label>Categoria(s) — digite ou use os atalhos abaixo</label><input type="text" id="provaCategoria" placeholder="Ex: A12 — ou A9, A10, A11, A12"/></div></div>
     <!-- Atalhos de categoria -->
     <div style="margin-bottom:12px;">
-      <div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Categorias LNE rápidas:</div>
+      <div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;">Categorias LNE:</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button type="button" onclick="setCat('A7, A8')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A7–A8</button>
-        <button type="button" onclick="setCat('A9, A10, A11, A12')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A9–A12</button>
-        <button type="button" onclick="setCat('A13, A14, A15, A16-17')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A13–A16-17</button>
-        <span style="width:1px;background:var(--bd);align-self:stretch;margin:0 2px;"></span>
-        <button type="button" onclick="setCat('A7')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A7</button>
-        <button type="button" onclick="setCat('A8')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A8</button>
-        <button type="button" onclick="setCat('A9')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A9</button>
-        <button type="button" onclick="setCat('A10')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A10</button>
-        <button type="button" onclick="setCat('A11')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A11</button>
-        <button type="button" onclick="setCat('A12')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A12</button>
-        <button type="button" onclick="setCat('A13')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A13</button>
-        <button type="button" onclick="setCat('A14')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A14</button>
-        <button type="button" onclick="setCat('A15')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A15</button>
-        <button type="button" onclick="setCat('A16-17')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A16-17</button>
+        <button type="button" onclick="setCat('A7')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A7</button>
+        <button type="button" onclick="setCat('A8')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A8</button>
+        <button type="button" onclick="setCat('A9')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A9</button>
+        <button type="button" onclick="setCat('A10')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A10</button>
+        <button type="button" onclick="setCat('A11')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A11</button>
+        <button type="button" onclick="setCat('A12')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A12</button>
+        <button type="button" onclick="setCat('A13')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A13</button>
+        <button type="button" onclick="setCat('A14')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A14</button>
+        <button type="button" onclick="setCat('A15')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A15</button>
+        <button type="button" onclick="setCat('A16-17')" style="padding:3px 10px;border-radius:14px;border:1px solid var(--bd);background:#fff;font-size:11px;cursor:pointer;font-weight:600;" onmouseover="this.style.background='var(--azc)'" onmouseout="this.style.background='#fff'">A16-17</button>
       </div>
       <div style="margin-top:8px;font-size:11px;color:#64748b;">
         Anos de nascimento: A7=2019 · A8=2018 · A9=2017 · A10=2016 · A11=2015 · A12=2014 · A13=2013 · A14=2012 · A15=2011 · A16-17=2009-2010
@@ -931,28 +927,83 @@ function abrirModalNovaEtapa(){
   abrirModal('modalNovaEtapa');
   setTimeout(()=>document.getElementById('etapaNome').focus(),100);
 }
-// ── Provas padrão LNE (20 provas do regulamento — ordem exata do PDF) ──
+// ── Provas padrão LNE (72 provas — por categoria individual) ──
 const PROVAS_PADRAO_LNE = [
-  {nome:'1ª Prova — 25m Livre A7-A8 Feminino',   distancia:'25m',  estilo:'Livre',  genero:'Feminino',  categoria:'A7, A8'},
-  {nome:'2ª Prova — 25m Livre A7-A8 Masculino',  distancia:'25m',  estilo:'Livre',  genero:'Masculino', categoria:'A7, A8'},
-  {nome:'3ª Prova — 25m Costas A7-A8 Feminino',  distancia:'25m',  estilo:'Costas', genero:'Feminino',  categoria:'A7, A8'},
-  {nome:'4ª Prova — 25m Costas A7-A8 Masculino', distancia:'25m',  estilo:'Costas', genero:'Masculino', categoria:'A7, A8'},
-  {nome:'5ª Prova — 50m Livre A9-A12 Feminino',   distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'6ª Prova — 50m Livre A9-A12 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'7ª Prova — 50m Costas A9-A12 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'8ª Prova — 50m Costas A9-A12 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'9ª Prova — 50m Peito A9-A12 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'10ª Prova — 50m Peito A9-A12 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'11ª Prova — 100m Livre A9-A12 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A9, A10, A11, A12'},
-  {nome:'12ª Prova — 100m Livre A9-A12 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A9, A10, A11, A12'},
-  {nome:'13ª Prova — 50m Livre A13-A17 Feminino',   distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'14ª Prova — 50m Livre A13-A17 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'15ª Prova — 50m Costas A13-A17 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'16ª Prova — 50m Costas A13-A17 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'17ª Prova — 50m Peito A13-A17 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'18ª Prova — 50m Peito A13-A17 Masculino',  distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
-  {nome:'19ª Prova — 100m Livre A13-A17 Feminino',  distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A13, A14, A15, A16-17'},
-  {nome:'20ª Prova — 100m Livre A13-A17 Masculino', distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A13, A14, A15, A16-17'},
+  // 1ª Etapa — A7 e A8 (8 provas — 25m Livre e Costas)
+  {nome:'1ª Prova — 25m Livre A7 Feminino',    distancia:'25m',  estilo:'Livre',  genero:'Feminino',  categoria:'A7'},
+  {nome:'2ª Prova — 25m Livre A7 Masculino',   distancia:'25m',  estilo:'Livre',  genero:'Masculino', categoria:'A7'},
+  {nome:'3ª Prova — 25m Livre A8 Feminino',    distancia:'25m',  estilo:'Livre',  genero:'Feminino',  categoria:'A8'},
+  {nome:'4ª Prova — 25m Livre A8 Masculino',   distancia:'25m',  estilo:'Livre',  genero:'Masculino', categoria:'A8'},
+  {nome:'5ª Prova — 25m Costas A7 Feminino',   distancia:'25m',  estilo:'Costas', genero:'Feminino',  categoria:'A7'},
+  {nome:'6ª Prova — 25m Costas A7 Masculino',  distancia:'25m',  estilo:'Costas', genero:'Masculino', categoria:'A7'},
+  {nome:'7ª Prova — 25m Costas A8 Feminino',   distancia:'25m',  estilo:'Costas', genero:'Feminino',  categoria:'A8'},
+  {nome:'8ª Prova — 25m Costas A8 Masculino',  distancia:'25m',  estilo:'Costas', genero:'Masculino', categoria:'A8'},
+  // 2ª Etapa — A9–A12 (32 provas — 50m Livre, Costas, Peito + 100m Livre)
+  {nome:'9ª Prova — 50m Livre A9 Feminino',    distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A9'},
+  {nome:'10ª Prova — 50m Livre A9 Masculino',  distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A9'},
+  {nome:'11ª Prova — 50m Livre A10 Feminino',  distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A10'},
+  {nome:'12ª Prova — 50m Livre A10 Masculino', distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A10'},
+  {nome:'13ª Prova — 50m Livre A11 Feminino',  distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A11'},
+  {nome:'14ª Prova — 50m Livre A11 Masculino', distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A11'},
+  {nome:'15ª Prova — 50m Livre A12 Feminino',  distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A12'},
+  {nome:'16ª Prova — 50m Livre A12 Masculino', distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A12'},
+  {nome:'17ª Prova — 50m Costas A9 Feminino',  distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A9'},
+  {nome:'18ª Prova — 50m Costas A9 Masculino', distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A9'},
+  {nome:'19ª Prova — 50m Costas A10 Feminino', distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A10'},
+  {nome:'20ª Prova — 50m Costas A10 Masculino',distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A10'},
+  {nome:'21ª Prova — 50m Costas A11 Feminino', distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A11'},
+  {nome:'22ª Prova — 50m Costas A11 Masculino',distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A11'},
+  {nome:'23ª Prova — 50m Costas A12 Feminino', distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A12'},
+  {nome:'24ª Prova — 50m Costas A12 Masculino',distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A12'},
+  {nome:'25ª Prova — 50m Peito A9 Feminino',   distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A9'},
+  {nome:'26ª Prova — 50m Peito A9 Masculino',  distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A9'},
+  {nome:'27ª Prova — 50m Peito A10 Feminino',  distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A10'},
+  {nome:'28ª Prova — 50m Peito A10 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A10'},
+  {nome:'29ª Prova — 50m Peito A11 Feminino',  distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A11'},
+  {nome:'30ª Prova — 50m Peito A11 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A11'},
+  {nome:'31ª Prova — 50m Peito A12 Feminino',  distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A12'},
+  {nome:'32ª Prova — 50m Peito A12 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A12'},
+  {nome:'33ª Prova — 100m Livre A9 Feminino',  distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A9'},
+  {nome:'34ª Prova — 100m Livre A9 Masculino', distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A9'},
+  {nome:'35ª Prova — 100m Livre A10 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A10'},
+  {nome:'36ª Prova — 100m Livre A10 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A10'},
+  {nome:'37ª Prova — 100m Livre A11 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A11'},
+  {nome:'38ª Prova — 100m Livre A11 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A11'},
+  {nome:'39ª Prova — 100m Livre A12 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A12'},
+  {nome:'40ª Prova — 100m Livre A12 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A12'},
+  // 3ª Etapa — A13–A16-17 (32 provas — 50m Livre, Costas, Peito + 100m Livre)
+  {nome:'41ª Prova — 50m Livre A13 Feminino',     distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A13'},
+  {nome:'42ª Prova — 50m Livre A13 Masculino',    distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A13'},
+  {nome:'43ª Prova — 50m Livre A14 Feminino',     distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A14'},
+  {nome:'44ª Prova — 50m Livre A14 Masculino',    distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A14'},
+  {nome:'45ª Prova — 50m Livre A15 Feminino',     distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A15'},
+  {nome:'46ª Prova — 50m Livre A15 Masculino',    distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A15'},
+  {nome:'47ª Prova — 50m Livre A16-17 Feminino',  distancia:'50m',  estilo:'Livre',  genero:'Feminino',  categoria:'A16-17'},
+  {nome:'48ª Prova — 50m Livre A16-17 Masculino', distancia:'50m',  estilo:'Livre',  genero:'Masculino', categoria:'A16-17'},
+  {nome:'49ª Prova — 50m Costas A13 Feminino',    distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A13'},
+  {nome:'50ª Prova — 50m Costas A13 Masculino',   distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A13'},
+  {nome:'51ª Prova — 50m Costas A14 Feminino',    distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A14'},
+  {nome:'52ª Prova — 50m Costas A14 Masculino',   distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A14'},
+  {nome:'53ª Prova — 50m Costas A15 Feminino',    distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A15'},
+  {nome:'54ª Prova — 50m Costas A15 Masculino',   distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A15'},
+  {nome:'55ª Prova — 50m Costas A16-17 Feminino', distancia:'50m',  estilo:'Costas', genero:'Feminino',  categoria:'A16-17'},
+  {nome:'56ª Prova — 50m Costas A16-17 Masculino',distancia:'50m',  estilo:'Costas', genero:'Masculino', categoria:'A16-17'},
+  {nome:'57ª Prova — 50m Peito A13 Feminino',     distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A13'},
+  {nome:'58ª Prova — 50m Peito A13 Masculino',    distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A13'},
+  {nome:'59ª Prova — 50m Peito A14 Feminino',     distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A14'},
+  {nome:'60ª Prova — 50m Peito A14 Masculino',    distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A14'},
+  {nome:'61ª Prova — 50m Peito A15 Feminino',     distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A15'},
+  {nome:'62ª Prova — 50m Peito A15 Masculino',    distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A15'},
+  {nome:'63ª Prova — 50m Peito A16-17 Feminino',  distancia:'50m',  estilo:'Peito',  genero:'Feminino',  categoria:'A16-17'},
+  {nome:'64ª Prova — 50m Peito A16-17 Masculino', distancia:'50m',  estilo:'Peito',  genero:'Masculino', categoria:'A16-17'},
+  {nome:'65ª Prova — 100m Livre A13 Feminino',    distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A13'},
+  {nome:'66ª Prova — 100m Livre A13 Masculino',   distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A13'},
+  {nome:'67ª Prova — 100m Livre A14 Feminino',    distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A14'},
+  {nome:'68ª Prova — 100m Livre A14 Masculino',   distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A14'},
+  {nome:'69ª Prova — 100m Livre A15 Feminino',    distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A15'},
+  {nome:'70ª Prova — 100m Livre A15 Masculino',   distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A15'},
+  {nome:'71ª Prova — 100m Livre A16-17 Feminino', distancia:'100m', estilo:'Livre',  genero:'Feminino',  categoria:'A16-17'},
+  {nome:'72ª Prova — 100m Livre A16-17 Masculino',distancia:'100m', estilo:'Livre',  genero:'Masculino', categoria:'A16-17'},
 ];
 
 // Categorias LNE e anos de nascimento correspondentes
@@ -3051,16 +3102,10 @@ function exportarRelatorioXlsx(){
 // ══════════════════════════════════════════════════════════
 
 // Mapa categoria → provas permitidas (prefixos dos nomes LNE)
-const CAT_GRUPO = {
-  'A7':'A7A8','A8':'A7A8',
-  'A9':'A9A12','A10':'A9A12','A11':'A9A12','A12':'A9A12',
-  'A13':'A13A17','A14':'A13A17','A15':'A13A17','A16-17':'A13A17',
-};
-const GRUPO_PREFIXOS = {
-  'A7A8':  ['1ª Prova','2ª Prova','3ª Prova','4ª Prova'],
-  'A9A12': ['5ª Prova','6ª Prova','7ª Prova','8ª Prova','9ª Prova','10ª Prova','11ª Prova','12ª Prova'],
-  'A13A17':['13ª Prova','14ª Prova','15ª Prova','16ª Prova','17ª Prova','18ª Prova','19ª Prova','20ª Prova'],
-};
+// Auditoria: verifica incompatibilidade de categoria na prova
+// Extrai a categoria do nome da prova (ex: "9ª Prova — 50m Livre A9 Feminino" → "A9")
+const CAT_GRUPO = {}; // não usado mais — verificação é direta por nome da prova
+const GRUPO_PREFIXOS = {}; // idem
 
 function abrirAuditoria(){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
@@ -3097,17 +3142,18 @@ function rodarAuditoria(etapa){
     });
 
     // ── 2. Categoria incompatível com a prova ──
-    const grupoProva=Object.entries(GRUPO_PREFIXOS).find(([,pfxs])=>pfxs.some(px=>nomeProva.startsWith(px)))?.[0];
-    if(grupoProva){
+    // Extrai categoria esperada do nome da prova (ex: "9ª Prova — 50m Livre A9 Feminino" → "A9")
+    const mCat=nomeProva.match(/\b(A\d+(?:-\d+)?)\s+(Feminino|Masculino)/i);
+    const catEsperada=mCat?mCat[1].toUpperCase():null;
+    if(catEsperada){
       p.atletas.forEach(a=>{
         const cat=(a.categoria||'').trim().toUpperCase();
-        const grupoAtl=CAT_GRUPO[cat]||CAT_GRUPO[cat.replace('-','')]||null;
-        if(cat&&grupoAtl&&grupoAtl!==grupoProva){
+        if(cat&&cat!==catEsperada){
           erros.push({
             tipo:'categoria', gravidade:'erro',
             prova:nomeProva,
             msg:`<strong>${esc(a.nome)}</strong> — categoria <strong>${esc(cat)}</strong> incompatível`,
-            detalhe:`Esta prova é para ${grupoProva.replace('A7A8','A7–A8').replace('A9A12','A9–A12').replace('A13A17','A13–A16-17')}, mas o atleta é ${esc(cat)}`,
+            detalhe:`Esta prova é para ${catEsperada}, mas o atleta é ${esc(cat)}`,
           });
         }
       });
