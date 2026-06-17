@@ -215,6 +215,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 @keyframes spin{to{transform:rotate(360deg);}}
 
 @media print{.no-print{display:none!important;}}
+.etapa-sticky>span[style*='letter-spacing']{display:flex;align-items:center;flex-shrink:0;}
+@media(max-width:768px){.etapa-sticky>span[style*='letter-spacing']{display:none;}}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 
 /* ══════════════════════════════════════
@@ -400,21 +402,28 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
   <!-- Sticky bar etapa -->
   <div class="etapa-sticky no-print" id="etapaSticky">
-    <span id="stickyEtapaNome" style="font-size:12px;font-weight:700;color:var(--az);margin-right:4px;"></span>
+    <span id="stickyEtapaNome" style="font-size:11px;font-weight:700;color:var(--az);margin-right:2px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;"></span>
     <div class="sep"></div>
-    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Gerar Balizamento</button>
+    <!-- Gerar -->
+    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Gerar</span>
+    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Balizamento</button>
     <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Classificação</button>
     <button class="btn" style="background:#6b7280;color:#fff;" onclick="apagarTempos(curProva)">⏱️ Apagar Tempos</button>
     <div class="sep"></div>
-    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Balizamento</button>
-    <button class="btn b-cya" onclick="printClass(curProva)">🖨️ Classificação</button>
+    <!-- Imprimir -->
+    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Imprimir</span>
+    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Bal.</button>
+    <button class="btn b-cya" onclick="printClass(curProva)">🖨️ Class.</button>
     <button class="btn" style="background:#166534;color:#fff;" onclick="abrirSumula()">📄 Súmula</button>
     <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirCartoesProva(curProva)">🪪 Cartões</button>
     <div class="sep"></div>
+    <!-- Atletas -->
+    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Atletas</span>
     <button class="btn b-out" onclick="addAtleta(curProva)">+ Atleta</button>
     <button class="btn b-out" onclick="abrirBuscaAtleta()">🔎 Buscar</button>
     <button class="btn b-out" onclick="abrirTelaCheia(curProva)">⛶ Tempos</button>
-    <button class="btn b-red" style="font-size:11px;padding:5px 10px;" onclick="excluirProva(curProva)">🗑️ Excluir</button>
+    <div class="sep"></div>
+    <button class="btn b-red" style="font-size:11px;padding:5px 10px;" onclick="excluirProva(curProva)">🗑️ Excluir Prova</button>
   </div>
 
   <!-- PÁGINA ETAPAS -->
@@ -440,19 +449,37 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
           <h2 style="font-size:15px;font-weight:700;color:var(--az);" id="balEtapaNome">Etapa</h2>
           <p style="font-size:11px;color:#64748b;" id="balEtapaInfo"></p>
         </div>
-        <div style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;">
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+
+          <!-- Provas -->
+          <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;">Provas</span>
           <button class="btn b-pri" onclick="abrirModalNovaProva()">+ Nova Prova</button>
-          <button class="btn" style="background:#0f766e;color:#fff;" onclick="criarProvasPadraoLNE()">🏊 Provas padrão LNE</button>
+          <button class="btn" style="background:#0f766e;color:#fff;" onclick="criarProvasPadraoLNE()">🏊 Padrão LNE</button>
           <button class="btn" style="background:#475569;color:#fff;" onclick="abrirReordenar()">↕️ Reordenar</button>
+          <button class="btn" style="background:#7c3aed;color:#fff;" onclick="abrirMesclar()">🔀 Mesclar</button>
+
+          <div class="sep"></div>
+
+          <!-- Atletas -->
+          <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;">Atletas</span>
           <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
           <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="importarExcel(this)">
-          <button class="btn" style="background:#0e7490;color:#fff;" onclick="abrirRelatorio()">📊 Relatório</button>
-          <button class="btn" style="background:#7c3aed;color:#fff;" onclick="abrirMesclar()">🔀 Mesclar Provas</button>
           <button class="btn" style="background:#dc2626;color:#fff;" onclick="abrirAuditoria()">🔍 Auditoria</button>
-          <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar Etapa</button>
+
+          <div class="sep"></div>
+
+          <!-- Relatórios -->
+          <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;">Relatórios</span>
+          <button class="btn" style="background:#0e7490;color:#fff;" onclick="abrirRelatorio()">📊 Atletas</button>
+          <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar</button>
           <button class="btn" style="background:#1e40af;color:#fff;" onclick="abrirPlacarGeral()">🏆 Ranking</button>
-          <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirTodosCartoes()">🪪 Todos Cartões</button>
-          <button id="btnLiberarBal" class="btn" style="background:#15803d;color:#fff;" onclick="toggleLiberarBalizamento()">🔓 Liberar balizamento p/ escolas</button>
+          <button class="btn" style="background:#166534;color:#fff;" onclick="imprimirTodosCartoes()">🪪 Todos Cartões</button>
+
+          <div class="sep"></div>
+
+          <!-- Configuração -->
+          <button id="btnLiberarBal" class="btn" style="background:#15803d;color:#fff;" onclick="toggleLiberarBalizamento()">🔓 Liberar escolas</button>
+
         </div>
       </div>
       <div class="card" id="provasContainer" style="display:none;">
@@ -3488,8 +3515,9 @@ function renderBuscaAtleta(){
     });
   });
 
+  const atletasUniq=new Set(resultados.map(r=>r.atleta.nome.toLowerCase().trim())).size;
   document.getElementById('buscaAtletaResumo').textContent=
-    `${resultados.length} resultado(s)${q?' para "'+q+'"':''}`;
+    `${atletasUniq} atleta(s) · ${resultados.length} inscrição(ões)${q?' para "'+q+'"':''}`;
 
   if(!resultados.length){
     document.getElementById('buscaAtletaResultados').innerHTML=
@@ -3497,32 +3525,152 @@ function renderBuscaAtleta(){
     return;
   }
 
-  let html=`<table class="tbl"><thead><tr>
-    <th>Nome</th><th style="width:60px;">Cat.</th><th>Escola</th>
-    <th style="width:70px;text-align:center;">Federado</th>
-    <th style="font-size:10px;">Prova</th>
-    <th style="width:70px;"></th>
-  </tr></thead><tbody>`;
+  // Modo agrupado: se filtro de escola está ativo OU não há filtro de prova → agrupa por atleta
+  const modoAgrupado = fEscola || (!fProva && !q) || (q && atletasUniq < resultados.length);
 
-  resultados.forEach(({prova,idx,atleta},i)=>{
-    const fedBadge=atleta.federado
-      ?`<span class="badge badge-purple" style="font-size:9px;">FED</span>`
-      :`<span style="color:#94a3b8;font-size:10px;">—</span>`;
-    html+=`<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
-      <td style="font-weight:500;">${esc(atleta.nome)}</td>
-      <td style="text-align:center;">${esc(atleta.categoria||'')}</td>
-      <td style="font-size:11px;">${esc(atleta.escola||'')}</td>
-      <td style="text-align:center;">${fedBadge}</td>
-      <td style="font-size:10px;color:#64748b;">${esc(prova)}</td>
-      <td style="text-align:center;">
-        <button class="btn b-out" style="font-size:10px;padding:3px 9px;"
-          data-prova="${esc(prova)}" data-idx="${idx}"
-          onclick="abrirEditarAtleta(this.dataset.prova,+this.dataset.idx)">✏️ Editar</button>
-      </td>
-    </tr>`;
-  });
-  html+=`</tbody></table>`;
+  let html='';
+  if(modoAgrupado && !fProva){
+    // Agrupa por nome — atleta aparece 1x com todas as provas ao lado
+    const porAtleta={};
+    resultados.forEach(r=>{
+      const k=r.atleta.nome.toLowerCase().trim();
+      if(!porAtleta[k]) porAtleta[k]={...r.atleta, inscricoes:[]};
+      porAtleta[k].inscricoes.push({prova:r.prova, idx:r.idx});
+    });
+    const lista=Object.values(porAtleta).sort((a,b)=>
+      (a.escola||'').localeCompare(b.escola||'','pt-BR')||a.nome.localeCompare(b.nome,'pt-BR'));
+
+    html=`<table class="tbl"><thead><tr>
+      <th>Nome</th><th style="width:60px;">Cat.</th><th style="width:140px;">Escola</th>
+      <th style="width:60px;text-align:center;">Fed.</th>
+      <th>Provas inscritas</th>
+      <th style="width:90px;"></th>
+    </tr></thead><tbody>`;
+
+    lista.forEach((a,i)=>{
+      const fedBadge=a.federado
+        ?`<span class="badge badge-purple" style="font-size:9px;">FED</span>`
+        :`<span style="color:#94a3b8;font-size:10px;">—</span>`;
+      const provasBadges=a.inscricoes.map(ins=>
+        `<span style="display:inline-block;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;font-size:10px;margin:1px 2px;">${esc(ins.prova)}</span>`
+      ).join('');
+      // Para editar usa a primeira inscrição como referência
+      const ref=a.inscricoes[0];
+      html+=`<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
+        <td style="font-weight:600;">${esc(a.nome)}</td>
+        <td style="text-align:center;">${esc(a.categoria||'')}</td>
+        <td style="font-size:11px;">${esc(a.escola||'')}</td>
+        <td style="text-align:center;">${fedBadge}</td>
+        <td style="line-height:1.8;padding:5px 9px;">${provasBadges}</td>
+        <td style="text-align:center;white-space:nowrap;">
+          <button class="btn b-out" style="font-size:10px;padding:3px 7px;"
+            data-prova="${esc(ref.prova)}" data-idx="${ref.idx}"
+            onclick="abrirEditarAtleta(this.dataset.prova,+this.dataset.idx)" title="Editar dados">✏️</button>
+          <button class="btn b-pri" style="font-size:10px;padding:3px 7px;"
+            data-nome="${esc(a.nome)}" data-prova="${esc(ref.prova)}" data-idx="${ref.idx}"
+            onclick="abrirIncluirEmProva(this.dataset.nome,this.dataset.prova,+this.dataset.idx)" title="Incluir em outra prova">＋🏊</button>
+        </td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  } else {
+    // Modo lista — filtro de prova ativo, mostra cada inscrição separada
+    html=`<table class="tbl"><thead><tr>
+      <th>Nome</th><th style="width:60px;">Cat.</th><th>Escola</th>
+      <th style="width:60px;text-align:center;">Fed.</th>
+      <th>Prova</th>
+      <th style="width:110px;"></th>
+    </tr></thead><tbody>`;
+
+    resultados.forEach(({prova,idx,atleta},i)=>{
+      const fedBadge=atleta.federado
+        ?`<span class="badge badge-purple" style="font-size:9px;">FED</span>`
+        :`<span style="color:#94a3b8;font-size:10px;">—</span>`;
+      html+=`<tr style="background:${i%2===0?'#fff':'#f8fafc'}">
+        <td style="font-weight:500;">${esc(atleta.nome)}</td>
+        <td style="text-align:center;">${esc(atleta.categoria||'')}</td>
+        <td style="font-size:11px;">${esc(atleta.escola||'')}</td>
+        <td style="text-align:center;">${fedBadge}</td>
+        <td style="font-size:10px;color:#64748b;">${esc(prova)}</td>
+        <td style="text-align:center;white-space:nowrap;">
+          <button class="btn b-out" style="font-size:10px;padding:3px 7px;"
+            data-prova="${esc(prova)}" data-idx="${idx}"
+            onclick="abrirEditarAtleta(this.dataset.prova,+this.dataset.idx)" title="Editar">✏️</button>
+          <button class="btn b-pri" style="font-size:10px;padding:3px 7px;"
+            data-nome="${esc(atleta.nome)}" data-prova="${esc(prova)}" data-idx="${idx}"
+            onclick="abrirIncluirEmProva(this.dataset.nome,this.dataset.prova,+this.dataset.idx)" title="Incluir em outra prova">＋🏊</button>
+        </td>
+      </tr>`;
+    });
+    html+=`</tbody></table>`;
+  }
   document.getElementById('buscaAtletaResultados').innerHTML=html;
+}
+
+// Modal rápido para incluir em outra prova
+function abrirIncluirEmProva(nomeAtleta, nomeProvaRef, idxRef){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const pRef=etapa.provas[nomeProvaRef]; if(!pRef) return;
+  const atleta=pRef.atletas[idxRef]; if(!atleta) return;
+  const nomes=getProvasOrdenadas(etapa);
+
+  // Provas onde NÃO está inscrito
+  const inscritasNomes=new Set();
+  nomes.forEach(np=>{
+    if(etapa.provas[np].atletas.some(a=>a.nome.toLowerCase().trim()===nomeAtleta.toLowerCase().trim()))
+      inscritasNomes.add(np);
+  });
+  const disponiveis=nomes.filter(n=>!inscritasNomes.has(n));
+
+  if(!disponiveis.length){
+    showToast(`⚠️ ${nomeAtleta} já está em todas as provas.`);
+    return;
+  }
+
+  const opts=disponiveis.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  const jaInscritas=[...inscritasNomes].map(n=>`<span style="display:inline-block;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;font-size:10px;margin:1px;">${esc(n)}</span>`).join('');
+
+  document.getElementById('incluirProvaModal')?.remove();
+  const el=document.createElement('div');
+  el.className='mover open'; el.id='incluirProvaModal';
+  el.innerHTML=`<div class="mdl" style="max-width:500px;">
+    <div class="mdl-hd">
+      <h3>＋🏊 Incluir em outra prova</h3>
+      <button class="mdl-x" onclick="document.getElementById('incluirProvaModal').remove()">×</button>
+    </div>
+    <p style="font-size:12px;font-weight:600;margin-bottom:8px;">${esc(nomeAtleta)}</p>
+    ${inscritasNomes.size?`<div style="margin-bottom:12px;font-size:11px;color:#64748b;">Já inscrito(a) em:<br style="margin-bottom:4px;"/>${jaInscritas}</div>`:''}
+    <div class="fg" style="margin-bottom:14px;">
+      <label>Incluir na prova</label>
+      <select id="incluirProvaSelect" style="border:1.5px solid var(--azm);border-radius:6px;padding:8px 10px;font-size:13px;">
+        ${opts}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn b-out" onclick="document.getElementById('incluirProvaModal').remove()">Cancelar</button>
+      <button class="btn b-pri" data-nome="${esc(nomeAtleta)}" data-refprova="${esc(nomeProvaRef)}" data-refidx="${idxRef}"
+        onclick="confirmarIncluirEmProva(this.dataset.nome,this.dataset.refprova,+this.dataset.refidx)">✅ Incluir</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+}
+
+function confirmarIncluirEmProva(nomeAtleta, nomeProvaRef, idxRef){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const novaProva=document.getElementById('incluirProvaSelect').value;
+  if(!novaProva) return;
+  const pRef=etapa.provas[nomeProvaRef]; const pDest=etapa.provas[novaProva];
+  if(!pRef||!pDest) return;
+  const atleta=pRef.atletas[idxRef]; if(!atleta) return;
+  // Checa duplicata
+  if(pDest.atletas.some(a=>a.nome.toLowerCase().trim()===nomeAtleta.toLowerCase().trim())){
+    showToast(`⚠️ ${nomeAtleta} já está em "${novaProva}"`); return;
+  }
+  pDest.atletas.push({...atleta, id:uid()});
+  markDirty();
+  document.getElementById('incluirProvaModal').remove();
+  renderBuscaAtleta();
+  showToast(`✅ ${nomeAtleta} incluído(a) em "${novaProva}"`);
 }
 
 function abrirEditarAtleta(nomeProva, idx){
