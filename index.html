@@ -3516,7 +3516,8 @@ function renderBuscaAtleta(){
       <td style="font-size:10px;color:#64748b;">${esc(prova)}</td>
       <td style="text-align:center;">
         <button class="btn b-out" style="font-size:10px;padding:3px 9px;"
-          onclick="abrirEditarAtleta(${JSON.stringify(prova)},${idx})">✏️ Editar</button>
+          data-prova="${esc(prova)}" data-idx="${idx}"
+          onclick="abrirEditarAtleta(this.dataset.prova,+this.dataset.idx)">✏️ Editar</button>
       </td>
     </tr>`;
   });
@@ -3575,10 +3576,14 @@ function abrirEditarAtleta(nomeProva, idx){
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
-      <button class="btn b-red" style="font-size:11px;" onclick="excluirAtletaEditar(${JSON.stringify(nomeProva)},${idx})">🗑️ Excluir atleta</button>
+      <button class="btn b-red" style="font-size:11px;"
+        data-prova="${esc(nomeProva)}" data-idx="${idx}"
+        onclick="excluirAtletaEditar(this.dataset.prova,+this.dataset.idx)">🗑️ Excluir atleta</button>
       <div style="display:flex;gap:8px;">
         <button class="btn b-out" onclick="fecharModal('modalEditarAtleta')">Cancelar</button>
-        <button class="btn b-pri" onclick="salvarEdicaoAtleta(${JSON.stringify(nomeProva)},${idx})">💾 Salvar</button>
+        <button class="btn b-pri"
+          data-prova="${esc(nomeProva)}" data-idx="${idx}"
+          onclick="salvarEdicaoAtleta(this.dataset.prova,+this.dataset.idx)">💾 Salvar</button>
       </div>
     </div>`;
 
