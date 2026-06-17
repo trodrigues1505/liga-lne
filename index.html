@@ -406,7 +406,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
     <div class="sep"></div>
     <!-- Gerar -->
     <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Gerar</span>
-    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Balizamento</button>
+    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Bal. desta prova</button>
     <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Classificação</button>
     <button class="btn" style="background:#6b7280;color:#fff;" onclick="apagarTempos(curProva)">⏱️ Apagar Tempos</button>
     <div class="sep"></div>
@@ -416,8 +416,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
 <button class="btn"
         style="background:#0f766e;color:#fff;"
-        onclick="printBalizamentosSelecionados()">
-  📚 Balizamentos
+        onclick="abrirModalImprimirBalizamentos()">
+  📚 Bal. Múltiplos
 </button>
     <button class="btn b-cya" onclick="printClass(curProva)">🖨️ Class.</button>
     <button class="btn" style="background:#166534;color:#fff;" onclick="abrirSumula()">📄 Súmula</button>
@@ -2411,27 +2411,10 @@ function trocarCodigoEscola(){
 // ══════════════════════════════════════════════════════════
 // CARTÕES DE INSCRIÇÃO
 // ══════════════════════════════════════════════════════════
-const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}
-.folha{width:210mm;height:297mm;padding:5mm 6mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);gap:2mm;page-break-after:always;}
-.folha:last-child{page-break-after:auto;}
-.cartao{border:.5pt solid #888;padding:5pt 8pt 4pt;display:flex;flex-direction:column;overflow:hidden;}
-.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;color:#444;line-height:1.2;margin-bottom:1pt;}
-.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:2pt;margin-bottom:5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.row3{display:grid;grid-template-columns:3fr 1fr 1fr;gap:5pt;margin-bottom:4pt;}.row3 .val{font-size:8.5pt;margin-bottom:0;}
-.row4{display:grid;grid-template-columns:3fr 1fr 1fr 1.4fr;gap:5pt;margin-bottom:4pt;}.row4 .val{font-size:8.5pt;margin-bottom:0;}
-.val-fed{font-size:8.5pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fed-sim{background:#e9d5ff;color:#5b21b6;padding:1pt 4pt;border-radius:2pt;}
-.sep{border:none;border-top:.5pt solid #aaa;margin:3pt 0 4pt;}
-.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.5px;margin-bottom:3pt;color:#333;}
-.cron-wrap{flex:1;display:flex;flex-direction:column;}
-table{width:100%;border-collapse:collapse;flex:1;height:100%;}
-th{border:.5pt solid #777;padding:3pt 2pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}
-tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}
-td.n{background:#e8e8e8;font-weight:bold;width:16pt;font-size:8pt;}
-@page{size:A4 portrait;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}.folha{width:297mm;height:210mm;padding:4mm 5mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1.5mm;page-break-after:always;}.folha:last-child{page-break-after:auto;}.cartao{border:.5pt solid #888;padding:4pt 5pt 3pt;display:flex;flex-direction:column;overflow:hidden;}.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;color:#444;line-height:1.1;margin-bottom:1pt;}.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1.5pt;margin-bottom:3pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.row4{display:grid;grid-template-columns:2.6fr 0.8fr 0.8fr 1.4fr;gap:3pt;margin-bottom:3pt;}.row4 .val{font-size:10pt;margin-bottom:0;}.val-fed{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1.5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.fed-sim{background:#e9d5ff;color:#5b21b6;padding:0pt 3pt;border-radius:1pt;}.sep{border:none;border-top:.5pt solid #aaa;margin:2pt 0 2pt;}.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.4px;margin-bottom:2pt;color:#333;}.cron-wrap{flex:1;display:flex;flex-direction:column;}table{width:100%;border-collapse:collapse;flex:1;height:100%;}th{border:.5pt solid #777;padding:2pt 1pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}td.n{background:#e8e8e8;font-weight:bold;width:12pt;font-size:10pt;}@page{size:A4 landscape;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
 
 function buildCartoesHtml(cartoes){
-  const PF=10; let html='';
+  const PF=16; let html='';
   for(let i=0;i<cartoes.length;i+=PF){
     const g=cartoes.slice(i,i+PF); while(g.length<PF) g.push(null);
     html+=`<div class="folha">`;
@@ -2500,48 +2483,51 @@ function doPrint(){
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
   
-function printBalizamentosSelecionados(){
-
+function abrirModalImprimirBalizamentos(){
   const etapa=getEtapa(curEtapaId);
-
-  if(!etapa){
-    showToast('⚠️ Nenhuma etapa selecionada.');
-    return;
-  }
-
+  if(!etapa){showToast('⚠️ Nenhuma etapa selecionada.');return;}
   const provas=getProvasOrdenadas(etapa);
+  if(!provas.length){showToast('Nenhuma prova cadastrada.');return;}
 
-  let lista='';
+  let html=`
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <button class="btn b-out" style="font-size:11px;" onclick="ibSelTodas(true)">✅ Com balizamento</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="ibSelTodas(false)">☐ Nenhuma</button>
+    </div>
+    <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
 
   provas.forEach((nome,i)=>{
-    lista+=`${i+1} - ${nome}\n`;
+    const p=etapa.provas[nome];
+    const temBal=(p.series||[]).length>0;
+    const nAtl=p.atletas.length;
+    const bg=i%2===0?'#fff':'#f8fafc';
+    html+=`<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${bg};cursor:${!temBal?'not-allowed':'pointer'};border-bottom:1px solid #f0f4f8;opacity:${!temBal?'.4':'1'};">
+      <input type="checkbox" class="ib-chk" value="${esc(nome)}" ${!temBal?'disabled':''} ${temBal?'checked':''} style="width:15px;height:15px;accent-color:var(--azm);flex-shrink:0;"/>
+      <span style="flex:1;font-size:12px;font-weight:500;">${esc(nome)}</span>
+      <span style="font-size:11px;color:#64748b;white-space:nowrap;">${nAtl} atl.</span>
+      ${temBal
+        ?`<span style="font-size:10px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:4px;padding:1px 6px;white-space:nowrap;">⚡ ${(p.series||[]).length} série(s)</span>`
+        :`<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;white-space:nowrap;">sem balizamento</span>`}
+    </label>`;
   });
+  html+=`</div>`;
 
-  const resposta=prompt(
-`Digite os números das provas separados por vírgula.
+  document.getElementById('modalImpBalizConteudo').innerHTML=html;
+  abrirModal('modalImpBaliz');
+}
 
-Exemplo:
-1,2,5
+function ibSelTodas(v){
+  document.querySelectorAll('.ib-chk:not(:disabled)').forEach(c=>c.checked=v);
+}
 
-${lista}`
-  );
-
-  if(!resposta) return;
-
-  const selecionadas=resposta
-    .split(',')
-    .map(v=>parseInt(v.trim(),10)-1)
-    .filter(v=>!isNaN(v))
-    .map(i=>provas[i])
-    .filter(Boolean);
-
-  if(!selecionadas.length){
-    showToast('⚠️ Nenhuma prova válida selecionada.');
-    return;
-  }
-
+function confirmarImprimirBalizamentos(){
+  const selecionadas=[...document.querySelectorAll('.ib-chk:checked')].map(c=>c.value);
+  if(!selecionadas.length){showToast('⚠️ Selecione pelo menos uma prova.');return;}
+  fecharModal('modalImpBaliz');
   executarImpressaoSelecionada(selecionadas);
 }
+
+function printBalizamentosSelecionados(){abrirModalImprimirBalizamentos();}
 
 function executarImpressaoSelecionada(selecionadas){
 
@@ -3559,6 +3545,21 @@ function confirmarMesclar(){
   showToast(`✅ Mesclagem concluída! ${novos.length} atleta(s) transferido(s) para "${dest}"`);
 }
 </script>
+
+<!-- Modal Imprimir Balizamentos Selecionados -->
+<div class="mover" id="modalImpBaliz">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);">
+      <h3>🖨️ Imprimir Balizamentos</h3>
+      <button class="mdl-x" onclick="fecharModal('modalImpBaliz')">×</button>
+    </div>
+    <div style="padding:14px 18px;" id="modalImpBalizConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;">
+      <button class="btn b-out" onclick="fecharModal('modalImpBaliz')">Cancelar</button>
+      <button class="btn b-pdf" onclick="confirmarImprimirBalizamentos()">🖨️ Imprimir selecionadas</button>
+    </div>
+  </div>
+</div>
 <!-- Modal Balizamento em lote -->
 <div class="mover" id="modalBalizamento">
   <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
@@ -3963,4 +3964,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>
+</html>  
