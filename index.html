@@ -2411,7 +2411,7 @@ function trocarCodigoEscola(){
 // ══════════════════════════════════════════════════════════
 // CARTÕES DE INSCRIÇÃO
 // ══════════════════════════════════════════════════════════
-const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}.folha:last-child{page-break-after:auto;}.cartao{border:.5pt solid #888;padding:3pt 4pt 2pt;display:flex;flex-direction:column;overflow:hidden;height:100%;}.cartao-vazio{border:.5pt solid #ddd;background:#fafafa;}.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;color:#444;line-height:1.1;margin-bottom:1pt;}.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;margin-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.row4{display:grid;grid-template-columns:2fr 0.7fr 0.7fr 1.6fr;gap:2pt;margin-bottom:2pt;}.row4 .val{font-size:10pt;margin-bottom:0;}.val-fed{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.fed-sim{background:#e9d5ff;color:#5b21b6;padding:0pt 2pt;border-radius:1pt;}.sep{border:none;border-top:.5pt solid #aaa;margin:1.5pt 0 1.5pt;}.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.4px;margin-bottom:1.5pt;color:#333;}.cron-wrap{flex:1;display:flex;flex-direction:column;min-height:0;}table{width:100%;border-collapse:collapse;flex:1;height:100%;}th{border:.5pt solid #777;padding:2pt 1pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}td.n{background:#e8e8e8;font-weight:bold;width:11pt;font-size:10pt;}@page{size:A4 landscape;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
+const CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}.folha:last-child{page-break-after:auto;}.cartao{border:.5pt solid #888;padding:3pt 4pt 2pt;display:flex;flex-direction:column;overflow:hidden;height:100%;}.cartao-vazio{border:.5pt solid #ddd;background:#fafafa;}.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;color:#444;line-height:1.1;margin-bottom:1pt;}.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;margin-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.row-prova{margin-bottom:2pt;}.row-prova .val{font-size:9pt;margin-bottom:0;}.row3{display:grid;grid-template-columns:1fr 1fr 2.4fr;gap:3pt;margin-bottom:2pt;}.row3 .val{font-size:10pt;margin-bottom:0;}.val-fed{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;white-space:nowrap;}.fed-sim{background:#e9d5ff;color:#5b21b6;padding:0pt 3pt;border-radius:1pt;}.sep{border:none;border-top:.5pt solid #aaa;margin:1.5pt 0 1.5pt;}.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.4px;margin-bottom:1.5pt;color:#333;}.cron-wrap{flex:1;display:flex;flex-direction:column;min-height:0;}table{width:100%;border-collapse:collapse;flex:1;height:100%;}th{border:.5pt solid #777;padding:2pt 1pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}td.n{background:#e8e8e8;font-weight:bold;width:11pt;font-size:10pt;}@page{size:A4 landscape;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
 
 function buildCartoesHtml(cartoes){
   const PF=16; let html='';
@@ -2421,44 +2421,72 @@ function buildCartoesHtml(cartoes){
     g.forEach(c=>{
       if(!c){ html+=`<div class="cartao-vazio"></div>`; return; }
       const fedVal=c.federado?'<span class="fed-sim">⭐ Federado/Vinc.</span>':'Não fed.';
-      html+=`<div class="cartao">
-        <div class="lbl">Nome do Atleta</div><div class="val">${esc(c.nome)}</div>
-        <div class="row4">
-          <div><div class="lbl">Prova</div><div class="val">${esc(c.prova)}</div></div>
-          <div><div class="lbl">Série</div><div class="val">${c.serie}</div></div>
-          <div><div class="lbl">Raia</div><div class="val">${c.raia}</div></div>
-          <div><div class="lbl">Vínculo</div><div class="val-fed">${fedVal}</div></div>
-        </div>
-        <hr class="sep"/><div class="cron-wrap"><div class="ct">Cronômetro</div>
-        <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>
-        <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr>
-        <tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>
-      </div>`;
+      html+=`<div class="cartao">\n        <div class="lbl">Nome do Atleta</div><div class="val">${esc(c.nome)}</div>\n        <div class="row-prova"><div class="lbl">Prova</div><div class="val">${esc(c.prova)}</div></div>\n        <div class="row3">\n          <div><div class="lbl">Série</div><div class="val">${c.serie}</div></div>\n          <div><div class="lbl">Raia</div><div class="val">${c.raia}</div></div>\n          <div><div class="lbl">Vínculo</div><div class="val-fed">${fedVal}</div></div>\n        </div>\n        <hr class="sep"/><div class="cron-wrap"><div class="ct">Cronômetro</div>\n        <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>\n        <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr>\n        <tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>\n      </div>`;
     });
     html+=`</div>`;
   }
   return html;
 }
-function imprimirCartoesProva(nome){
-  if(!nome) return; const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
-  const cartoes=[];
-  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1,federado:!!a.federado});}));
-  if(!cartoes.length){alert('Nenhum atleta no balizamento.');return;}
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões — ${nome}</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
-  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}
-function imprimirTodosCartoes(){
+
+function abrirModalCartoes(provaInicial){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
-  const cartoes=[];
-  Object.entries(etapa.provas||{}).forEach(([nome,p])=>{
-    (p.series||[]).forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1,federado:!!a.federado});}));
+  const nomes=getProvasOrdenadas(etapa);
+  const comBal=nomes.filter(n=>(etapa.provas[n].series||[]).length>0);
+  if(!comBal.length){showToast('Nenhuma prova com balizamento gerado.');return;}
+
+  let html=`
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <button class="btn b-out" style="font-size:11px;" onclick="cartSelTodas(true)">✅ Todas com balizamento</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="cartSelTodas(false)">☐ Nenhuma</button>
+    </div>
+    <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
+
+  nomes.forEach((nome,i)=>{
+    const p=etapa.provas[nome];
+    const temBal=(p.series||[]).length>0;
+    const nAtl=temBal?p.series.reduce((a,s)=>a+s.lanes.filter(l=>l&&l.nome&&!l._outra).length,0):0;
+    const bg=i%2===0?'#fff':'#f8fafc';
+    const presel=provaInicial?nome===provaInicial:temBal;
+    html+=`<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${bg};cursor:${!temBal?'not-allowed':'pointer'};border-bottom:1px solid #f0f4f8;opacity:${!temBal?'.4':'1'};">
+      <input type="checkbox" class="cart-chk" value="${esc(nome)}" ${!temBal?'disabled':''} ${presel?'checked':''} style="width:15px;height:15px;accent-color:var(--azm);flex-shrink:0;"/>
+      <span style="flex:1;font-size:12px;font-weight:500;">${esc(nome)}</span>
+      <span style="font-size:11px;color:#64748b;white-space:nowrap;">${nAtl} atleta(s)</span>
+      ${temBal
+        ?`<span style="font-size:10px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:4px;padding:1px 6px;white-space:nowrap;">⚡ ${(p.series||[]).length} série(s)</span>`
+        :`<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;white-space:nowrap;">sem balizamento</span>`}
+    </label>`;
   });
-  if(!cartoes.length){alert('Nenhum atleta com balizamento gerado.');return;}
+  html+=`</div>`;
+
+  document.getElementById('modalCartoesConteudo').innerHTML=html;
+  abrirModal('modalCartoes');
+}
+
+function cartSelTodas(v){
+  document.querySelectorAll('.cart-chk:not(:disabled)').forEach(c=>c.checked=v);
+}
+
+function confirmarImprimirCartoes(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const selecionadas=[...document.querySelectorAll('.cart-chk:checked')].map(c=>c.value);
+  if(!selecionadas.length){showToast('⚠️ Selecione pelo menos uma prova.');return;}
+  const cartoes=[];
+  selecionadas.forEach(nome=>{
+    const p=etapa.provas[nome]; if(!p) return;
+    (p.series||[]).forEach((s,si)=>s.lanes.forEach((a,li)=>{
+      if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1,federado:!!a.federado});
+    }));
+  });
+  if(!cartoes.length){showToast('Nenhum atleta nas provas selecionadas.');return;}
+  fecharModal('modalCartoes');
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões — ${etapa.nome}</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
+
+// aliases para os botões existentes
+function imprimirCartoesProva(nome){ abrirModalCartoes(nome); }
+function imprimirTodosCartoes(){ abrirModalCartoes(null); }
 
 // ══════════════════════════════════════════════════════════
 // IMPRESSÃO (balizamento / classificação / súmula)
@@ -3558,6 +3586,22 @@ function confirmarMesclar(){
     </div>
   </div>
 </div>
+
+<!-- Modal Imprimir Cartões -->
+<div class="mover" id="modalCartoes">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);">
+      <h3>🖪️ Imprimir Cartões de Inscrição</h3>
+      <button class="mdl-x" onclick="fecharModal('modalCartoes')">×</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;padding:10px 18px 0;">Selecione as provas cujos cartões deseja imprimir. Apenas provas com balizamento gerado estão disponíveis.</p>
+    <div style="padding:10px 18px;" id="modalCartoesConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;">
+      <button class="btn b-out" onclick="fecharModal('modalCartoes')">Cancelar</button>
+      <button class="btn" style="background:#7c3aed;color:#fff;" onclick="confirmarImprimirCartoes()">🖪️ Imprimir cartões</button>
+    </div>
+  </div>
+</div>
 <!-- Modal Balizamento em lote -->
 <div class="mover" id="modalBalizamento">
   <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
@@ -3962,4 +4006,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>
+</html>   
