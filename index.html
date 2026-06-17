@@ -3569,10 +3569,22 @@ function abrirEditarAtleta(nomeProva, idx){
     </div>
     <div class="frow">
       <div class="fg grow">
-        <label>Mover para outra prova</label>
-        <select id="eaProva" style="border:1.5px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;">
+        <label>Prova</label>
+        <select id="eaProva" style="border:1.5px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;" onchange="eaProvaChange()">
+          <option value="">— sem alteração —</option>
           ${provasOpts}
         </select>
+      </div>
+      <div class="fg" id="eaAcaoWrap" style="display:none;">
+        <label>Ação</label>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+            <input type="radio" name="eaAcao" value="mover" checked style="accent-color:var(--azm);"/> Mover (sai da atual)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+            <input type="radio" name="eaAcao" value="incluir" style="accent-color:var(--azm);"/> Incluir (fica nas duas)
+          </label>
+        </div>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
@@ -3597,6 +3609,12 @@ function abrirEditarAtleta(nomeProva, idx){
   abrirModal('modalEditarAtleta');
 }
 
+function eaProvaChange(){
+  const sel=document.getElementById('eaProva');
+  const wrap=document.getElementById('eaAcaoWrap');
+  if(wrap) wrap.style.display=sel.value?'flex':'none';
+}
+
 function salvarEdicaoAtleta(nomeProvaAtual, idx){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   const pAtual=etapa.provas[nomeProvaAtual]; if(!pAtual) return;
@@ -3609,24 +3627,34 @@ function salvarEdicaoAtleta(nomeProvaAtual, idx){
   const tRef=(document.getElementById('eaTRef').value||'').trim();
   const fed=!!document.getElementById('eaFederado').checked;
   const novaProva=document.getElementById('eaProva').value;
+  const acao=document.querySelector('input[name="eaAcao"]:checked')?.value||'mover';
 
-  // Atualiza campos
+  // Atualiza campos no atleta atual
   a.nome=nome; a.categoria=cat; a.escola=escola; a.tempoRef=tRef; a.federado=fed;
 
-  // Move de prova se necessário
   if(novaProva&&novaProva!==nomeProvaAtual){
     const pDest=etapa.provas[novaProva]; if(!pDest){alert('Prova destino não encontrada.');return;}
-    // Remove da atual e adiciona no destino
-    pAtual.atletas.splice(idx,1);
-    pDest.atletas.push({...a});
-    showToast(`✅ ${nome} movido(a) para "${novaProva}"`);
+    if(acao==='mover'){
+      pAtual.atletas.splice(idx,1);
+      pDest.atletas.push({...a, id:uid()});
+      showToast(`✅ ${nome} movido(a) para "${novaProva}"`);
+    } else {
+      // Incluir — só adiciona se não existir no destino
+      const jaExiste=pDest.atletas.some(x=>x.nome.toLowerCase().trim()===nome.toLowerCase().trim());
+      if(jaExiste){
+        showToast(`⚠️ ${nome} já está inscrito(a) em "${novaProva}"`);
+      } else {
+        pDest.atletas.push({...a, id:uid()});
+        showToast(`✅ ${nome} incluído(a) também em "${novaProva}"`);
+      }
+    }
   } else {
     showToast(`✅ ${nome} atualizado(a)`);
   }
 
   markDirty();
   fecharModal('modalEditarAtleta');
-  renderBuscaAtleta(); // atualiza resultados da busca
+  renderBuscaAtleta();
   if(curProva===nomeProvaAtual||curProva===novaProva) renderAll(curProva);
 }
 
