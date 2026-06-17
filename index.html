@@ -416,8 +416,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
 <button class="btn"
         style="background:#0f766e;color:#fff;"
-        onclick="printTodosBalizamentos()">
-  📚 Todos Bal.
+        onclick="printBalizamentosSelecionados()">
+  📚 Balizamentos
 </button>
     <button class="btn b-cya" onclick="printClass(curProva)">🖨️ Class.</button>
     <button class="btn" style="background:#166534;color:#fff;" onclick="abrirSumula()">📄 Súmula</button>
@@ -2524,92 +2524,169 @@ function printBal(nome){
   h+=`</tbody></table></div>`;
   openPrint(h);
 }
-  function printTodosBalizamentos(){
-  const etapa=getEtapa(curEtapaId);
+  function printBalizamentosSelecionados(){
+
+  const etapa = getEtapa(curEtapaId);
 
   if(!etapa){
     showToast('⚠️ Nenhuma etapa selecionada.');
     return;
   }
 
-  const nomes=getProvasOrdenadas(etapa);
+  const provas = getProvasOrdenadas(etapa);
+
+  let lista = '';
+
+  provas.forEach(nome=>{
+    lista += `
+      <label style="display:block;padding:4px 0;">
+        <input type="checkbox"
+               class="chk-print-bal"
+               value="${esc(nome)}"
+               checked>
+        ${esc(nome)}
+      </label>`;
+  });
+
+  const html = `
+    <div style="padding:12px;">
+      <h3>Selecionar Balizamentos</h3>
+
+      <label style="display:block;margin-bottom:8px;">
+        <input type="checkbox"
+               id="chkTodosBal"
+               checked>
+        Selecionar todas
+      </label>
+
+      <div style="
+        max-height:400px;
+        overflow:auto;
+        border:1px solid #ccc;
+        padding:8px;
+        margin-bottom:12px;">
+        ${lista}
+      </div>
+
+      <button class="btn"
+              onclick="
+                document.querySelectorAll('.chk-print-bal')
+                .forEach(c=>c.checked=document.getElementById('chkTodosBal').checked);
+              ">
+        Aplicar
+      </button>
+
+      <button class="btn b-pdf"
+              onclick="executarImpressaoSelecionada()">
+        🖨️ Imprimir
+      </button>
+    </div>
+  `;
+
+  showModal('Balizamentos', html);
+}
+
+  function executarImpressaoSelecionada(){
+
+  const etapa = getEtapa(curEtapaId);
+
+  const selecionadas = [...document.querySelectorAll('.chk-print-bal:checked')]
+    .map(c=>c.value);
+
+  if(!selecionadas.length){
+    showToast('⚠️ Nenhuma prova selecionada.');
+    return;
+  }
 
   let h='';
 
-  nomes.forEach(nome=>{
+  selecionadas.forEach(nome=>{
 
-    const p=etapa.provas[nome];
+    const p = etapa.provas[nome];
 
     if(!p || !p.series || !p.series.length) return;
 
-    h+=`<div class="pg"><div class="ph">
-      <div>Liga de Natação Escolar — LNE 2026</div>
-      <div>Balizamento — ${esc(nome)}</div>
-      ${etapa?`<div>${esc(etapa.nome)}${etapa.data?' · '+fmtData(etapa.data):''}${etapa.horaAquecimento?' · Aquec. '+etapa.horaAquecimento:''}${etapa.horaInicio?' · Início '+etapa.horaInicio:''}</div>`:''}
-    </div>
+    h += `
+      <div class="bloco-prova">
 
-    <table>
-      <colgroup>
-        <col style="width:28pt"/>
-        <col style="width:175pt"/>
-        <col style="width:55pt"/>
-        <col/>
-        <col style="width:60pt"/>
-      </colgroup>
+      <div class="ph">
+        <div>Liga de Natação Escolar — LNE 2026</div>
+        <div>Balizamento — ${esc(nome)}</div>
+      </div>
 
-      <thead>
-        <tr>
-          <th class="tc">Raia</th>
-          <th>Nome do Atleta</th>
-          <th class="tc">Cat.</th>
-          <th class="tc">Escola</th>
-          <th class="tc">Tempo</th>
-        </tr>
-      </thead>
+      <table>
+        <thead>
+          <tr>
+            <th>Raia</th>
+            <th>Nome</th>
+            <th>Cat.</th>
+            <th>Escola</th>
+            <th>Tempo</th>
+          </tr>
+        </thead>
 
-      <tbody>`;
+        <tbody>
+    `;
 
     p.series.forEach((s,si)=>{
 
-      h+=`<tr>
-        <td class="serie-lbl" colspan="5">
-          Série ${si+1}${s.combinada?' (combinada)':''}
-        </td>
-      </tr>`;
+      h += `
+        <tr>
+          <td colspan="5"
+              style="font-weight:bold;background:#eee;">
+            Série ${si+1}
+          </td>
+        </tr>
+      `;
 
       s.lanes.forEach((a,li)=>{
 
-        if(a && !a._outra){
-          h+=`<tr>
-            <td class="c-raia">${li+1}</td>
-            <td class="c-nome">${esc(a.nome)}</td>
-            <td class="c-doc">${esc(a.categoria||'')}</td>
-            <td class="c-inst">${esc(a.escola||'')}</td>
-            <td class="c-tempo">${esc(a.tempo||'')}</td>
-          </tr>`;
-        }else{
-          h+=`<tr>
-            <td class="c-raia" style="color:#ccc;">${li+1}</td>
-            <td colspan="4" style="color:#bbb;font-style:italic;">
-              — raia vazia —
-            </td>
-          </tr>`;
-        }
+        if(!a || a._outra) return;
 
+        h += `
+          <tr>
+            <td>${li+1}</td>
+            <td>${esc(a.nome||'')}</td>
+            <td>${esc(a.categoria||'')}</td>
+            <td>${esc(a.escola||'')}</td>
+            <td>${esc(a.tempo||'')}</td>
+          </tr>
+        `;
       });
 
     });
 
-    h+=`</tbody></table></div>
-    <div style="page-break-after:always;"></div>`;
+    h += `
+        </tbody>
+      </table>
+
+      <br><br>
+
+      </div>
+    `;
   });
 
-  if(!h){
-    showToast('⚠️ Nenhum balizamento encontrado.');
-    return;
-  }
+  openPrint(`
+    <style>
+      .bloco-prova{
+        break-inside:avoid;
+        page-break-inside:avoid;
+        margin-bottom:20px;
+      }
 
-  openPrint(h);
+      table{
+        width:100%;
+        border-collapse:collapse;
+      }
+
+      th,td{
+        border:1px solid #000;
+        padding:4px;
+      }
+    </style>
+
+    ${h}
+  `);
 }
 function printClass(nome){
   if(!nome) return; const p=getProva(nome); if(!p||!p.classificacao||!p.classificacao.length){alert('Gere a classificação primeiro.');return;}
