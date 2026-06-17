@@ -2537,66 +2537,43 @@ function printBal(nome){
 
   let lista = '';
 
-  provas.forEach(nome=>{
-    lista += `
-      <label style="display:block;padding:4px 0;">
-        <input type="checkbox"
-               class="chk-print-bal"
-               value="${esc(nome)}"
-               checked>
-        ${esc(nome)}
-      </label>`;
+  provas.forEach((nome,i)=>{
+    lista += `${i+1} - ${nome}\n`;
   });
 
-  const html = `
-    <div style="padding:12px;">
-      <h3>Selecionar Balizamentos</h3>
+  const resposta = prompt(
+`Digite os números das provas separados por vírgula.
 
-      <label style="display:block;margin-bottom:8px;">
-        <input type="checkbox"
-               id="chkTodosBal"
-               checked>
-        Selecionar todas
-      </label>
+Exemplo:
+1,2,5,8
 
-      <div style="
-        max-height:400px;
-        overflow:auto;
-        border:1px solid #ccc;
-        padding:8px;
-        margin-bottom:12px;">
-        ${lista}
-      </div>
+Provas disponíveis:
 
-      <button class="btn"
-              onclick="
-                document.querySelectorAll('.chk-print-bal')
-                .forEach(c=>c.checked=document.getElementById('chkTodosBal').checked);
-              ">
-        Aplicar
-      </button>
+${lista}`
+  );
 
-      <button class="btn b-pdf"
-              onclick="executarImpressaoSelecionada()">
-        🖨️ Imprimir
-      </button> 
-    </div>
-  `;
+  if(!resposta) return;
 
-  showModal('Balizamentos', html);
-}
+  const indices = resposta
+    .split(',')
+    .map(v=>parseInt(v.trim(),10)-1)
+    .filter(v=>!isNaN(v));
 
-  function executarImpressaoSelecionada(){
-
-  const etapa = getEtapa(curEtapaId);
-
-  const selecionadas = [...document.querySelectorAll('.chk-print-bal:checked')]
-    .map(c=>c.value);
+  const selecionadas = indices
+    .map(i=>provas[i])
+    .filter(Boolean);
 
   if(!selecionadas.length){
-    showToast('⚠️ Nenhuma prova selecionada.');
+    showToast('⚠️ Nenhuma prova válida selecionada.');
     return;
   }
+
+  executarImpressaoSelecionada(selecionadas);
+}
+
+  function executarImpressaoSelecionada(selecionadas){
+
+  const etapa = getEtapa(curEtapaId);
 
   let h='';
 
@@ -2609,10 +2586,7 @@ function printBal(nome){
     h += `
       <div class="bloco-prova">
 
-      <div class="ph">
-        <div>Liga de Natação Escolar — LNE 2026</div>
-        <div>Balizamento — ${esc(nome)}</div>
-      </div>
+      <h2>${esc(nome)}</h2>
 
       <table>
         <thead>
@@ -2624,19 +2598,17 @@ function printBal(nome){
             <th>Tempo</th>
           </tr>
         </thead>
-
         <tbody>
     `;
 
     p.series.forEach((s,si)=>{
 
       h += `
-        <tr>
-          <td colspan="5"
-              style="font-weight:bold;background:#eee;">
-            Série ${si+1}
-          </td>
-        </tr>
+      <tr>
+        <td colspan="5" style="font-weight:bold;background:#eee;">
+          Série ${si+1}
+        </td>
+      </tr>
       `;
 
       s.lanes.forEach((a,li)=>{
@@ -2644,20 +2616,20 @@ function printBal(nome){
         if(!a || a._outra) return;
 
         h += `
-          <tr>
-            <td>${li+1}</td>
-            <td>${esc(a.nome||'')}</td>
-            <td>${esc(a.categoria||'')}</td>
-            <td>${esc(a.escola||'')}</td>
-            <td>${esc(a.tempo||'')}</td>
-          </tr>
+        <tr>
+          <td>${li+1}</td>
+          <td>${esc(a.nome||'')}</td>
+          <td>${esc(a.categoria||'')}</td>
+          <td>${esc(a.escola||'')}</td>
+          <td>${esc(a.tempo||'')}</td>
+        </tr>
         `;
       });
 
     });
 
     h += `
-        </tbody>
+      </tbody>
       </table>
 
       <br><br>
@@ -2667,27 +2639,29 @@ function printBal(nome){
   });
 
   openPrint(`
-    <style>
-      .bloco-prova{
-        break-inside:avoid;
-        page-break-inside:avoid;
-        margin-bottom:20px;
-      }
+  <style>
+    .bloco-prova{
+      page-break-inside:avoid;
+      break-inside:avoid;
+      margin-bottom:20px;
+    }
 
-      table{
-        width:100%;
-        border-collapse:collapse;
-      }
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
 
-      th,td{
-        border:1px solid #000;
-        padding:4px;
-      }
-    </style>
+    th,td{
+      border:1px solid #000;
+      padding:4px;
+    }
+  </style>
 
-    ${h}
+  ${h}
   `);
 }
+  
+
 function printClass(nome){
   if(!nome) return; const p=getProva(nome); if(!p||!p.classificacao||!p.classificacao.length){alert('Gere a classificação primeiro.');return;}
   const etapa=getEtapa(curEtapaId);
