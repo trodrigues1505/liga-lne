@@ -568,7 +568,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
     </div>
     <div class="frow">
       <div class="fg"><label>Nº de raias *</label>
-        <select id="etapaRaias"><option value="6">6 raias</option><option value="8" selected>8 raias</option><option value="10">10 raias</option></select>
+        <input type="number" id="etapaRaias" value="8" min="4" max="12" step="1" style="width:80px;" />
       </div>
       <div class="fg"><label>Tamanho da piscina</label>
         <select id="etapaTam"><option value="25m" selected>25m</option><option value="50m">50m</option></select>
@@ -4006,4 +4006,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>   
+</html>  
