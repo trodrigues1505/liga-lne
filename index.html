@@ -406,22 +406,25 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
     <div class="sep"></div>
     <!-- Gerar -->
     <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Gerar</span>
-    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Bal. desta prova</button>
+    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Balizamento</button>
     <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Classificação</button>
     <button class="btn" style="background:#6b7280;color:#fff;" onclick="apagarTempos(curProva)">⏱️ Apagar Tempos</button>
     <div class="sep"></div>
-    <!-- Imprimir -->
+    <!-- Imprimir Balizamento -->
+    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Balizamento</span>
+    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Esta prova</button>
+    <button class="btn" style="background:#0f766e;color:#fff;" onclick="abrirModalImprimirBalizamentos()">📚 Múltiplas provas</button>
+    <div class="sep"></div>
+    <!-- Imprimir Outros -->
     <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Imprimir</span>
-    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Bal.</button>
-
-<button class="btn"
-        style="background:#0f766e;color:#fff;"
-        onclick="abrirModalImprimirBalizamentos()">
-  📚 Bal. Múltiplos
-</button>
-    <button class="btn b-cya" onclick="printClass(curProva)">🖨️ Class.</button>
+    <button class="btn b-cya" onclick="printClass(curProva)">🏅 Classificação</button>
     <button class="btn" style="background:#166534;color:#fff;" onclick="abrirSumula()">📄 Súmula</button>
-    <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirCartoesProva(curProva)">🪪 Cartões</button>
+    <div class="sep"></div>
+    <!-- Cartões -->
+    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Cartões</span>
+    <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirCartoesProva(curProva)">🪪 Por prova</button>
+    <button class="btn" style="background:#6d28d9;color:#fff;" onclick="abrirModalCartoesEmBranco()">🪪 Em branco</button>
+    <button class="btn" style="background:#4c1d95;color:#fff;" onclick="abrirModalCartaoManual()">🪪 Manual</button>
     <div class="sep"></div>
     <!-- Atletas -->
     <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Atletas</span>
@@ -2428,6 +2431,119 @@ function buildCartoesHtml(cartoes){
   return html;
 }
 
+
+// ══════════════════════════════════════════════════════════
+// CARTÕES EM BRANCO E MANUAL
+// ══════════════════════════════════════════════════════════
+
+function abrirModalCartoesEmBranco(){
+  document.getElementById('embrancoQtd').value = 16;
+  abrirModal('modalCartoesEmBranco');
+  setTimeout(()=>document.getElementById('embrancoQtd').focus(), 100);
+}
+
+function imprimirCartoesEmBranco(){
+  const qtd = parseInt(document.getElementById('embrancoQtd').value) || 16;
+  if(qtd < 1 || qtd > 200){ showToast('⚠️ Quantidade entre 1 e 200.'); return; }
+  const cartoes = Array(qtd).fill(null); // null = cartão em branco
+  fecharModal('modalCartoesEmBranco');
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões em Branco</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesEmBrancoHtml(qtd)}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
+}
+
+function buildCartoesEmBrancoHtml(qtd){
+  const PF = 16; let html = '';
+  for(let i = 0; i < qtd; i += PF){
+    const count = Math.min(PF, qtd - i);
+    html += `<div class="folha">`;
+    for(let j = 0; j < PF; j++){
+      if(j < count){
+        html += `<div class="cartao">
+          <div class="lbl">Nome do Atleta</div><div class="val">&nbsp;</div>
+          <div class="row-prova"><div class="lbl">Prova</div><div class="val">&nbsp;</div></div>
+          <div class="row3">
+            <div><div class="lbl">Série</div><div class="val">&nbsp;</div></div>
+            <div><div class="lbl">Raia</div><div class="val">&nbsp;</div></div>
+            <div><div class="lbl">Vínculo</div><div class="val-fed">&nbsp;</div></div>
+          </div>
+          <hr class="sep"/>
+          <div class="cron-wrap"><div class="ct">Cronômetro</div>
+          <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>
+          <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr>
+          <tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>
+        </div>`;
+      } else {
+        html += `<div class="cartao-vazio"></div>`;
+      }
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+function abrirModalCartaoManual(){
+  // Limpa campos
+  ['manNome','manProva','manSerie','manRaia'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  const chk = document.getElementById('manFederado');
+  if(chk){ chk.checked = false; }
+  const lbl = document.getElementById('manFedLabel');
+  if(lbl){ lbl.style.borderColor='var(--bd)'; lbl.style.background='#fff'; }
+  document.getElementById('manFedTexto').textContent = 'Não fed.';
+  document.getElementById('manQtd').value = 1;
+  // Pré-preenche com prova atual se disponível
+  if(curProva){
+    const el = document.getElementById('manProva');
+    if(el) el.value = curProva;
+    const p = getProva(curProva);
+    if(p){
+      // Pega próxima raia disponível
+      const ultimaSerie = (p.series||[]).length;
+      if(document.getElementById('manSerie')) document.getElementById('manSerie').value = ultimaSerie || '';
+    }
+  }
+  abrirModal('modalCartaoManual');
+  setTimeout(()=>document.getElementById('manNome').focus(), 100);
+}
+
+function imprimirCartaoManual(){
+  const nome   = document.getElementById('manNome').value.trim();
+  const prova  = document.getElementById('manProva').value.trim();
+  const serie  = document.getElementById('manSerie').value.trim();
+  const raia   = document.getElementById('manRaia').value.trim();
+  const fed    = document.getElementById('manFederado').checked;
+  const qtd    = parseInt(document.getElementById('manQtd').value) || 1;
+  if(!nome){ showToast('⚠️ Nome obrigatório.'); document.getElementById('manNome').focus(); return; }
+  fecharModal('modalCartaoManual');
+  const fedVal = fed ? '<span class="fed-sim">⭐ Federado/Vinc.</span>' : 'Não fed.';
+  let cartaoHtml = '';
+  for(let i = 0; i < qtd; i++){
+    cartaoHtml += `<div class="cartao">
+      <div class="lbl">Nome do Atleta</div><div class="val">${nome}</div>
+      <div class="row-prova"><div class="lbl">Prova</div><div class="val">${prova||'&nbsp;'}</div></div>
+      <div class="row3">
+        <div><div class="lbl">Série</div><div class="val">${serie||'&nbsp;'}</div></div>
+        <div><div class="lbl">Raia</div><div class="val">${raia||'&nbsp;'}</div></div>
+        <div><div class="lbl">Vínculo</div><div class="val-fed">${fedVal}</div></div>
+      </div>
+      <hr class="sep"/>
+      <div class="cron-wrap"><div class="ct">Cronômetro</div>
+      <table><thead><tr><th></th><th>Min.</th><th>Seg.</th><th>Cent.</th><th>Of.</th></tr></thead>
+      <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr></tbody></table></div>
+    </div>`;
+  }
+  // Completa folha com vazios
+  const PF = 16;
+  const resto = PF - (qtd % PF === 0 ? PF : qtd % PF);
+  for(let i = 0; i < resto; i++) cartaoHtml += `<div class="cartao-vazio"></div>`;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${nome}</title><style>${CARTOES_CSS}</style></head><body><div class="folha">${cartaoHtml}</div></body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
+}
+
 function abrirModalCartoes(provaInicial){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   const nomes=getProvasOrdenadas(etapa);
@@ -2554,6 +2670,13 @@ function confirmarImprimirBalizamentos(){
 }
 
 function printBalizamentosSelecionados(){abrirModalImprimirBalizamentos();}
+
+function printBal(nome){
+  if(!nome) return;
+  const p=getProva(nome);
+  if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
+  executarImpressaoSelecionada([nome]);
+}
 
 function executarImpressaoSelecionada(selecionadas){
 
@@ -3574,15 +3697,92 @@ function confirmarMesclar(){
 
 <!-- Modal Imprimir Balizamentos Selecionados -->
 <div class="mover" id="modalImpBaliz">
-  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
-    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
       <h3>🖨️ Imprimir Balizamentos</h3>
       <button class="mdl-x" onclick="fecharModal('modalImpBaliz')">×</button>
     </div>
-    <div style="padding:14px 18px;" id="modalImpBalizConteudo"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;">
+    <div style="padding:14px 18px;overflow-y:auto;flex:1;" id="modalImpBalizConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
       <button class="btn b-out" onclick="fecharModal('modalImpBaliz')">Cancelar</button>
       <button class="btn b-pdf" onclick="confirmarImprimirBalizamentos()">🖨️ Imprimir selecionadas</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Cartões em Branco -->
+<div class="mover" id="modalCartoesEmBranco">
+  <div class="mdl" style="max-width:420px;">
+    <div class="mdl-hd">
+      <h3>🪪 Cartões em Branco</h3>
+      <button class="mdl-x" onclick="fecharModal('modalCartoesEmBranco')">×</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Imprime cartões com todos os campos em branco para preenchimento manual.</p>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Quantidade de cartões</label>
+        <input type="number" id="embrancoQtd" value="16" min="1" max="200"
+          style="border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font-size:14px;"
+          onkeydown="if(event.key==='Enter') imprimirCartoesEmBranco()"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn b-out" onclick="fecharModal('modalCartoesEmBranco')">Cancelar</button>
+      <button class="btn" style="background:#6d28d9;color:#fff;" onclick="imprimirCartoesEmBranco()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cartão Manual -->
+<div class="mover" id="modalCartaoManual">
+  <div class="mdl" style="max-width:520px;">
+    <div class="mdl-hd">
+      <h3>🪪 Cartão Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalCartaoManual')">×</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Preencha os dados para imprimir um cartão avulso.</p>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Nome do atleta *</label>
+        <input type="text" id="manNome" placeholder="Nome completo"
+          onkeydown="if(event.key==='Enter') document.getElementById('manProva').focus()"/>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Prova</label>
+        <input type="text" id="manProva" placeholder="Ex: 1ª Prova — 25m Livre A7 Feminino"/>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg" style="max-width:100px;">
+        <label>Série</label>
+        <input type="number" id="manSerie" placeholder="1" min="1"
+          style="border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font-size:14px;"/>
+      </div>
+      <div class="fg" style="max-width:100px;">
+        <label>Raia</label>
+        <input type="number" id="manRaia" placeholder="1" min="1"
+          style="border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font-size:14px;"/>
+      </div>
+      <div class="fg" style="max-width:100px;">
+        <label>Qtd. cópias</label>
+        <input type="number" id="manQtd" value="1" min="1" max="32"
+          style="border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font-size:14px;"/>
+      </div>
+      <div class="fg grow">
+        <label>Vínculo</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--bd);border-radius:6px;background:#fff;" id="manFedLabel">
+          <input type="checkbox" id="manFederado" style="width:15px;height:15px;accent-color:#7c3aed;"
+            onchange="this.closest('label').style.borderColor=this.checked?'#7c3aed':'var(--bd)';this.closest('label').style.background=this.checked?'#f3e8ff':'#fff';document.getElementById('manFedTexto').textContent=this.checked?'Federado':'Não fed.';"/>
+          <span id="manFedTexto" style="font-size:12px;font-weight:600;">Não fed.</span>
+        </label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn b-out" onclick="fecharModal('modalCartaoManual')">Cancelar</button>
+      <button class="btn" style="background:#4c1d95;color:#fff;" onclick="imprimirCartaoManual()">🖨️ Imprimir cartão</button>
     </div>
   </div>
 </div>
@@ -4006,4 +4206,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>  
+</html>     
