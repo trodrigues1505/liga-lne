@@ -487,7 +487,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
           <div class="sep"></div>
 
           <!-- Configuração -->
-          <button id="btnLiberarBal" class="btn" style="background:#15803d;color:#fff;" onclick="toggleLiberarBalizamento()">🔓 Liberar escolas</button>
+          <button id="btnLiberarBal" class="btn" style="background:#15803d;color:#fff;" onclick="toggleLiberarBalizamento()">🔓 Liberar balizamento</button>
+          <button id="btnLiberarClass" class="btn" style="background:#0056b8;color:#fff;" onclick="toggleLiberarClassificacao()">🏅 Liberar classificação</button>
 
         </div>
       </div>
@@ -912,6 +913,7 @@ function navegarPara(pg){
   if(pg!=='balizamento') document.getElementById('etapaSticky').classList.remove('visible');
   if(pg==='etapas') renderEtapas();
   if(pg==='escolas') renderEscolas();
+  if(pg==='ranking') renderRankingGeral();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1178,15 +1180,29 @@ function toggleLiberarBalizamento(){
   markDirty(); atualizarBtnLiberar();
   showToast(e.balizamentoLiberado?'✅ Balizamento liberado para as escolas!':'🔒 Balizamento ocultado das escolas.');
 }
+function toggleLiberarClassificacao(){
+  const e=getEtapa(curEtapaId); if(!e) return;
+  e.classificacaoLiberada=!e.classificacaoLiberada;
+  markDirty(); atualizarBtnLiberar();
+  showToast(e.classificacaoLiberada?'✅ Classificação liberada para as escolas!':'🔒 Classificação ocultada das escolas.');
+}
 function atualizarBtnLiberar(){
   const e=getEtapa(curEtapaId); if(!e) return;
   const btn=document.getElementById('btnLiberarBal'); if(!btn) return;
   if(e.balizamentoLiberado){
-    btn.textContent='🔒 Ocultar balizamento das escolas';
+    btn.textContent='🔒 Ocultar balizamento';
     btn.style.background='#dc2626';
   } else {
-    btn.textContent='🔓 Liberar balizamento p/ escolas';
+    btn.textContent='🔓 Liberar balizamento';
     btn.style.background='#15803d';
+  }
+  const btn2=document.getElementById('btnLiberarClass'); if(!btn2) return;
+  if(e.classificacaoLiberada){
+    btn2.textContent='🔒 Ocultar classificação';
+    btn2.style.background='#dc2626';
+  } else {
+    btn2.textContent='🏅 Liberar classificação';
+    btn2.style.background='#0056b8';
   }
 }
 function voltarEtapas(){ curEtapaId=null; curProva=null; document.getElementById('etapaSticky').classList.remove('visible'); navegarPara('etapas'); }
@@ -2189,6 +2205,7 @@ function renderPortalEscola(){
           ${prazoOk?'<span class="badge badge-green">✅ Inscrições abertas</span>':'<span class="badge badge-red">🔒 Prazo encerrado</span>'}
           ${e.prazoInscricao?`<span class="badge badge-blue">até ${fmtData(e.prazoInscricao)}</span>`:''}
           ${e.balizamentoLiberado?'<span class="badge badge-purple">🏊 Balizamento disponível</span>':''}
+          ${e.classificacaoLiberada?'<span class="badge badge-green">🏅 Classificação disponível</span>':''}
         </div>
       </div>
       <div class="card-bd">
@@ -2215,6 +2232,7 @@ function renderPortalEscola(){
             <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
               ${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:4px 9px;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="gerenciarInscricaoBtn(this)">✏️ Inscrever</button>`:'<span style="font-size:10px;color:#94a3b8;">Encerrado</span>'}
               ${temBal?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#7c3aed;color:#fff;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="verBalizamentoEscola(this)">🏊 Ver balizamento</button>`:''}
+              ${(e.classificacaoLiberada&&(provas[n].classificacao||[]).length)?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#15803d;color:#fff;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="verClassificacaoEscola(this)">🏅 Ver classificação</button>`:''}
             </div>
           </td>
         </tr>`;
@@ -2235,6 +2253,59 @@ function abrirPlacarEtapaEscola(etapaId){
   document.getElementById('placarConteudo').innerHTML=r.length?r.map(rkRow).join(''):'<p style="text-align:center;color:#64748b;padding:20px;">Nenhum resultado ainda.</p>';
   abrirModal('modalPlacar');
 }
+
+function verClassificacaoEscola(btn){
+  const etapaId=btn.dataset.etapa, nomePr=btn.dataset.prova;
+  const etapa=db.etapas.find(x=>x.id===etapaId); if(!etapa) return;
+  const p=etapa.provas[nomePr]; if(!p) return;
+
+  const hasFed=(p.classificacaoFed||[]).length>0;
+  const hasNFed=(p.classificacaoNFed||[]).length>0;
+  const hasBoth=hasFed&&hasNFed;
+
+  const buildRows=(arr,pontuarPts)=>{
+    let pos=0, html='';
+    arr.forEach(a=>{
+      const st=a.status||'';
+      const pPos=st?null:++pos;
+      const pts=(!pontuarPts||st)?0:(PONTOS_LNE[pPos-1]||0);
+      const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
+      const fedBadge=a.federado?'<span class="badge badge-purple" style="font-size:9px;margin-left:3px;">FED</span>':'';
+      html+=`<tr>
+        <td style="text-align:center;"><span class="pb ${st?'pn':bc}">${st||pPos+'°'}</span></td>
+        <td style="font-weight:600;">${esc(a.nome)}${fedBadge}</td>
+        <td style="text-align:center;font-size:11px;">${esc(a.categoria||'')}</td>
+        <td style="font-size:11px;">${esc(a.escola||'')}</td>
+        <td style="font-family:monospace;font-weight:600;text-align:center;">${st?'<span class="badge badge-red">'+st+'</span>':(a.tempo||'—')}</td>
+        <td style="text-align:center;font-weight:700;color:var(--az);">${pts||'—'}</td>
+      </tr>`;
+    });
+    return html;
+  };
+
+  const thead=`<thead><tr>
+    <th style="width:40px;text-align:center;">Pos.</th>
+    <th>Atleta</th><th style="width:55px;text-align:center;">Cat.</th>
+    <th>Escola</th>
+    <th style="width:90px;text-align:center;">Tempo</th>
+    <th style="width:42px;text-align:center;">Pts</th>
+  </tr></thead>`;
+
+  let html='';
+  if(hasBoth){
+    html+=`<div style="font-size:11px;font-weight:700;color:#15803d;padding:8px 0 4px;">Não Federados</div>
+      <div style="overflow-x:auto;"><table class="tbl">${thead}<tbody>${buildRows(p.classificacaoNFed,true)}</tbody></table></div>`;
+    html+=`<div style="font-size:11px;font-weight:700;color:#6d28d9;padding:10px 0 4px;">⭐ Federados / Vinculados</div>
+      <div style="overflow-x:auto;"><table class="tbl">${thead}<tbody>${buildRows(p.classificacaoFed,true)}</tbody></table></div>`;
+  } else {
+    html+=`<div style="overflow-x:auto;"><table class="tbl">${thead}<tbody>${buildRows(p.classificacao||[],true)}</tbody></table></div>`;
+  }
+
+  document.getElementById('placarTitulo').textContent=`🏅 Classificação — ${nomePr}`;
+  document.getElementById('placarConteudo').innerHTML=html;
+  abrirModal('modalPlacar');
+}
+
 function verBalizamentoEscola(btn){
   const etapaId=btn.dataset.etapa, nomePr=btn.dataset.prova;
   const etapa=db.etapas.find(x=>x.id===etapaId); if(!etapa) return;
