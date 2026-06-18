@@ -1875,7 +1875,7 @@ function gerarClass(nome){
   p.classificacaoNFed=sort(all.filter(a=>!a.federado));
   renderClass(nome); markDirty(); showToast('Classificação gerada!');
 }
-function _buildClassRows(classArr,pontuarPts){
+function _buildClassRows(classArr,pontuarPts,nomePrv){
   const STATUS_TITLE={DQ:'Desclassificado — infração de regra técnica',DNS:'Não largou (Did Not Start)',DNF:'Não terminou a prova (Did Not Finish)'};
   let pos=0;
   return classArr.map((a,i)=>{
@@ -1892,7 +1892,7 @@ function _buildClassRows(classArr,pontuarPts){
       <td style="text-align:center;font-weight:700;color:var(--az);">${pts||''}</td>
       <td style="font-size:11px;color:#64748b;">S${a.serie} R${a.raia}</td>
       <td>
-        <select onchange="setStatusClsGroup(${JSON.stringify(a._clsKey||'')},${i},this.value,${JSON.stringify(nome)})"
+        <select onchange="setStatusClsGroup(${JSON.stringify(a._clsKey||'')},${i},this.value,${JSON.stringify(nomePrv||'')})"
           style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
           <option value="" ${!st?'selected':''}>—</option>
           <option value="DQ" ${st==='DQ'?'selected':''}>DQ</option>
@@ -1906,7 +1906,7 @@ function _buildClassRows(classArr,pontuarPts){
 function _classSection(nome,classArr,label,color,bgColor,pontuarPts,clsKey){
   if(!classArr||!classArr.length) return '';
   const tagged=classArr.map(a=>({...a,_clsKey:clsKey}));
-  const rows=_buildClassRows(tagged,pontuarPts).map(r=>r.html).join('');
+  const rows=_buildClassRows(tagged,pontuarPts,nome).map(r=>r.html).join('');
   const tid2=tid(nome);
   return `<div class="card" style="margin-bottom:12px;">
     <div class="card-hd coll-hd" style="background:${bgColor};color:${color};" onclick="toggleCollapse('cls${clsKey}body-${tid2}','cls${clsKey}arr-${tid2}')">
@@ -4206,4 +4206,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>     
+</html>
