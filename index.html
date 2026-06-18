@@ -216,6 +216,60 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
 @media print{.no-print{display:none!important;}}
 .etapa-sticky>span[style*='letter-spacing']{display:flex;align-items:center;flex-shrink:0;}
+
+/* ── Fluxo da prova ──────────────────────────────────────────── */
+.fluxo-bar{display:flex;align-items:center;gap:0;padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--bd);overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;}
+.fluxo-step{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:#94a3b8;white-space:nowrap;transition:all .15s;position:relative;}
+.fluxo-step:hover{color:var(--azm);background:var(--azc);}
+.fluxo-step.done{color:#15803d;background:#dcfce7;}
+.fluxo-step.active{color:#fff;background:var(--az);box-shadow:0 2px 6px rgba(0,86,184,.3);}
+.fluxo-step .step-icon{font-size:14px;}
+.fluxo-step .step-num{width:18px;height:18px;border-radius:50%;background:currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;}
+.fluxo-step.done .step-num{background:#15803d;}
+.fluxo-step.active .step-num{background:rgba(255,255,255,.3);}
+.fluxo-step:not(.done):not(.active) .step-num{background:#cbd5e1;color:#64748b;}
+.fluxo-arrow{color:#cbd5e1;font-size:12px;margin:0 2px;flex-shrink:0;}
+
+/* ── Painéis principais ──────────────────────────────────────── */
+.paineis-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;margin-bottom:8px;}
+@media(max-width:900px){.paineis-wrap{grid-template-columns:1fr;}}
+.painel{border-radius:10px;border:2px solid var(--bd);background:#fff;overflow:hidden;transition:border-color .15s;}
+.painel:hover{border-color:#93c5fd;}
+.painel.painel-ativo{border-color:var(--azm);}
+.painel-hd{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;}
+.painel-hd:hover{background:#f8fafc;}
+.painel-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.painel-icon.azul{background:#dbeafe;}
+.painel-icon.verde{background:#dcfce7;}
+.painel-icon.laranja{background:#ffedd5;}
+.painel-titulo{flex:1;}
+.painel-titulo h4{font-size:13px;font-weight:700;color:var(--cz);margin-bottom:2px;}
+.painel-titulo p{font-size:10px;color:#64748b;}
+.painel-status{font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;}
+.painel-status.aberto{background:#dcfce7;color:#15803d;}
+.painel-status.fechado{background:#f1f5f9;color:#64748b;}
+.painel-status.andamento{background:#fef9c3;color:#92400e;}
+.painel-arrow{font-size:11px;color:#94a3b8;transition:transform .2s;margin-left:4px;}
+.painel-arrow.open{transform:rotate(180deg);}
+.painel-body{border-top:1px solid var(--bd);padding:12px 14px;display:none;}
+.painel-body.open{display:block;}
+.painel-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.painel-liberacao{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--bd);margin-top:8px;}
+.painel-liberacao .lib-label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;}
+.painel-liberacao .lib-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;}
+.lib-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block;}
+.lib-dot.on{background:#22c55e;}
+
+/* ── Barra etapa enxuta ──────────────────────────────────────── */
+.etapa-topbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.dropdown-wrap{position:relative;display:inline-flex;}
+.dropdown-menu{display:none;position:absolute;top:100%;left:0;z-index:250;background:#fff;border:1px solid var(--bd);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;padding:4px 0;margin-top:3px;}
+.dropdown-menu.open{display:block;}
+.dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;font-weight:500;color:var(--cz);cursor:pointer;border:none;background:none;width:100%;text-align:left;white-space:nowrap;}
+.dropdown-item:hover{background:var(--czc);}
+.dropdown-item.danger{color:#dc2626;}
+.dropdown-trigger::after{content:'▾';margin-left:5px;font-size:10px;}
+
 @media(max-width:768px){.etapa-sticky>span[style*='letter-spacing']{display:none;}}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 
@@ -401,41 +455,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
   <div class="nav-main no-print" id="navMain"></div>
 
   <!-- Sticky bar etapa -->
-  <div class="etapa-sticky no-print" id="etapaSticky">
-    <span id="stickyEtapaNome" style="font-size:11px;font-weight:700;color:var(--az);margin-right:2px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;"></span>
-    <div class="sep"></div>
-    <!-- Gerar -->
-    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Gerar</span>
-    <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Balizamento</button>
-    <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Classificação</button>
-    <button class="btn" style="background:#6b7280;color:#fff;" onclick="apagarTempos(curProva)">⏱️ Apagar Tempos</button>
-    <div class="sep"></div>
-    <!-- Imprimir Balizamento -->
-    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Balizamento</span>
-    <button class="btn b-pdf" onclick="printBal(curProva)">🖨️ Esta prova</button>
-    <button class="btn" style="background:#0f766e;color:#fff;" onclick="abrirModalImprimirBalizamentos()">📚 Múltiplas provas</button>
-    <div class="sep"></div>
-    <!-- Imprimir Outros -->
-    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Imprimir</span>
-    <button class="btn b-cya" onclick="printClass(curProva)">🏅 Classificação</button>
-    <button class="btn" style="background:#166534;color:#fff;" onclick="abrirSumula()">📄 Súmula</button>
-    <div class="sep"></div>
-    <!-- Cartões -->
-    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Cartões</span>
-    <button class="btn" style="background:#7c3aed;color:#fff;" onclick="imprimirCartoesProva(curProva)">🪪 Por prova</button>
-    <button class="btn" style="background:#6d28d9;color:#fff;" onclick="abrirModalCartoesEmBranco()">🪪 Em branco</button>
-    <button class="btn" style="background:#4c1d95;color:#fff;" onclick="abrirModalCartaoManual()">🪪 Manual</button>
-    <div class="sep"></div>
-    <!-- Atletas -->
-    <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;">Atletas</span>
-    <button class="btn b-out" onclick="addAtleta(curProva)">+ Atleta</button>
-    <button class="btn b-out" onclick="abrirBuscaAtleta()">🔎 Buscar</button>
-    <button class="btn b-out" onclick="abrirTelaCheia(curProva)">⛶ Tempos</button>
-    <div class="sep"></div>
-    <button class="btn b-red" style="font-size:11px;padding:5px 10px;" onclick="excluirProva(curProva)">🗑️ Excluir Prova</button>
-  </div>
+    <!-- etapaSticky removido: fluxo agora é inline nas tabs -->
+  <div id="etapaSticky" style="display:none;"></div>
 
-  <!-- PÁGINA ETAPAS -->
+    <!-- PÁGINA ETAPAS -->
   <div class="page" id="page-etapas">
     <div class="wrap">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -452,44 +475,32 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
   <!-- PÁGINA BALIZAMENTO -->
   <div class="page" id="page-balizamento">
     <div class="wrap">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div class="etapa-topbar">
         <button class="btn b-out" style="font-size:11px;" onclick="voltarEtapas()">← Etapas</button>
         <div>
           <h2 style="font-size:15px;font-weight:700;color:var(--az);" id="balEtapaNome">Etapa</h2>
           <p style="font-size:11px;color:#64748b;" id="balEtapaInfo"></p>
         </div>
         <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-
           <!-- Provas -->
-          <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;">Provas</span>
           <button class="btn b-pri" onclick="abrirModalNovaProva()">+ Nova Prova</button>
-          <button class="btn" style="background:#0f766e;color:#fff;" onclick="criarProvasPadraoLNE()">🏊 Padrão LNE</button>
-          <button class="btn" style="background:#475569;color:#fff;" onclick="abrirReordenar()">↕️ Reordenar</button>
-          <button class="btn" style="background:#7c3aed;color:#fff;" onclick="abrirMesclar()">🔀 Mesclar</button>
-
-          <div class="sep"></div>
-
-          <!-- Atletas -->
-          <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;">Atletas</span>
-          <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
           <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="importarExcel(this)">
-          <button class="btn" style="background:#dc2626;color:#fff;" onclick="abrirAuditoria()">🔍 Auditoria</button>
-
-          <div class="sep"></div>
-
-          <!-- Relatórios -->
-          <span style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;">Relatórios</span>
-          <button class="btn" style="background:#0e7490;color:#fff;" onclick="abrirRelatorio()">📊 Atletas</button>
-          <button class="btn" style="background:#854d0e;color:#fff;" onclick="abrirPlacarEtapa()">🏅 Placar</button>
-          <button class="btn" style="background:#1e40af;color:#fff;" onclick="abrirPlacarGeral()">🏆 Ranking</button>
-          <button class="btn" style="background:#166534;color:#fff;" onclick="imprimirTodosCartoes()">🪪 Todos Cartões</button>
-
-          <div class="sep"></div>
-
-          <!-- Configuração -->
-          <button id="btnLiberarBal" class="btn" style="background:#15803d;color:#fff;" onclick="toggleLiberarBalizamento()">🔓 Liberar balizamento</button>
-          <button id="btnLiberarClass" class="btn" style="background:#0056b8;color:#fff;" onclick="toggleLiberarClassificacao()">🏅 Liberar classificação</button>
-
+          <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()">📥 Importar Excel</button>
+          <!-- Mais opções dropdown -->
+          <div class="dropdown-wrap" id="dropMais">
+            <button class="btn b-out dropdown-trigger" onclick="toggleDropdown('dropMaisMenu')">⚙️ Mais</button>
+            <div class="dropdown-menu" id="dropMaisMenu">
+              <button class="dropdown-item" onclick="criarProvasPadraoLNE();fecharDropdowns()">🏊 Padrão LNE</button>
+              <button class="dropdown-item" onclick="abrirReordenar();fecharDropdowns()">↕️ Reordenar provas</button>
+              <button class="dropdown-item" onclick="abrirMesclar();fecharDropdowns()">🔀 Mesclar provas</button>
+              <button class="dropdown-item" onclick="abrirAuditoria();fecharDropdowns()">🔍 Auditoria</button>
+              <button class="dropdown-item" onclick="abrirRelatorio();fecharDropdowns()">📊 Relatório de atletas</button>
+              <button class="dropdown-item" onclick="abrirPlacarEtapa();fecharDropdowns()">🏅 Placar da etapa</button>
+              <button class="dropdown-item" onclick="abrirPlacarGeral();fecharDropdowns()">🏆 Ranking geral</button>
+              <button class="dropdown-item" onclick="imprimirTodosCartoes();fecharDropdowns()">🪪 Todos os cartões</button>
+              <button class="dropdown-item" onclick="abrirModalImprimirBalizamentos();fecharDropdowns()">🖨️ Imprimir balizamentos</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="card" id="provasContainer" style="display:none;">
@@ -1188,6 +1199,8 @@ function toggleLiberarClassificacao(){
 }
 function atualizarBtnLiberar(){
   const e=getEtapa(curEtapaId); if(!e) return;
+  // re-renderiza painéis para atualizar status de liberação
+  if(curProva) renderPaineis(curProva);
   const btn=document.getElementById('btnLiberarBal'); if(!btn) return;
   if(e.balizamentoLiberado){
     btn.textContent='🔒 Ocultar balizamento';
@@ -1257,7 +1270,13 @@ function renderProvasEtapa(){
   document.getElementById('provasContainer').style.display='block'; document.getElementById('semProvas').style.display='none';
   tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===curProva?'active':''}" data-prova="${esc(n)}" data-tid="${tid(n)}" onclick="switchProvaTab(${jstr(n)})">${esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
   contEl.innerHTML=nomes.map(n=>`<div class="prova-tab-content ${n===curProva?'active':''}" id="prova-tab-${tid(n)}">
-    <div id="stats-${tid(n)}" class="srow" style="padding:10px 14px 0;"></div>
+    <!-- Fluxo da prova -->
+    <div class="fluxo-bar" id="fluxo-${tid(n)}"></div>
+    <!-- Stats rápidos -->
+    <div id="stats-${tid(n)}" class="srow" style="padding:10px 14px 4px;"></div>
+    <!-- 3 painéis principais -->
+    <div class="paineis-wrap" id="paineis-${tid(n)}"></div>
+    <!-- Conteúdo detalhado (atletas / balizamento / classificação) -->
     <div id="atl-${tid(n)}" style="padding:0 14px;"></div>
     <div id="bal-${tid(n)}" style="padding:0 14px;"></div>
     <div id="cls-${tid(n)}" style="padding:0 14px;"></div>
@@ -1278,7 +1297,208 @@ function mostrarSticky(nome){ document.getElementById('etapaSticky').classList.a
 // ══════════════════════════════════════════════════════════
 // RENDER ALL
 // ══════════════════════════════════════════════════════════
-function renderAll(nome){ const p=getProva(nome); if(!p) return; renderStats(nome); renderAtletas(nome); if(p.series&&p.series.length) renderBal(nome); if(p.classificacao&&p.classificacao.length) renderClass(nome); }
+
+// ══════════════════════════════════════════════════════════════
+// DROPDOWN
+// ══════════════════════════════════════════════════════════════
+function toggleDropdown(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const isOpen=el.classList.contains('open');
+  fecharDropdowns();
+  if(!isOpen) el.classList.add('open');
+}
+function fecharDropdowns(){
+  document.querySelectorAll('.dropdown-menu.open').forEach(m=>m.classList.remove('open'));
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.dropdown-wrap')) fecharDropdowns();
+});
+
+// ══════════════════════════════════════════════════════════════
+// FLUXO DA PROVA
+// ══════════════════════════════════════════════════════════════
+function getFluxoEstado(nome){
+  const p=getProva(nome); if(!p) return {};
+  const temAtletas=p.atletas.length>0;
+  const temBal=(p.series||[]).length>0;
+  const temTempos=(p.series||[]).some(s=>s.lanes.some(l=>l&&l.tempo&&l.tempo.trim()));
+  const temClass=(p.classificacao||[]).length>0;
+  const etapa=getEtapa(curEtapaId);
+  return {
+    atletas:   temAtletas,
+    balizamento: temBal,
+    cronometragem: temTempos,
+    classificacao: temClass,
+    sumula: false, // não tem estado persistido
+    balLiberado: etapa?!!etapa.balizamentoLiberado:false,
+    classLiberada: etapa?!!etapa.classificacaoLiberada:false,
+  };
+}
+
+function renderFluxo(nome){
+  const el=document.getElementById('fluxo-'+tid(nome)); if(!el) return;
+  const e=getFluxoEstado(nome);
+  const steps=[
+    {id:'atletas',      label:'Atletas',       icon:'👥', done:e.atletas,       fn:`abrirSecao('atl',${JSON.stringify(nome)})`},
+    {id:'balizamento',  label:'Balizamento',   icon:'🏊', done:e.balizamento,   fn:`abrirSecao('bal',${JSON.stringify(nome)})`},
+    {id:'cronometragem',label:'Cronometragem', icon:'⏱️', done:e.cronometragem, fn:`abrirTelaCheia(${JSON.stringify(nome)})`},
+    {id:'classificacao',label:'Classificação', icon:'🏆', done:e.classificacao, fn:`abrirSecao('cls',${JSON.stringify(nome)})`},
+    {id:'sumula',       label:'Súmula',        icon:'📄', done:e.sumula,        fn:`abrirSumula()`},
+  ];
+  // determina qual é o "atual" — primeiro não-done
+  let curIdx=steps.findIndex(s=>!s.done);
+  if(curIdx<0) curIdx=steps.length-1;
+
+  el.innerHTML=steps.map((s,i)=>{
+    const cls=s.done?'done':(i===curIdx?'active':'');
+    const num=s.done?'✓':(i+1);
+    return `<button class="fluxo-step ${cls}" onclick="${s.fn}" title="${s.label}">
+      <span class="step-num">${num}</span>
+      <span>${s.icon} ${s.label}</span>
+    </button>${i<steps.length-1?'<span class="fluxo-arrow">→</span>':''}`;
+  }).join('');
+}
+
+function abrirSecao(secao, nome){
+  // Expande o painel correspondente
+  const mapa={atl:'painel-atletas',bal:'painel-balizamento',cls:'painel-resultados'};
+  const painelId=mapa[secao];
+  if(painelId){
+    const body=document.getElementById(painelId+'-body-'+tid(nome));
+    if(body&&!body.classList.contains('open')){
+      body.classList.add('open');
+      const arrow=document.getElementById(painelId+'-arrow-'+tid(nome));
+      if(arrow) arrow.classList.add('open');
+    }
+  }
+  // Scroll até a seção
+  const el=document.getElementById(secao+'-'+tid(nome));
+  if(el) setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PAINÉIS
+// ══════════════════════════════════════════════════════════════
+function renderPaineis(nome){
+  const el=document.getElementById('paineis-'+tid(nome)); if(!el) return;
+  const e=getFluxoEstado(nome);
+  const etapa=getEtapa(curEtapaId);
+  const p=getProva(nome);
+  const nAtl=p?p.atletas.length:0;
+  const nSeries=p?(p.series||[]).length:0;
+  const nClass=p?(p.classificacao||[]).length:0;
+  const nTempos=p?(p.series||[]).reduce((a,s)=>a+s.lanes.filter(l=>l&&l.tempo&&l.tempo.trim()).length,0):0;
+  const t=tid(nome);
+
+  el.innerHTML=`
+  <!-- PAINEL BALIZAMENTO -->
+  <div class="painel ${e.balizamento?'painel-ativo':''}" id="painel-balizamento-${t}">
+    <div class="painel-hd" onclick="togglePainel('painel-balizamento',${JSON.stringify(nome)})">
+      <div class="painel-icon azul">🏊</div>
+      <div class="painel-titulo">
+        <h4>Balizamento</h4>
+        <p>${nAtl} atleta(s) · ${nSeries} série(s)</p>
+      </div>
+      <span class="painel-status ${e.balizamento?'aberto':'fechado'}">${e.balizamento?'✅ Gerado':'⏳ Pendente'}</span>
+      <span class="painel-arrow ${e.balizamento?'open':''}" id="painel-balizamento-arrow-${t}">▼</span>
+    </div>
+    <div class="painel-body ${e.balizamento?'open':''}" id="painel-balizamento-body-${t}">
+      <div class="painel-acoes">
+        <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Gerar balizamento</button>
+        <button class="btn b-out" onclick="addAtleta(${JSON.stringify(nome)})">+ Atleta</button>
+        <button class="btn b-out" onclick="abrirBuscaAtleta()">🔎 Buscar atleta</button>
+        <button class="btn b-out" onclick="printBal(${JSON.stringify(nome)})">🖨️ Imprimir</button>
+        <button class="btn b-gray" onclick="apagarTempos(${JSON.stringify(nome)})">⏱️ Apagar tempos</button>
+        <button class="btn b-red" style="font-size:11px;" onclick="excluirProva(${JSON.stringify(nome)})">🗑️ Excluir prova</button>
+      </div>
+      <div class="painel-liberacao">
+        <div>
+          <div class="lib-label">Visível para escolas</div>
+          <div class="lib-status">
+            <span class="lib-dot ${e.balLiberado?'on':''}"></span>
+            ${e.balLiberado?'<span style="color:#15803d;">Liberado</span>':'<span style="color:#64748b;">Fechado</span>'}
+          </div>
+        </div>
+        <button class="btn ${e.balLiberado?'b-red':'b-suc'}" style="font-size:11px;" onclick="toggleLiberarBalizamento()">
+          ${e.balLiberado?'🔒 Fechar':'🔓 Liberar'}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAINEL CRONOMETRAGEM -->
+  <div class="painel ${e.cronometragem?'painel-ativo':''}" id="painel-cronometragem-${t}" style="border-color:${e.cronometragem?'#fbbf24':'var(--bd)'}">
+    <div class="painel-hd" onclick="togglePainel('painel-cronometragem',${JSON.stringify(nome)})">
+      <div class="painel-icon laranja">⏱️</div>
+      <div class="painel-titulo">
+        <h4>Cronometragem</h4>
+        <p>${nTempos} tempo(s) registrado(s) de ${nAtl}</p>
+      </div>
+      <span class="painel-status ${e.cronometragem?'andamento':'fechado'}">${e.cronometragem?'⏱ Em andamento':'⏳ Aguardando'}</span>
+      <span class="painel-arrow" id="painel-cronometragem-arrow-${t}">▼</span>
+    </div>
+    <div class="painel-body" id="painel-cronometragem-body-${t}">
+      <div class="painel-acoes">
+        <button class="btn b-pri" style="font-size:13px;padding:10px 18px;" onclick="abrirTelaCheia(${JSON.stringify(nome)})">⛶ Abrir tela de tempos</button>
+        <button class="btn b-out" onclick="abrirModalCartaoManual()">🪪 Cartão manual</button>
+      </div>
+      <p style="font-size:11px;color:#64748b;margin-top:6px;">Use a tela de tempos para entrada rápida com teclado.</p>
+    </div>
+  </div>
+
+  <!-- PAINEL RESULTADOS -->
+  <div class="painel ${e.classificacao?'painel-ativo':''}" id="painel-resultados-${t}">
+    <div class="painel-hd" onclick="togglePainel('painel-resultados',${JSON.stringify(nome)})">
+      <div class="painel-icon verde">🏆</div>
+      <div class="painel-titulo">
+        <h4>Resultados</h4>
+        <p>${nClass} atleta(s) classificado(s)</p>
+      </div>
+      <span class="painel-status ${e.classificacao?'aberto':'fechado'}">${e.classificacao?'✅ Disponível':'⏳ Pendente'}</span>
+      <span class="painel-arrow ${e.classificacao?'open':''}" id="painel-resultados-arrow-${t}">▼</span>
+    </div>
+    <div class="painel-body ${e.classificacao?'open':''}" id="painel-resultados-body-${t}">
+      <div class="painel-acoes">
+        <button class="btn b-suc" onclick="gerarClass(${JSON.stringify(nome)})">🏅 Gerar classificação</button>
+        <button class="btn b-out" onclick="printClass(${JSON.stringify(nome)})">🖨️ Imprimir classificação</button>
+        <button class="btn b-out" onclick="abrirSumula()">📄 Súmula</button>
+        <button class="btn b-out" onclick="imprimirCartoesProva(${JSON.stringify(nome)})">🪪 Cartões</button>
+        <button class="btn b-out" onclick="abrirModalCartoesEmBranco()">🪪 Em branco</button>
+        <button class="btn b-out" onclick="abrirPlacarEtapa()">🏅 Placar</button>
+        <button class="btn b-out" onclick="abrirPlacarGeral()">🏆 Ranking</button>
+      </div>
+      <div class="painel-liberacao">
+        <div>
+          <div class="lib-label">Classificação visível para escolas</div>
+          <div class="lib-status">
+            <span class="lib-dot ${e.classLiberada?'on':''}"></span>
+            ${e.classLiberada?'<span style="color:#15803d;">Liberada</span>':'<span style="color:#64748b;">Fechada</span>'}
+          </div>
+        </div>
+        <button class="btn ${e.classLiberada?'b-red':'b-suc'}" style="font-size:11px;" onclick="toggleLiberarClassificacao()">
+          ${e.classLiberada?'🔒 Fechar':'🏅 Liberar'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function togglePainel(painelBase, nome){
+  const t=tid(nome);
+  const body=document.getElementById(painelBase+'-body-'+t);
+  const arrow=document.getElementById(painelBase+'-arrow-'+t);
+  if(!body) return;
+  body.classList.toggle('open');
+  if(arrow) arrow.classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Sobreescreve mostrarSticky (não-op — sticky foi removida)
+// ══════════════════════════════════════════════════════════════
+function mostrarSticky(nome){ /* sticky removida — painéis inline */ }
+
+function renderAll(nome){ const p=getProva(nome); if(!p) return; renderFluxo(nome); renderPaineis(nome); renderStats(nome); renderAtletas(nome); if(p.series&&p.series.length) renderBal(nome); if(p.classificacao&&p.classificacao.length) renderClass(nome); }
 
 function renderStats(nome){
   const p=getProva(nome); if(!p) return;
