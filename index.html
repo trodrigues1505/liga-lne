@@ -2017,6 +2017,7 @@ function renderBal(nome){
   html+=`<div class="card-ft">
     <button class="btn b-pdf" onclick="printBal(${jstr(nome)})">🖨️ Imprimir balizamento</button>
     <button class="btn b-suc" onclick="gerarClass(${jstr(nome)})">🏅 Gerar classificação →</button>
+    <button class="btn b-out" onclick="abrirSerieManual(${jstr(nome)})">+ Série manual</button>
   </div></div></div>`;
   el.innerHTML=html;
 }
@@ -2052,6 +2053,137 @@ function confRaiaVazia(nome,si,li){
 // ══════════════════════════════════════════════════════════
 // SÉRIE COMBINADA
 // ══════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════
+// SÉRIE MANUAL
+// ══════════════════════════════════════════════════════════
+let _smProva = null;
+
+function abrirSerieManual(nome){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const p=etapa.provas[nome]; if(!p) return;
+  _smProva = nome;
+  const raias = etapa.raias||8;
+
+  // Monta lista de atletas disponíveis (inscritos na prova)
+  const atletasOpts = ['<option value="">— raia vazia —</option>',
+    ...p.atletas.map(a=>`<option value="${esc(a.nome)}">${esc(a.nome)}${a.categoria?' ('+a.categoria+')':''}</option>`)
+  ].join('');
+
+  // Monta uma linha por raia
+  const lo = getLaneOrder(raias);
+  let html = `<table class="tbl"><thead><tr>
+    <th style="width:40px;text-align:center;">Raia</th>
+    <th>Atleta</th>
+    <th style="width:70px;text-align:center;">Cat.</th>
+    <th>Escola</th>
+  </tr></thead><tbody>`;
+
+  for(let li=0; li<raias; li++){
+    const raia = li+1;
+    const isCen = raias>=8&&(raia===4||raia===5);
+    html += `<tr class="${isCen?'rc':''}">
+      <td class="rn">${raia}</td>
+      <td>
+        <select id="smAtl_${li}" onchange="smSelecionarAtleta(${li})"
+          style="width:100%;border:1px solid var(--bd);border-radius:5px;padding:4px 6px;font-size:12px;">
+          ${atletasOpts}
+        </select>
+        <input type="text" id="smNomeL_${li}" placeholder="ou digite nome livre…"
+          style="width:100%;border:1px solid var(--bd);border-radius:5px;padding:4px 6px;font-size:12px;margin-top:3px;display:none;"/>
+      </td>
+      <td><input type="text" id="smCat_${li}" placeholder="A12"
+        style="width:60px;border:1px solid var(--bd);border-radius:5px;padding:4px 6px;font-size:12px;"/></td>
+      <td><input type="text" id="smEsc_${li}" placeholder="Escola"
+        style="width:100%;border:1px solid var(--bd);border-radius:5px;padding:4px 6px;font-size:12px;"/></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+
+  document.getElementById('smCorpo').innerHTML = html;
+
+  // Pré-seleciona a ordem centro-fora nas raias por padrão
+  document.getElementById('smPosicao').value = 'fim';
+  abrirModal('modalSerieManual');
+}
+
+function smSelecionarAtleta(li){
+  const etapa=getEtapa(curEtapaId); if(!etapa||!_smProva) return;
+  const p=etapa.provas[_smProva]; if(!p) return;
+  const sel=document.getElementById('smAtl_'+li);
+  const nomeInput=document.getElementById('smNomeL_'+li);
+  const catInput=document.getElementById('smCat_'+li);
+  const escInput=document.getElementById('smEsc_'+li);
+  const nomeVal=sel.value;
+  if(!nomeVal){
+    // Vazio — esconde input livre
+    nomeInput.style.display='none';
+    catInput.value=''; escInput.value='';
+    return;
+  }
+  // Preenche cat/escola do atleta selecionado
+  const atl=p.atletas.find(a=>a.nome===nomeVal);
+  if(atl){
+    catInput.value=atl.categoria||'';
+    escInput.value=atl.escola||'';
+  }
+  nomeInput.style.display='none';
+}
+
+function confirmarSerieManual(){
+  const etapa=getEtapa(curEtapaId); if(!etapa||!_smProva) return;
+  const p=etapa.provas[_smProva]; if(!p) return;
+  const raias=etapa.raias||8;
+  const posicao=document.getElementById('smPosicao').value;
+
+  const lanes=[];
+  let temAlguem=false;
+  for(let li=0;li<raias;li++){
+    const sel=document.getElementById('smAtl_'+li);
+    const nomeInput=document.getElementById('smNomeL_'+li);
+    const catInput=document.getElementById('smCat_'+li);
+    const escInput=document.getElementById('smEsc_'+li);
+    const nome=(sel&&sel.value)?sel.value:(nomeInput?nomeInput.value.trim():'');
+    const cat=catInput?catInput.value.trim().toUpperCase():'';
+    const escola=escInput?escInput.value.trim():'';
+    if(nome){
+      temAlguem=true;
+      // Busca dados completos do atleta se estiver inscrito
+      const atl=p.atletas.find(a=>a.nome.toLowerCase()===nome.toLowerCase());
+      lanes.push({
+        id: atl?atl.id:uid(),
+        nome: toTitle(nome),
+        categoria: cat||(atl?atl.categoria||'':''),
+        escola: escola||(atl?atl.escola||'':''),
+        tempoRef: atl?atl.tempoRef||'':'',
+        federado: atl?!!atl.federado:false,
+        tempo: ''
+      });
+    } else {
+      lanes.push(null);
+    }
+  }
+
+  if(!temAlguem){ showToast('⚠️ Adicione pelo menos um atleta na série.'); return; }
+
+  if(!p.series) p.series=[];
+  const novaSerie={lanes, provaRef:_smProva, manual:true};
+
+  if(posicao==='inicio'){
+    p.series.unshift(novaSerie);
+  } else {
+    p.series.push(novaSerie);
+  }
+
+  markDirty();
+  fecharModal('modalSerieManual');
+  renderBal(_smProva);
+  renderStats(_smProva);
+  renderPaineis(_smProva);
+  showToast('✅ Série manual adicionada!');
+  _smProva=null;
+}
+
 function abrirSerieCombinada(nomeProva){
   const etapa=getEtapa(curEtapaId); if(!etapa) return;
   const provas=etapa.provas, raias=etapa.raias||8;
@@ -2828,7 +2960,34 @@ function imprimirCartoesEmBranco(){
   const cartoes = Array(qtd).fill(null); // null = cartão em branco
   fecharModal('modalCartoesEmBranco');
   const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões em Branco</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesEmBrancoHtml(qtd)}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões em Branco</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesEmBrancoHtml(qtd)}
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;font-weight:600;color:#475569;">Inserir na posição:</label>
+        <select id="smPosicao" style="border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:12px;">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieManual()">✅ Adicionar série</button>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
 }
 
@@ -2920,7 +3079,34 @@ function imprimirCartaoManual(){
   const resto = PF - (qtd % PF === 0 ? PF : qtd % PF);
   for(let i = 0; i < resto; i++) cartaoHtml += `<div class="cartao-vazio"></div>`;
   const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${nome}</title><style>${CARTOES_CSS}</style></head><body><div class="folha">${cartaoHtml}</div></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${nome}</title><style>${CARTOES_CSS}</style></head><body><div class="folha">${cartaoHtml}</div>
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;font-weight:600;color:#475569;">Inserir na posição:</label>
+        <select id="smPosicao" style="border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:12px;">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieManual()">✅ Adicionar série</button>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
 }
 
@@ -2976,7 +3162,34 @@ function confirmarImprimirCartoes(){
   if(!cartoes.length){showToast('Nenhum atleta nas provas selecionadas.');return;}
   fecharModal('modalCartoes');
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões</title><style>${CARTOES_CSS}</style></head><body>${buildCartoesHtml(cartoes)}
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;font-weight:600;color:#475569;">Inserir na posição:</label>
+        <select id="smPosicao" style="border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:12px;">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieManual()">✅ Adicionar série</button>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
 
@@ -3001,7 +3214,34 @@ function openPrint(h){ document.getElementById('pdfContent').innerHTML=h; abrirM
 function doPrint(){
   const c=document.getElementById('pdfContent').innerHTML;
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LNE 2026</title><style>${PRINT_CSS}</style></head><body>${c}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LNE 2026</title><style>${PRINT_CSS}</style></head><body>${c}
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;font-weight:600;color:#475569;">Inserir na posição:</label>
+        <select id="smPosicao" style="border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:12px;">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieManual()">✅ Adicionar série</button>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
   
@@ -3207,7 +3447,34 @@ function imprimirSumula(){
   html+=`<div class="assinatura"><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Árbitro / Juiz</div><div style="font-size:8.5pt;margin-top:2pt;">${esc(juiz)}</div></div><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Cronometrista 1</div></div><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Cronometrista 2</div></div><div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Responsável</div></div></div>`;
   fecharModal('modalSumulaForm');
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Súmula</title><style>${SCSS}</style></head><body>${html}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Súmula</title><style>${SCSS}</style></head><body>${html}
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;font-weight:600;color:#475569;">Inserir na posição:</label>
+        <select id="smPosicao" style="border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:12px;">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieManual()">✅ Adicionar série</button>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
 
@@ -4689,5 +4956,32 @@ function excluirAtletaEditar(nomeProva, idx){
   showToast(`${nomeAtl} excluído(a)${temRaia?' e removido(a) do balizamento':''}.`);
 }
 </script>
+
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" onclick="fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;font-weight:600;color:#475569;">Inserir na posição:</label>
+        <select id="smPosicao" style="border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font-size:12px;">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarSerieManual()">✅ Adicionar série</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
