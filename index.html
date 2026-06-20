@@ -1340,10 +1340,10 @@ function renderFluxo(nome){
   const el=document.getElementById('fluxo-'+tid(nome)); if(!el) return;
   const e=getFluxoEstado(nome);
   const steps=[
-    {id:'atletas',      label:'Atletas',       icon:'👥', done:e.atletas,       fn:`abrirSecao('atl',${JSON.stringify(nome)})`},
-    {id:'balizamento',  label:'Balizamento',   icon:'🏊', done:e.balizamento,   fn:`abrirSecao('bal',${JSON.stringify(nome)})`},
-    {id:'cronometragem',label:'Cronometragem', icon:'⏱️', done:e.cronometragem, fn:`abrirTelaCheia(${JSON.stringify(nome)})`},
-    {id:'classificacao',label:'Classificação', icon:'🏆', done:e.classificacao, fn:`abrirSecao('cls',${JSON.stringify(nome)})`},
+    {id:'atletas',      label:'Atletas',       icon:'👥', done:e.atletas,       fn:`abrirSecao('atl',curProva)`},
+    {id:'balizamento',  label:'Balizamento',   icon:'🏊', done:e.balizamento,   fn:`abrirSecao('bal',curProva)`},
+    {id:'cronometragem',label:'Cronometragem', icon:'⏱️', done:e.cronometragem, fn:`abrirTelaCheia(curProva)`},
+    {id:'classificacao',label:'Classificação', icon:'🏆', done:e.classificacao, fn:`abrirSecao('cls',curProva)`},
     {id:'sumula',       label:'Súmula',        icon:'📄', done:e.sumula,        fn:`abrirSumula()`},
   ];
   // determina qual é o "atual" — primeiro não-done
@@ -1394,7 +1394,7 @@ function renderPaineis(nome){
   el.innerHTML=`
   <!-- PAINEL BALIZAMENTO -->
   <div class="painel ${e.balizamento?'painel-ativo':''}" id="painel-balizamento-${t}">
-    <div class="painel-hd" onclick="togglePainel('painel-balizamento',${JSON.stringify(nome)})">
+    <div class="painel-hd" onclick="togglePainel('painel-balizamento',curProva)">
       <div class="painel-icon azul">🏊</div>
       <div class="painel-titulo">
         <h4>Balizamento</h4>
@@ -1406,11 +1406,11 @@ function renderPaineis(nome){
     <div class="painel-body ${e.balizamento?'open':''}" id="painel-balizamento-body-${t}">
       <div class="painel-acoes">
         <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Gerar balizamento</button>
-        <button class="btn b-out" onclick="addAtleta(${JSON.stringify(nome)})">+ Atleta</button>
+        <button class="btn b-out" onclick="addAtleta(curProva)">+ Atleta</button>
         <button class="btn b-out" onclick="abrirBuscaAtleta()">🔎 Buscar atleta</button>
-        <button class="btn b-out" onclick="printBal(${JSON.stringify(nome)})">🖨️ Imprimir</button>
-        <button class="btn b-gray" onclick="apagarTempos(${JSON.stringify(nome)})">⏱️ Apagar tempos</button>
-        <button class="btn b-red" style="font-size:11px;" onclick="excluirProva(${JSON.stringify(nome)})">🗑️ Excluir prova</button>
+        <button class="btn b-out" onclick="printBal(curProva)">🖨️ Imprimir</button>
+        <button class="btn b-gray" onclick="apagarTempos(curProva)">⏱️ Apagar tempos</button>
+        <button class="btn b-red" style="font-size:11px;" onclick="excluirProva(curProva)">🗑️ Excluir prova</button>
       </div>
       <div class="painel-liberacao">
         <div>
@@ -1429,7 +1429,7 @@ function renderPaineis(nome){
 
   <!-- PAINEL CRONOMETRAGEM -->
   <div class="painel ${e.cronometragem?'painel-ativo':''}" id="painel-cronometragem-${t}" style="border-color:${e.cronometragem?'#fbbf24':'var(--bd)'}">
-    <div class="painel-hd" onclick="togglePainel('painel-cronometragem',${JSON.stringify(nome)})">
+    <div class="painel-hd" onclick="togglePainel('painel-cronometragem',curProva)">
       <div class="painel-icon laranja">⏱️</div>
       <div class="painel-titulo">
         <h4>Cronometragem</h4>
@@ -1440,7 +1440,7 @@ function renderPaineis(nome){
     </div>
     <div class="painel-body" id="painel-cronometragem-body-${t}">
       <div class="painel-acoes">
-        <button class="btn b-pri" style="font-size:13px;padding:10px 18px;" onclick="abrirTelaCheia(${JSON.stringify(nome)})">⛶ Abrir tela de tempos</button>
+        <button class="btn b-pri" style="font-size:13px;padding:10px 18px;" onclick="abrirTelaCheia(curProva)">⛶ Abrir tela de tempos</button>
         <button class="btn b-out" onclick="abrirModalCartaoManual()">🪪 Cartão manual</button>
       </div>
       <p style="font-size:11px;color:#64748b;margin-top:6px;">Use a tela de tempos para entrada rápida com teclado.</p>
@@ -1449,7 +1449,7 @@ function renderPaineis(nome){
 
   <!-- PAINEL RESULTADOS -->
   <div class="painel ${e.classificacao?'painel-ativo':''}" id="painel-resultados-${t}">
-    <div class="painel-hd" onclick="togglePainel('painel-resultados',${JSON.stringify(nome)})">
+    <div class="painel-hd" onclick="togglePainel('painel-resultados',curProva)">
       <div class="painel-icon verde">🏆</div>
       <div class="painel-titulo">
         <h4>Resultados</h4>
@@ -1460,10 +1460,10 @@ function renderPaineis(nome){
     </div>
     <div class="painel-body ${e.classificacao?'open':''}" id="painel-resultados-body-${t}">
       <div class="painel-acoes">
-        <button class="btn b-suc" onclick="gerarClass(${JSON.stringify(nome)})">🏅 Gerar classificação</button>
-        <button class="btn b-out" onclick="printClass(${JSON.stringify(nome)})">🖨️ Imprimir classificação</button>
+        <button class="btn b-suc" onclick="gerarClass(curProva)">🏅 Gerar classificação</button>
+        <button class="btn b-out" onclick="printClass(curProva)">🖨️ Imprimir classificação</button>
         <button class="btn b-out" onclick="abrirSumula()">📄 Súmula</button>
-        <button class="btn b-out" onclick="imprimirCartoesProva(${JSON.stringify(nome)})">🪪 Cartões</button>
+        <button class="btn b-out" onclick="imprimirCartoesProva(curProva)">🪪 Cartões</button>
         <button class="btn b-out" onclick="abrirModalCartoesEmBranco()">🪪 Em branco</button>
         <button class="btn b-out" onclick="abrirPlacarEtapa()">🏅 Placar</button>
         <button class="btn b-out" onclick="abrirPlacarGeral()">🏆 Ranking</button>
@@ -4598,4 +4598,4 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 </body>
-</html>    
+</html>
