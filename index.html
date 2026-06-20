@@ -2555,15 +2555,33 @@ function verClassificacaoEscola(btn){
   const hasBoth=hasFed&&hasNFed;
 
   const buildRows=(arr,pontuarPts)=>{
-    let pos=0, html='';
+    // Empate olímpico
+    const validos=arr.filter(a=>!a.status&&a.tempo&&a.tempo.trim());
+    const rankMap={};
+    let cursor=0;
+    while(cursor<validos.length){
+      const tAtual=tempoMs(validos[cursor].tempo);
+      let fim=cursor;
+      while(fim<validos.length&&tempoMs(validos[fim].tempo)===tAtual) fim++;
+      const posicao=cursor+1;
+      const pts=PONTOS_LNE[cursor]||0;
+      const empate=fim-cursor>1;
+      validos.slice(cursor,fim).forEach(a=>{ rankMap[a.nome+'|'+a.serie+'|'+a.raia]={pos:posicao,pts,empate}; });
+      cursor=fim;
+    }
+    let html='';
     arr.forEach(a=>{
       const st=a.status||'';
-      const pPos=st?null:++pos;
-      const semTempo=!a.tempo||!a.tempo.trim(); const pts=(!pontuarPts||st||semTempo)?0:(PONTOS_LNE[pPos-1]||0);
+      const semTempo=!a.tempo||!a.tempo.trim();
+      const rank=rankMap[a.nome+'|'+a.serie+'|'+a.raia];
+      const pPos=rank?rank.pos:null;
+      const pts=(!pontuarPts||st||semTempo||!rank)?0:rank.pts;
+      const empate=rank?rank.empate:false;
       const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
+      const posLabel=st?st:pPos?(empate?`${pPos}°=`:`${pPos}°`):'—';
       const fedBadge=a.federado?'<span class="badge badge-purple" style="font-size:9px;margin-left:3px;">FED</span>':'';
       html+=`<tr>
-        <td style="text-align:center;"><span class="pb ${st?'pn':bc}">${st||pPos+'°'}</span></td>
+        <td style="text-align:center;"><span class="pb ${st||!pPos?'pn':bc}" title="${empate?'Empate':''}">${posLabel}</span></td>
         <td style="font-weight:600;">${esc(a.nome)}${fedBadge}</td>
         <td style="text-align:center;font-size:11px;">${esc(a.categoria||'')}</td>
         <td style="font-size:11px;">${esc(a.escola||'')}</td>
@@ -3119,11 +3137,28 @@ function printClass(nome){
   const hasNFed=(p.classificacaoNFed||[]).length>0;
   const hasBoth=hasFed&&hasNFed;
   const buildRows=(arr,pontuarPts)=>{
-    let pos=0,rows='';
+    // Empate olímpico: mesmo tempo → mesma posição, mesma pontuação, próxima pula
+    const validos=arr.filter(a=>!a.status&&a.tempo&&a.tempo.trim());
+    const rankMap={};
+    let cursor=0;
+    while(cursor<validos.length){
+      const tAtual=tempoMs(validos[cursor].tempo);
+      let fim=cursor;
+      while(fim<validos.length&&tempoMs(validos[fim].tempo)===tAtual) fim++;
+      const posicao=cursor+1;
+      const pts=PONTOS_LNE[cursor]||0;
+      const empate=fim-cursor>1;
+      validos.slice(cursor,fim).forEach(a=>{ rankMap[a.nome+'|'+a.serie+'|'+a.raia]={pos:posicao,pts,empate}; });
+      cursor=fim;
+    }
+    let rows='';
     arr.forEach(a=>{
-      const st=a.status||'',ptsN=(!pontuarPts||st)?0:(PONTOS_LNE[pos]||0);
-      if(!st) pos++;
-      rows+=`<tr><td class="c-pos">${st?st:pos+'°'}</td><td class="c-nome">${esc(a.nome)}${a.federado?' ⭐':''}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${a.tempo||'—'}</td><td class="c-pos">${ptsN||'—'}</td></tr>`;
+      const st=a.status||'';
+      const semTempo=!a.tempo||!a.tempo.trim();
+      const rank=rankMap[a.nome+'|'+a.serie+'|'+a.raia];
+      const ptsN=(!pontuarPts||st||semTempo||!rank)?0:rank.pts;
+      const posLabel=st?st:rank?(rank.empate?`${rank.pos}°=`:`${rank.pos}°`):'—';
+      rows+=`<tr><td class="c-pos">${posLabel}</td><td class="c-nome">${esc(a.nome)}${a.federado?' ⭐':''}</td><td class="c-doc">${esc(a.categoria||'')}</td><td class="c-inst">${esc(a.escola||'')}</td><td class="c-tempo">${st?st:(a.tempo||'—')}</td><td class="c-pos">${ptsN||'—'}</td></tr>`;
     });
     return rows;
   };
