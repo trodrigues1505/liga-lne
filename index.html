@@ -1191,11 +1191,21 @@ function toggleLiberarBalizamento(){
   markDirty(); atualizarBtnLiberar();
   showToast(e.balizamentoLiberado?'✅ Balizamento liberado para as escolas!':'🔒 Balizamento ocultado das escolas.');
 }
-function toggleLiberarClassificacao(){
+function toggleLiberarClassificacao(nomeProva){
   const e=getEtapa(curEtapaId); if(!e) return;
-  e.classificacaoLiberada=!e.classificacaoLiberada;
+  const prova=nomeProva||curProva; if(!prova) return;
+  if(!e.classLiberadaPorProva) e.classLiberadaPorProva={};
+  e.classLiberadaPorProva[prova]=!e.classLiberadaPorProva[prova];
+  const liberada=e.classLiberadaPorProva[prova];
   markDirty(); atualizarBtnLiberar();
-  showToast(e.classificacaoLiberada?'✅ Classificação liberada para as escolas!':'🔒 Classificação ocultada das escolas.');
+  showToast(liberada?`✅ Classificação de "${prova}" liberada!`:`🔒 Classificação de "${prova}" ocultada.`);
+}
+
+function isClassLiberada(etapa, nomeProva){
+  if(!etapa) return false;
+  // suporte legado: se classificacaoLiberada=true, libera tudo
+  if(etapa.classificacaoLiberada) return true;
+  return !!(etapa.classLiberadaPorProva&&etapa.classLiberadaPorProva[nomeProva]);
 }
 function atualizarBtnLiberar(){
   const e=getEtapa(curEtapaId); if(!e) return;
@@ -1210,7 +1220,8 @@ function atualizarBtnLiberar(){
     btn.style.background='#15803d';
   }
   const btn2=document.getElementById('btnLiberarClass'); if(!btn2) return;
-  if(e.classificacaoLiberada){
+  const classLiberadaAtual=curProva?isClassLiberada(e,curProva):false;
+  if(classLiberadaAtual){
     btn2.textContent='🔒 Ocultar classificação';
     btn2.style.background='#dc2626';
   } else {
@@ -1332,7 +1343,7 @@ function getFluxoEstado(nome){
     classificacao: temClass,
     sumula: false, // não tem estado persistido
     balLiberado: etapa?!!etapa.balizamentoLiberado:false,
-    classLiberada: etapa?!!etapa.classificacaoLiberada:false,
+    classLiberada: etapa?isClassLiberada(etapa,nome):false,
   };
 }
 
@@ -2114,10 +2125,17 @@ function gerarClass(nome){
   if(!nome) return;
   const p=getProva(nome); if(!p||!p.series||!p.series.length){alert('Gere o balizamento primeiro.');return;}
   const all=[];
-  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{if(a&&a.nome&&!a._outra) all.push({...a,serie:si+1,raia:li+1});}));
+  p.series.forEach((s,si)=>s.lanes.forEach((a,li)=>{
+    if(a&&a.nome&&!a._outra){
+      const semTempo=!a.tempo||!a.tempo.trim();
+      // Se não tem tempo e não tem status, marca como DNS automaticamente
+      const status=a.status||(semTempo?'DNS':'');
+      all.push({...a, serie:si+1, raia:li+1, status});
+    }
+  }));
   const sort=(arr)=>{
-    const comT=arr.filter(a=>a.tempo&&a.tempo.trim()).sort((a,b)=>tempoMs(a.tempo)-tempoMs(b.tempo));
-    const semT=arr.filter(a=>!a.tempo||!a.tempo.trim());
+    const comT=arr.filter(a=>!a.status&&a.tempo&&a.tempo.trim()).sort((a,b)=>tempoMs(a.tempo)-tempoMs(b.tempo));
+    const semT=arr.filter(a=>a.status||!a.tempo||!a.tempo.trim());
     return [...comT,...semT];
   };
   p.classificacao=sort(all);
@@ -2127,14 +2145,42 @@ function gerarClass(nome){
 }
 function _buildClassRows(classArr,pontuarPts,nomePrv){
   const STATUS_TITLE={DQ:'Desclassificado — infração de regra técnica',DNS:'Não largou (Did Not Start)',DNF:'Não terminou a prova (Did Not Finish)'};
-  let pos=0;
+
+  // ── Pré-calcula posição e pontos com empate olímpico ──────────────
+  // Só os atletas válidos (com tempo e sem status) participam do ranking
+  const validos=classArr.map((a,i)=>({a,i})).filter(({a})=>!a.status&&a.tempo&&a.tempo.trim());
+
+  // Mapeia índice original → {pos, pts}
+  const rankMap={};
+  let cursor=0;
+  while(cursor<validos.length){
+    const tAtual=tempoMs(validos[cursor].a.tempo);
+    // Encontra todos com o mesmo tempo
+    let fim=cursor;
+    while(fim<validos.length && tempoMs(validos[fim].a.tempo)===tAtual) fim++;
+    const grupo=validos.slice(cursor,fim); // atletas empatados
+    const posicao=cursor+1; // posição olímpica (baseada em quantos vieram antes)
+    // Pontos: média dos pontos das posições ocupadas pelo grupo, arredondado para baixo
+
+    const ptsPos=PONTOS_LNE[cursor]||0; // todos recebem os pontos da posição
+    grupo.forEach(({i})=>{ rankMap[i]={pos:posicao, pts:ptsPos, empate:grupo.length>1}; });
+    cursor=fim;
+  }
+
+  // ── Renderiza ──────────────────────────────────────────────────────
   return classArr.map((a,i)=>{
-    const st=a.status||''; const pPos=st?null:++pos; const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
-    const pts=(!pontuarPts||st)?0:(PONTOS_LNE[pPos-1]||0);
+    const st=a.status||'';
+    const semTempo=!a.tempo||!a.tempo.trim();
+    const rank=rankMap[i];
+    const pPos=rank?rank.pos:null;
+    const pts=(!pontuarPts||!rank)?0:rank.pts;
+    const empate=rank?rank.empate:false;
+    const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
+    const posLabel=st?'—':pPos?(empate?`${pPos}°=`:`${pPos}°`):'—';
     const stBadge=st?`<span class="badge ${st==='DQ'?'badge-red':st==='DNS'?'badge-amber':'badge-gray'}" title="${STATUS_TITLE[st]||st}" style="cursor:help;">${st} ℹ️</span>`:'';
     const fedBadge=a.federado?`<span class="badge badge-purple" style="font-size:9px;margin-left:3px;">FED</span>`:'';
-    return {html:`<tr style="${st?'opacity:.6;':''}">
-      <td><span class="pb ${st?'pn':bc}">${st?'—':pPos+'°'}</span></td>
+    return {html:`<tr style="${st||semTempo?'opacity:.6;':''}">
+      <td><span class="pb ${st||!pPos?'pn':bc}" title="${empate?'Empate — pontos divididos':''}">${posLabel}</span></td>
       <td style="font-weight:600;">${esc(a.nome)}${fedBadge}</td>
       <td style="font-size:11px;color:#64748b;text-align:center;">${esc(a.categoria||'')}</td>
       <td style="font-size:11px;">${esc(a.escola||'')}</td>
@@ -2271,18 +2317,29 @@ function calcPlacarEtapa(etapaId){
   const e=db.etapas.find(x=>x.id===etapaId);if(!e) return [];
   const escolas={};
   Object.values(e.provas||{}).forEach(p=>{
-    if(!p.classificacao||!p.classificacao.length) return; // pula provas sem classificação
-    let pos=0;
-    p.classificacao.forEach(a=>{
-      if(a.status||!a.tempo||!a.tempo.trim()) return;
-      const pts=PONTOS_LNE[pos]||0, key=(a.escola||'Sem escola').trim();
-      if(!escolas[key]) escolas[key]={nome:key,pts:0,ouros:0,pratas:0,bronzes:0};
-      escolas[key].pts+=pts;
-      if(pos===0) escolas[key].ouros++;
-      if(pos===1) escolas[key].pratas++;
-      if(pos===2) escolas[key].bronzes++;
-      pos++;
-    });
+    if(!p.classificacao||!p.classificacao.length) return;
+    // Filtra só válidos
+    const validos=p.classificacao.filter(a=>!a.status&&a.tempo&&a.tempo.trim());
+    // Calcula empate olímpico
+    let cursor=0;
+    while(cursor<validos.length){
+      const tAtual=tempoMs(validos[cursor].tempo);
+      let fim=cursor;
+      while(fim<validos.length&&tempoMs(validos[fim].tempo)===tAtual) fim++;
+      const grupo=validos.slice(cursor,fim);
+      // Pontos divididos
+      const ptsPosicao=PONTOS_LNE[cursor]||0; // todos recebem os pontos da posição
+      const posicao=cursor; // 0-based
+      grupo.forEach(a=>{
+        const key=(a.escola||'Sem escola').trim();
+        if(!escolas[key]) escolas[key]={nome:key,pts:0,ouros:0,pratas:0,bronzes:0};
+        escolas[key].pts+=ptsPosicao;
+        if(posicao===0) escolas[key].ouros++;
+        if(posicao===1) escolas[key].pratas++;
+        if(posicao===2) escolas[key].bronzes++;
+      });
+      cursor=fim;
+    }
   });
   return Object.values(escolas).sort((a,b)=>b.pts-a.pts||b.ouros-a.ouros||b.pratas-a.pratas||b.bronzes-a.bronzes);
 }
@@ -2439,7 +2496,7 @@ function renderPortalEscola(){
           ${prazoOk?'<span class="badge badge-green">✅ Inscrições abertas</span>':'<span class="badge badge-red">🔒 Prazo encerrado</span>'}
           ${e.prazoInscricao?`<span class="badge badge-blue">até ${fmtData(e.prazoInscricao)}</span>`:''}
           ${e.balizamentoLiberado?'<span class="badge badge-purple">🏊 Balizamento disponível</span>':''}
-          ${e.classificacaoLiberada?'<span class="badge badge-green">🏅 Classificação disponível</span>':''}
+          ${(e.classLiberadaPorProva&&Object.values(e.classLiberadaPorProva).some(v=>v))||e.classificacaoLiberada?'<span class="badge badge-green">🏅 Classificação disponível</span>':''}
         </div>
       </div>
       <div class="card-bd">
@@ -2466,7 +2523,7 @@ function renderPortalEscola(){
             <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
               ${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:4px 9px;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="gerenciarInscricaoBtn(this)">✏️ Inscrever</button>`:'<span style="font-size:10px;color:#94a3b8;">Encerrado</span>'}
               ${temBal?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#7c3aed;color:#fff;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="verBalizamentoEscola(this)">🏊 Ver balizamento</button>`:''}
-              ${(e.classificacaoLiberada&&(provas[n].classificacao||[]).length)?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#15803d;color:#fff;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="verClassificacaoEscola(this)">🏅 Ver classificação</button>`:''}
+              ${(isClassLiberada(e,n)&&(provas[n].classificacao||[]).length)?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#15803d;color:#fff;" data-etapa="${e.id}" data-prova="${esc(n)}" onclick="verClassificacaoEscola(this)">🏅 Ver classificação</button>`:''}
             </div>
           </td>
         </tr>`;
@@ -2502,7 +2559,7 @@ function verClassificacaoEscola(btn){
     arr.forEach(a=>{
       const st=a.status||'';
       const pPos=st?null:++pos;
-      const pts=(!pontuarPts||st)?0:(PONTOS_LNE[pPos-1]||0);
+      const semTempo=!a.tempo||!a.tempo.trim(); const pts=(!pontuarPts||st||semTempo)?0:(PONTOS_LNE[pPos-1]||0);
       const bc=pPos===1?'p1':pPos===2?'p2':pPos===3?'p3':'pn';
       const fedBadge=a.federado?'<span class="badge badge-purple" style="font-size:9px;margin-left:3px;">FED</span>':'';
       html+=`<tr>
