@@ -499,6 +499,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
               <button class="dropdown-item" onclick="abrirPlacarGeral();fecharDropdowns()">🏆 Ranking geral</button>
               <button class="dropdown-item" onclick="imprimirTodosCartoes();fecharDropdowns()">🪪 Todos os cartões</button>
               <button class="dropdown-item" onclick="abrirModalImprimirBalizamentos();fecharDropdowns()">🖨️ Imprimir balizamentos</button>
+              <div style="height:1px;background:var(--bd);margin:4px 0;"></div>
+              <button class="dropdown-item" id="ddItemRanking" onclick="toggleLiberarRanking();fecharDropdowns()">🏆 Liberar ranking</button>
+              <button class="dropdown-item" id="ddItemPlacar" onclick="toggleLiberarPlacarEtapa();fecharDropdowns()">🏅 Liberar placar da etapa</button>
+              <button class="dropdown-item" onclick="abrirModalLiberarClassificacoes();fecharDropdowns()">🔓 Liberar classificações…</button>
             </div>
           </div>
         </div>
@@ -530,12 +534,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
   <!-- PÁGINA RANKING -->
   <div class="page" id="page-ranking">
     <div class="wrap">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
         <div>
           <h2 style="font-size:16px;font-weight:700;color:var(--az);">🏆 Ranking Geral — LNE 2026</h2>
           <p style="font-size:12px;color:#64748b;margin-top:2px;">Pontuação acumulada de todas as etapas</p>
         </div>
-        <button class="btn b-pdf" onclick="imprimirRanking()">🖨️ Imprimir</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <button class="btn b-pdf" onclick="imprimirRanking()">🖨️ Imprimir</button>
+          <button class="btn no-print" id="btnLiberarRankingPg" onclick="toggleLiberarRanking()" style="font-size:11px;display:none;"></button>
+        </div>
       </div>
       <div id="rankingGeral"></div>
     </div>
@@ -742,7 +749,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 // ══════════════════════════════════════════════════════════
 // CONSTANTES E ESTADO
 // ══════════════════════════════════════════════════════════
-const ADMIN_SENHA = 'cassiano2026';
+const ADMIN_SENHA_HASH = 'c9f7e7324b68e002ebf5ab1a8a7b267ef89deea33256a9b95d6ee3be6e0a25fc'; // SHA-256
 const PONTOS_LNE  = [13,9,7,5,4,3,2,1,1,1,1,1,1,1,1,1,1,1,1,1];
 
 // Gera ordem de raias do centro para fora (padrão FINA)
@@ -856,9 +863,12 @@ function importBackup(inp){
 // LOGIN
 // ══════════════════════════════════════════════════════════
 function loginAdmin(){ document.getElementById('loginAdminForm').style.display='block'; setTimeout(()=>document.getElementById('adminSenha').focus(),100); }
-function confirmarLoginAdmin(){
+async function confirmarLoginAdmin(){
   const s=document.getElementById('adminSenha').value;
-  if(s!==ADMIN_SENHA){alert('Senha incorreta.');return;}
+  const enc=new TextEncoder().encode(s);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  const hash=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if(hash!==ADMIN_SENHA_HASH){alert('Senha incorreta.');return;}
   perfil='admin'; iniciarApp();
 }
 function mostrarLoginEscola(){ document.getElementById('loginEscolaForm').style.display='block'; setTimeout(()=>document.getElementById('loginCodigo').focus(),100); }
@@ -913,8 +923,7 @@ function construirNav(){
   } else {
     nav.innerHTML=`
       <button class="nav-btn active" data-page="portal" onclick="navegarPara('portal');renderPortalEscola()">🏫 ${esc(perfil.nome)}</button>
-      <div class="nav-sep"></div>
-      <button class="nav-btn" data-page="ranking" onclick="navegarPara('ranking');renderRankingGeral()">🏆 Ranking Geral</button>`;
+      ${db.rankingLiberado?`<div class="nav-sep"></div><button class="nav-btn" data-page="ranking" onclick="navegarPara('ranking');renderRankingGeral()">🏆 Ranking Geral</button>`:''}`;
   }
 }
 function navegarPara(pg){
@@ -1183,7 +1192,7 @@ function abrirEtapa(id){
   document.getElementById('page-balizamento').classList.add('active');
   document.querySelectorAll('.nav-btn[data-page]').forEach(b=>b.classList.remove('active'));
   renderProvasEtapa();
-  setTimeout(atualizarBtnLiberar, 50);
+  setTimeout(()=>{atualizarBtnLiberar();atualizarDropdownLiberacao();}, 50);
 }
 function toggleLiberarBalizamento(){
   const e=getEtapa(curEtapaId); if(!e) return;
@@ -2559,7 +2568,24 @@ function abrirPlacarGeral(){
   abrirModal('modalPlacar');
 }
 function renderRankingGeral(){
-  const {nfed,fed}=calcRankingGeral(); const el=document.getElementById('rankingGeral');
+  const el=document.getElementById('rankingGeral');
+  // Atualiza botão na página (visível só para admin)
+  const btnPg=document.getElementById('btnLiberarRankingPg');
+  if(btnPg){
+    if(perfil==='admin'){
+      btnPg.style.display='';
+      btnPg.textContent=db.rankingLiberado?'🔒 Bloquear ranking':'🔓 Liberar ranking';
+      btnPg.className='btn no-print '+(db.rankingLiberado?'b-red':'b-suc');
+    } else {
+      btnPg.style.display='none';
+    }
+  }
+  // Escola só vê se liberado
+  if(perfil&&perfil!=='admin'&&!db.rankingLiberado){
+    el.innerHTML='<div style="text-align:center;padding:60px;"><div style="font-size:40px;margin-bottom:12px;">🔒</div><p style="font-size:14px;font-weight:600;color:#64748b;">Ranking não disponível ainda.</p></div>';
+    return;
+  }
+  const {nfed,fed}=calcRankingGeral();
   const totalEscolas=new Set([...nfed.map(r=>r.nome),...fed.map(r=>r.nome)]).size;
   if(!totalEscolas){el.innerHTML='<p style="text-align:center;color:#64748b;padding:40px;">Nenhum resultado ainda.</p>';return;}
   el.innerHTML=`<div class="srow" style="margin-bottom:16px;">
@@ -2599,6 +2625,96 @@ function imprimirRanking(){
   ${_rkPrintTable(_buildRkPrintRows(fed))}
   </div>`;
   openPrint(h);
+}
+
+// ══════════════════════════════════════════════════════════
+// LIBERAÇÃO — RANKING / PLACAR / CLASSIFICAÇÕES
+// ══════════════════════════════════════════════════════════
+
+function toggleLiberarRanking(){
+  db.rankingLiberado=!db.rankingLiberado;
+  markDirty();
+  construirNav(); // reconstrói nav (mostra/oculta aba Ranking para escola)
+  renderRankingGeral(); // atualiza botão e conteúdo
+  const dd=document.getElementById('ddItemRanking');
+  if(dd) dd.textContent=db.rankingLiberado?'🔒 Bloquear ranking':'🏆 Liberar ranking';
+  showToast(db.rankingLiberado?'✅ Ranking liberado para as escolas!':'🔒 Ranking ocultado das escolas.');
+}
+
+function toggleLiberarPlacarEtapa(){
+  const e=getEtapa(curEtapaId); if(!e) return;
+  e.placarLiberado=!e.placarLiberado;
+  markDirty();
+  const dd=document.getElementById('ddItemPlacar');
+  if(dd) dd.textContent=e.placarLiberado?'🔒 Bloquear placar da etapa':'🏅 Liberar placar da etapa';
+  showToast(e.placarLiberado?'✅ Placar da etapa liberado!':'🔒 Placar da etapa ocultado.');
+}
+
+function abrirModalLiberarClassificacoes(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  const nomes=getProvasOrdenadas(etapa);
+  if(!nomes.length){showToast('Nenhuma prova cadastrada.');return;}
+  if(!etapa.classLiberadaPorProva) etapa.classLiberadaPorProva={};
+
+  let html=`<p style="font-size:12px;color:#64748b;margin-bottom:10px;">
+    Selecione as provas cuja classificação ficará visível para as escolas.
+    Apenas provas com classificação gerada podem ser liberadas.
+  </p>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="btn b-suc" style="font-size:11px;" onclick="lcSelTodas(true)">✅ Liberar todas</button>
+    <button class="btn b-red" style="font-size:11px;" onclick="lcSelTodas(false)">🔒 Bloquear todas</button>
+  </div>
+  <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
+
+  nomes.forEach((nome,i)=>{
+    const p=etapa.provas[nome];
+    const temClass=(p.classificacao||[]).length>0;
+    const liberada=!!etapa.classLiberadaPorProva[nome];
+    const bg=i%2===0?'#fff':'#f8fafc';
+    html+=`<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${bg};cursor:${!temClass?'not-allowed':'pointer'};border-bottom:1px solid #f0f4f8;opacity:${!temClass?'.45':'1'};">
+      <input type="checkbox" class="lc-chk" value="${esc(nome)}" ${!temClass?'disabled':''} ${liberada?'checked':''} style="width:15px;height:15px;accent-color:var(--azm);flex-shrink:0;"/>
+      <span style="flex:1;font-size:12px;font-weight:500;">${esc(nome)}</span>
+      ${temClass
+        ?`<span style="font-size:10px;background:${liberada?'#dcfce7':'#f1f5f9'};color:${liberada?'#15803d':'#94a3b8'};border:1px solid ${liberada?'#86efac':'#e2e8f0'};border-radius:4px;padding:1px 6px;white-space:nowrap;">${liberada?'✅ Liberada':'🔒 Bloqueada'}</span>`
+        :`<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;white-space:nowrap;">sem classificação</span>`}
+    </label>`;
+  });
+  html+=`</div>`;
+
+  document.getElementById('modalLiberarClassConteudo').innerHTML=html;
+  abrirModal('modalLiberarClass');
+}
+
+function lcSelTodas(v){
+  document.querySelectorAll('.lc-chk:not(:disabled)').forEach(c=>c.checked=v);
+}
+
+function confirmarLiberarClassificacoes(){
+  const etapa=getEtapa(curEtapaId); if(!etapa) return;
+  if(!etapa.classLiberadaPorProva) etapa.classLiberadaPorProva={};
+  const nomes=getProvasOrdenadas(etapa);
+  const marcadas=new Set([...document.querySelectorAll('.lc-chk:checked')].map(c=>c.value));
+  let liberadas=0, bloqueadas=0;
+  nomes.forEach(n=>{
+    const p=etapa.provas[n]; if(!(p.classificacao||[]).length) return;
+    const antes=!!etapa.classLiberadaPorProva[n];
+    const depois=marcadas.has(n);
+    if(antes!==depois){
+      etapa.classLiberadaPorProva[n]=depois;
+      depois?liberadas++:bloqueadas++;
+    }
+  });
+  markDirty(); fecharModal('modalLiberarClass'); atualizarBtnLiberar();
+  const msg=[liberadas?`✅ ${liberadas} liberada(s)`:'', bloqueadas?`🔒 ${bloqueadas} bloqueada(s)`:''  ].filter(Boolean).join(' · ');
+  showToast(msg||'Sem alterações.');
+}
+
+function atualizarDropdownLiberacao(){
+  const e=getEtapa(curEtapaId);
+  const dd1=document.getElementById('ddItemRanking');
+  const dd2=document.getElementById('ddItemPlacar');
+  if(dd1) dd1.textContent=db.rankingLiberado?'🔒 Bloquear ranking':'🏆 Liberar ranking';
+  if(dd2&&e) dd2.textContent=e.placarLiberado?'🔒 Bloquear placar da etapa':'🏅 Liberar placar da etapa';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2692,6 +2808,8 @@ function renderPortalEscola(){
           ${e.prazoInscricao?`<span class="badge badge-blue">até ${fmtData(e.prazoInscricao)}</span>`:''}
           ${e.balizamentoLiberado?'<span class="badge badge-purple">🏊 Balizamento disponível</span>':''}
           ${(e.classLiberadaPorProva&&Object.values(e.classLiberadaPorProva).some(v=>v))||e.classificacaoLiberada?'<span class="badge badge-green">🏅 Classificação disponível</span>':''}
+          ${db.rankingLiberado?'<span class="badge badge-blue">🏆 Ranking disponível</span>':''}
+          ${e.placarLiberado?'<span class="badge badge-amber">🏅 Placar disponível</span>':''}
         </div>
       </div>
       <div class="card-bd">
@@ -2724,7 +2842,7 @@ function renderPortalEscola(){
         </tr>`;
       });
       html+=`</tbody></table></div>`;
-      if(temResultados){
+      if(temResultados&&e.placarLiberado){
         html+=`<button class="btn" style="background:#854d0e;color:#fff;font-size:11px;width:100%;justify-content:center;" onclick="abrirPlacarEtapaEscola('${e.id}')">🏅 Ver Placar desta Etapa</button>`;
       }
     }
@@ -2734,6 +2852,7 @@ function renderPortalEscola(){
 }
 function abrirPlacarEtapaEscola(etapaId){
   const e=db.etapas.find(x=>x.id===etapaId); if(!e) return;
+  if(perfil&&perfil!=='admin'&&!e.placarLiberado){showToast('🔒 Placar ainda não liberado.');return;}
   const {nfed,fed}=calcPlacarEtapa(etapaId);
   document.getElementById('placarTitulo').textContent=`🏅 Placar — ${e.nome}`;
   document.getElementById('placarConteudo').innerHTML=rkDuplo(nfed,fed);
@@ -4917,5 +5036,20 @@ function excluirAtletaEditar(nomeProva, idx){
 }
 </script>
 
+<!-- Modal Liberar Classificações em Lote -->
+<div class="mover" id="modalLiberarClass">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88vh;">
+    <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
+      <h3>🔓 Liberar / Bloquear Classificações</h3>
+      <button class="mdl-x" onclick="fecharModal('modalLiberarClass')">×</button>
+    </div>
+    <div style="padding:14px 18px;overflow-y:auto;flex:1;" id="modalLiberarClassConteudo"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--bd);background:#fafafa;flex-shrink:0;">
+      <button class="btn b-out" onclick="fecharModal('modalLiberarClass')">Cancelar</button>
+      <button class="btn b-pri" onclick="confirmarLiberarClassificacoes()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 </body>
-</html>
+</html>       
