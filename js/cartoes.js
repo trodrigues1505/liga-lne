@@ -1,6 +1,5 @@
 // cartoes.js — Cartões de inscrição LNE 2026
 
-const LNE.CARTOES_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;background:#fff;}.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}.folha:last-child{page-break-after:auto;}.cartao{border:.5pt solid #888;padding:3pt 4pt 2pt;display:flex;flex-direction:column;overflow:hidden;height:100%;}.cartao-vazio{border:.5pt solid #ddd;background:#fafafa;}.lbl{font-size:6pt;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;color:#444;line-height:1.1;margin-bottom:1pt;}.val{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;margin-bottom:2pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.row-prova{margin-bottom:2pt;}.row-prova .val{font-size:9pt;margin-bottom:0;}.row3{display:grid;grid-template-columns:1fr 1fr 2.4fr;gap:3pt;margin-bottom:2pt;}.row3 .val{font-size:10pt;margin-bottom:0;}.val-fed{font-size:10pt;font-weight:bold;border-bottom:.5pt solid #888;padding-bottom:1pt;white-space:nowrap;}.fed-sim{background:#e9d5ff;color:#5b21b6;padding:0pt 3pt;border-radius:1pt;}.sep{border:none;border-top:.5pt solid #aaa;margin:1.5pt 0 1.5pt;}.ct{font-size:6pt;font-weight:bold;text-transform:uppercase;text-align:center;letter-spacing:.4px;margin-bottom:1.5pt;color:#333;}.cron-wrap{flex:1;display:flex;flex-direction:column;min-height:0;}table{width:100%;border-collapse:collapse;flex:1;height:100%;}th{border:.5pt solid #777;padding:2pt 1pt;text-align:center;font-size:6pt;font-weight:bold;background:#e8e8e8;}tbody tr{height:50%;}td{border:.5pt solid #999;padding:0;text-align:center;vertical-align:middle;}td.n{background:#e8e8e8;font-weight:bold;width:11pt;font-size:10pt;}@page{size:A4 landscape;margin:0;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}`;
 export function buildCartoesHtml(cartoes){
   const PF=16; let html='';
   for(let i=0;i<cartoes.length;i+=PF){
@@ -170,7 +169,7 @@ export function confirmarImprimirCartoes(){
   if(!selecionadas.length){LNE.showToast('⚠️ Selecione pelo menos uma prova.');return;}
   const cartoes=[];
   selecionadas.forEach(nome=>{
-    const p=etapa.provas[nome]; if(!p) return;       
+    const p=etapa.provas[nome]; if(!p) return;
     (p.series||[]).forEach((s,si)=>s.lanes.forEach((a,li)=>{
       if(a&&a.nome&&!a._outra) cartoes.push({nome:a.nome,prova:nome,serie:si+1,raia:li+1,federado:!!a.federado});
     }));
@@ -185,4 +184,4 @@ export function confirmarImprimirCartoes(){
 
 export function imprimirCartoesProva(nome){ abrirModalCartoes(nome); }
 
-export function imprimirTodosCartoes(){ abrirModalCartoes(null); }
+export function imprimirTodosCartoes(){ abrirModalCartoes(null); }       
