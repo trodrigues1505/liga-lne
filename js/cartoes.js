@@ -1,7 +1,41 @@
 // cartoes.js — Cartões de inscrição LNE 2026
 
-export function buildCartoesHtml(cartoes){
-  const PF=16; let html='';
+
+// ── CSS dinâmico por layout ───────────────────────────────
+function getCartoesCSS(pf) {
+  const base = LNE.CARTOES_CSS;
+  if (pf === 8) {
+    // Portrait 2x4 — cartões maiores, mais legíveis
+    return base.replace(
+      '.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}',
+      '.folha{width:210mm;height:297mm;padding:4mm 5mm;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr);gap:2mm;page-break-after:always;}'
+    );
+  }
+  return base;
+}
+
+// ── Seletor de layout nos modais ─────────────────────────
+function htmlSeletorLayout(idPrefix) {
+  return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:10px 12px;background:#f8fafc;border:1px solid var(--bd);border-radius:8px;">
+    <span style="font-size:12px;font-weight:600;color:#475569;">Layout:</span>
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;">
+      <input type="radio" name="${idPrefix}_layout" value="16" checked style="accent-color:var(--azm);"/>
+      16 por página <span style="color:#64748b;font-size:11px;">(A4 paisagem, menor)</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;">
+      <input type="radio" name="${idPrefix}_layout" value="8" style="accent-color:var(--azm);"/>
+      8 por página <span style="color:#64748b;font-size:11px;">(A4 retrato, maior)</span>
+    </label>
+  </div>`;
+}
+
+function getLayoutSelecionado(idPrefix) {
+  const el = document.querySelector(`input[name="${idPrefix}_layout"]:checked`);
+  return el ? parseInt(el.value) : 16;
+}
+
+export function buildCartoesHtml(cartoes, pf=16){
+  const PF=pf; let html='';
   for(let i=0;i<cartoes.length;i+=PF){
     const g=cartoes.slice(i,i+PF); while(g.length<PF) g.push(null);
     html+=`<div class="folha">`;
@@ -17,6 +51,15 @@ export function buildCartoesHtml(cartoes){
 
 export function abrirModalCartoesEmBranco(){
   document.getElementById('embrancoQtd').value = 16;
+  const modalBd = document.querySelector('#modalCartoesEmBranco .mdl');
+  if (modalBd && !document.getElementById('embrancoLayout')) {
+    const seletor = document.createElement('div');
+    seletor.id = 'embrancoLayout';
+    seletor.innerHTML = htmlSeletorLayout('embranco');
+    const frow = modalBd.querySelector('p');
+    if (frow) modalBd.insertBefore(seletor, frow.nextSibling);
+    else modalBd.insertBefore(seletor, modalBd.lastElementChild);
+  }
   LNE.abrirModal('modalCartoesEmBranco');
   setTimeout(()=>document.getElementById('embrancoQtd').focus(), 100);
 }
@@ -24,16 +67,16 @@ export function abrirModalCartoesEmBranco(){
 export function imprimirCartoesEmBranco(){
   const qtd = parseInt(document.getElementById('embrancoQtd').value) || 16;
   if(qtd < 1 || qtd > 200){ LNE.showToast('⚠️ Quantidade entre 1 e 200.'); return; }
-  const cartoes = Array(qtd).fill(null); // null = cartão em branco
+  const pf = getLayoutSelecionado('embranco');
   LNE.fecharModal('modalCartoesEmBranco');
   const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões em Branco</title><style>${LNE.CARTOES_CSS}</style></head><body>${LNE.buildCartoesEmBrancoHtml(qtd)}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões em Branco</title><style>${getCartoesCSS(pf)}</style></head><body>${LNE.buildCartoesEmBrancoHtml(qtd, pf)}
 </body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
 }
 
-export function buildCartoesEmBrancoHtml(qtd){
-  const PF = 16; let html = '';
+export function buildCartoesEmBrancoHtml(qtd, pf=16){
+  const PF = pf; let html = '';
   for(let i = 0; i < qtd; i += PF){
     const count = Math.min(PF, qtd - i);
     html += `<div class="folha">`;
@@ -63,6 +106,14 @@ export function buildCartoesEmBrancoHtml(qtd){
 }
 
 export function abrirModalCartaoManual(){
+  // Injeta seletor de layout se ainda não tiver
+  const modalBd = document.querySelector('#modalCartaoManual .mdl');
+  if (modalBd && !document.getElementById('manualLayout')) {
+    const seletor = document.createElement('div');
+    seletor.id = 'manualLayout';
+    seletor.innerHTML = htmlSeletorLayout('manual');
+    modalBd.appendChild(seletor);
+  }
   // Limpa campos
   ['manNome','manProva','manSerie','manRaia'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
@@ -116,11 +167,11 @@ export function imprimirCartaoManual(){
     </div>`;
   }
   // Completa folha com vazios
-  const PF = 16;
+  const PF = getLayoutSelecionado('manual');
   const resto = PF - (qtd % PF === 0 ? PF : qtd % PF);
   for(let i = 0; i < resto; i++) cartaoHtml += `<div class="cartao-vazio"></div>`;
   const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${nome}</title><style>${LNE.CARTOES_CSS}</style></head><body><div class="folha">${cartaoHtml}</div>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${nome}</title><style>${getCartoesCSS(PF)}</style></head><body><div class="folha">${cartaoHtml}</div>
 </body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
 }
@@ -155,7 +206,8 @@ export function abrirModalCartoes(provaInicial){
   });
   html+=`</div>`;
 
-  document.getElementById('modalCartoesConteudo').innerHTML=html;
+  document.getElementById('modalCartoesConteudo').innerHTML=
+    htmlSeletorLayout('cartoes') + html;
   LNE.abrirModal('modalCartoes');
 }
 
@@ -175,14 +227,14 @@ export function confirmarImprimirCartoes(){
     }));
   });
   if(!cartoes.length){LNE.showToast('Nenhum atleta nas provas selecionadas.');return;}
+  const pf = getLayoutSelecionado('cartoes');
   LNE.fecharModal('modalCartoes');
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões</title><style>${LNE.CARTOES_CSS}</style></head><body>${LNE.buildCartoesHtml(cartoes)}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartões</title><style>${getCartoesCSS(pf)}</style></head><body>${LNE.buildCartoesHtml(cartoes, pf)}
 </body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
 
 export function imprimirCartoesProva(nome){ abrirModalCartoes(nome); }
 
-export function imprimirTodosCartoes(){ abrirModalCartoes(null); }
-
+export function imprimirTodosCartoes(){ abrirModalCartoes(null); }   
