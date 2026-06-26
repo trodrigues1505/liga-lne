@@ -115,10 +115,10 @@ export function printClass(nome) {
 }
 
 // ── Imprimir Placar/Ranking ───────────────────────────────
-function _buildRkPrintRows(arr) {
+export function _buildRkPrintRows(arr) {
   return arr.map((x, i) => `<tr><td class="c-pos">${i+1}°</td><td>${esc(x.nome)}</td><td class="c-doc">${x.ouros}</td><td class="c-doc">${x.pratas}</td><td class="c-doc">${x.bronzes}</td><td class="c-pos">${x.pts}</td></tr>`).join('');
 }
-function _rkPrintTable(rows) {
+export function _rkPrintTable(rows) {
   return `<table><colgroup><col style="width:28pt"/><col/><col style="width:28pt"/><col style="width:28pt"/><col style="width:28pt"/><col style="width:40pt"/></colgroup>
   <thead><tr><th class="tc">Pos.</th><th>Escola</th><th class="tc">🥇</th><th class="tc">🥈</th><th class="tc">🥉</th><th class="tc">Pts</th></tr></thead>
   <tbody>${rows}</tbody></table>`;

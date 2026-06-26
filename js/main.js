@@ -2,63 +2,260 @@
 // main.js — Bootstrap e namespace global LNE 2026
 //
 // Todos os onclick="" do HTML chamam LNE.nomeFuncao().
-// Isso evita poluição do window e torna o acoplamento explícito.
+// Nunca acesse funções de módulo diretamente do HTML.
 // ═══════════════════════════════════════════════════════════
 
-import { state, getEtapa, getProva } from './state.js';
-import { showToast, loading, setSyncStatus, abrirModal, fecharModal,
-         toggleCollapse, toggleDropdown, fecharDropdowns, togglePainel } from './ui.js';
-import { salvarFirebase, markDirty, exportBackup, importBackup, carregarDB } from './firebase.js';
-import { loginAdmin, confirmarLoginAdmin, mostrarLoginEscola, loginEscola,
-         cadastrarEscola, fazerLogout, iniciarApp, construirNav, navegarPara } from './auth.js';
-import { renderRankingGeral, calcPlacarEtapa, calcRankingGeral, rkDuplo,
-         abrirPlacarEtapa, abrirPlacarGeral, abrirPlacarEtapaEscola,
-         toggleLiberarRanking } from './ranking.js';
-import { openPrint, doPrint, printBal, printClass, executarImpressaoSelecionada,
-         imprimirPlacar, imprimirRanking, abrirSumula, imprimirSumula,
+// ── state, utils, ui ─────────────────────────────────────
+import { state, getEtapa, getProva, getProvas,
+         ADMIN_SENHA, PONTOS_LNE } from './state.js';
+import { esc, tid, jstr, uid, toTitle, tempoMs, fmtData,
+         gerarCodigo, getLaneOrder, calcSeries,
+         getProvasOrdenadas, normNomeProva } from './utils.js';
+import { showToast, loading, setSyncStatus,
+         abrirModal, fecharModal, toggleCollapse,
+         toggleDropdown, fecharDropdowns, togglePainel } from './ui.js';
+
+// ── firebase ──────────────────────────────────────────────
+import { salvarFirebase, markDirty, exportBackup,
+         importBackup, carregarDB } from './firebase.js';
+
+// ── auth ──────────────────────────────────────────────────
+import { loginAdmin, confirmarLoginAdmin, mostrarLoginEscola,
+         loginEscola, cadastrarEscola, fazerLogout,
+         iniciarApp, construirNav, navegarPara } from './auth.js';
+
+// ── ranking ───────────────────────────────────────────────
+import { calcPlacarEtapa, calcRankingGeral, rkRow, rkDuplo,
+         renderRankingGeral, abrirPlacarEtapa, abrirPlacarGeral,
+         abrirPlacarEtapaEscola, toggleLiberarRanking,
+         _acumularPontos } from './ranking.js';
+
+// ── impressao ─────────────────────────────────────────────
+import { openPrint, doPrint, printBal, printClass,
+         imprimirPlacar, imprimirRanking,
+         abrirSumula, imprimirSumula,
+         executarImpressaoSelecionada,
          PRINT_CSS, CARTOES_CSS } from './impressao.js';
 
-// ── Imports dos módulos restantes (ainda em módulos separados) ──
-// etapas.js, provas.js, balizamento.js, classificacao.js,
-// atletas.js, importacao.js, portal.js, cartoes.js,
-// relatorio.js, auditoria.js, mesclar.js, buscaAtleta.js,
-// liberacao.js
-// Serão importados conforme implementados.
+// ── etapas ────────────────────────────────────────────────
+import { abrirModalNovaEtapa, salvarEtapa, criarProvasPadraoLNE,
+         excluirEtapa, renderEtapas, editarEtapa, salvarEdicaoEtapa,
+         abrirEtapa, toggleLiberarBalizamento, toggleLiberarClassificacao,
+         isClassLiberada, atualizarBtnLiberar, voltarEtapas,
+         PROVAS_PADRAO_LNE, CATEGORIAS_LNE } from './etapas.js';
 
-// ── Namespace público (acessível do HTML via LNE.x) ───────
+// ── provas ────────────────────────────────────────────────
+import { setCat, abrirModalNovaProva, salvarProva, excluirProva,
+         renderProvasEtapa, switchProvaTab, mostrarSticky,
+         getFluxoEstado, renderFluxo, abrirSecao,
+         renderPaineis, togglePainel as togglePainelProva,
+         renderAll, renderStats } from './provas.js';
+
+// ── atletas ───────────────────────────────────────────────
+import { renderAtletas, updAtl, rmAtl,
+         addAtleta, confirmarAddAtleta } from './atletas.js';
+
+// ── importacao ────────────────────────────────────────────
+import { importarExcel, aplicarImport, abrirModalConflitos,
+         renderConflitos, decisaoLote, decisaoIndividual,
+         confirmarImport } from './importacao.js';
+
+// ── balizamento ───────────────────────────────────────────
+import { _executarBal, gerarBal, abrirModalBalizamento,
+         balSelecionarTodas, balSelecionarSemBal, confirmarBalizamento,
+         renderBal, vTi, updBal, excluirRaia, ativarRaiaVazia, confRaiaVazia,
+         abrirSerieManual, smSelecionarAtleta, confirmarSerieManual,
+         abrirSerieCombinada, confirmarSerieCombinada,
+         dstart, dover, dleave, dend, ddrop } from './balizamento.js';
+
+// ── classificacao ─────────────────────────────────────────
+import { gerarClass, _buildClassRows, _classSection, renderClass,
+         setStatusClsGroup, setStatusCls, apagarTempos,
+         abrirTelaCheia, fsRender, fsUpd, fsTab, fsFiltra,
+         fsSalvar, fecharTelaCheia } from './classificacao.js';
+
+// ── escolas ───────────────────────────────────────────────
+import { renderEscolas, copiarCodigo,
+         alterarCodigo, excluirEscola } from './escolas.js';
+
+// ── portal ────────────────────────────────────────────────
+import { renderPortalEscola, verClassificacaoEscola,
+         verBalizamentoEscola, gerenciarInscricaoBtn, buildCatOptions,
+         gerenciarInscricao, fecharInscricaoModal, confirmarAtletaPortal,
+         renderInscrAtletas, rmAtletaPortal,
+         copiarCodigoEscola, trocarCodigoEscola } from './portal.js';
+
+// ── cartoes ───────────────────────────────────────────────
+import { buildCartoesHtml, abrirModalCartoesEmBranco, imprimirCartoesEmBranco,
+         buildCartoesEmBrancoHtml, abrirModalCartaoManual, imprimirCartaoManual,
+         abrirModalCartoes, cartSelTodas, confirmarImprimirCartoes,
+         imprimirCartoesProva, imprimirTodosCartoes } from './cartoes.js';
+
+// ── impressao_lote ────────────────────────────────────────
+import { abrirModalImprimirBalizamentos, ibSelTodas,
+         confirmarImprimirBalizamentos, printBalizamentosSelecionados,
+         abrirReordenar, renderReordenarLista, getReordenarNomes,
+         roMoveUp, roMoveDown, roDragStart, roDragOver, roDrop,
+         roDragEnd, salvarOrdem,
+         executarImpressaoClassificacoes } from './impressao_lote.js';
+
+// ── relatorio ─────────────────────────────────────────────
+import { abrirRelatorio, limparFiltrosRel, coletarDadosRel,
+         renderRelatorio, imprimirRelatorio,
+         exportarRelatorioXlsx } from './relatorio.js';
+
+// ── auditoria ─────────────────────────────────────────────
+import { abrirAuditoria, rodarAuditoria, renderAuditoria,
+         removerDuplicatasAuditoria, imprimirAuditoria } from './auditoria.js';
+
+// ── mesclar ───────────────────────────────────────────────
+import { abrirMesclar, detectarDuplicatasProvas,
+         sugerirMescla, previewMesclar, confirmarMesclar } from './mesclar.js';
+
+// ── busca atleta ──────────────────────────────────────────
+import { abrirBuscaAtleta, renderBuscaAtleta, rmAtletaDaBusca,
+         abrirIncluirEmProva, confirmarIncluirEmProva,
+         abrirEditarAtleta, eaProvaChange, salvarEdicaoAtleta,
+         excluirAtletaEditar } from './busca_atleta.js';
+
+// ── liberacao ─────────────────────────────────────────────
+import { toggleLiberarPlacarEtapa, abrirModalLiberarClassificacoes,
+         lcSelTodas, confirmarLiberarClassificacoes,
+         atualizarDropdownLiberacao, abrirModalImprimirClassificacoes,
+         icSelTodas, confirmarImprimirClassificacoes ,
+         executarImpressaoClassificacoes } from './liberacao.js';
+
+// ═══════════════════════════════════════════════════════════
+// NAMESPACE GLOBAL — window.LNE
+// Tudo que o HTML precisa chamar via onclick="LNE.fn()"
+// ═══════════════════════════════════════════════════════════
 window.LNE = {
-  // state
+  // ── estado (leitura e escrita pelo HTML) ──
   get state() { return state; },
 
-  // ui
-  showToast, abrirModal, fecharModal, toggleCollapse,
+  // ── constantes ──
+  ADMIN_SENHA, PONTOS_LNE, PROVAS_PADRAO_LNE, CATEGORIAS_LNE,
+  PRINT_CSS, CARTOES_CSS,
+
+  // ── utils ──
+  esc, tid, jstr, uid, toTitle, tempoMs, fmtData, gerarCodigo,
+  getLaneOrder, calcSeries, getProvasOrdenadas, normNomeProva,
+  getEtapa, getProva, getProvas,
+
+  // ── ui ──
+  showToast, loading, setSyncStatus,
+  abrirModal, fecharModal, toggleCollapse,
   toggleDropdown, fecharDropdowns, togglePainel,
 
-  // firebase
-  markDirty, exportBackup, importBackup,
+  // ── firebase ──
+  salvarFirebase, markDirty, exportBackup, importBackup,
 
-  // auth
+  // ── auth ──
   loginAdmin, confirmarLoginAdmin, mostrarLoginEscola, loginEscola,
-  cadastrarEscola, fazerLogout, navegarPara,
+  cadastrarEscola, fazerLogout, iniciarApp, construirNav, navegarPara,
 
-  // ranking
+  // ── ranking ──
+  _acumularPontos, calcPlacarEtapa, calcRankingGeral, rkRow, rkDuplo,
   renderRankingGeral, abrirPlacarEtapa, abrirPlacarGeral,
   abrirPlacarEtapaEscola, toggleLiberarRanking,
 
-  // impressao
+  // ── impressao ──
   openPrint, doPrint, printBal, printClass,
   imprimirPlacar, imprimirRanking, abrirSumula, imprimirSumula,
   executarImpressaoSelecionada,
+
+  // ── etapas ──
+  abrirModalNovaEtapa, salvarEtapa, criarProvasPadraoLNE,
+  excluirEtapa, renderEtapas, editarEtapa, salvarEdicaoEtapa,
+  abrirEtapa, toggleLiberarBalizamento, toggleLiberarClassificacao,
+  isClassLiberada, atualizarBtnLiberar, voltarEtapas,
+
+  // ── provas ──
+  setCat, abrirModalNovaProva, salvarProva, excluirProva,
+  renderProvasEtapa, switchProvaTab, mostrarSticky,
+  getFluxoEstado, renderFluxo, abrirSecao,
+  renderPaineis, renderAll, renderStats,
+
+  // ── atletas ──
+  renderAtletas, updAtl, rmAtl, addAtleta, confirmarAddAtleta,
+
+  // ── importacao ──
+  importarExcel, aplicarImport, abrirModalConflitos,
+  renderConflitos, decisaoLote, decisaoIndividual, confirmarImport,
+
+  // ── balizamento ──
+  _executarBal, gerarBal, abrirModalBalizamento,
+  balSelecionarTodas, balSelecionarSemBal, confirmarBalizamento,
+  renderBal, vTi, updBal, excluirRaia, ativarRaiaVazia, confRaiaVazia,
+  abrirSerieManual, smSelecionarAtleta, confirmarSerieManual,
+  abrirSerieCombinada, confirmarSerieCombinada,
+  dstart, dover, dleave, dend, ddrop,
+
+  // ── classificacao ──
+  gerarClass, _buildClassRows, _classSection, renderClass,
+  setStatusClsGroup, setStatusCls, apagarTempos,
+  abrirTelaCheia, fsRender, fsUpd, fsTab, fsFiltra,
+  fsSalvar, fecharTelaCheia,
+
+  // ── escolas ──
+  renderEscolas, copiarCodigo, alterarCodigo, excluirEscola,
+
+  // ── portal ──
+  renderPortalEscola, verClassificacaoEscola,
+  verBalizamentoEscola, gerenciarInscricaoBtn, buildCatOptions,
+  gerenciarInscricao, fecharInscricaoModal, confirmarAtletaPortal,
+  renderInscrAtletas, rmAtletaPortal, copiarCodigoEscola, trocarCodigoEscola,
+
+  // ── cartoes ──
+  buildCartoesHtml, abrirModalCartoesEmBranco, imprimirCartoesEmBranco,
+  buildCartoesEmBrancoHtml, abrirModalCartaoManual, imprimirCartaoManual,
+  abrirModalCartoes, cartSelTodas, confirmarImprimirCartoes,
+  imprimirCartoesProva, imprimirTodosCartoes,
+
+  // ── impressao_lote ──
+  abrirModalImprimirBalizamentos, ibSelTodas,
+  confirmarImprimirBalizamentos, printBalizamentosSelecionados,
+  abrirReordenar, renderReordenarLista, getReordenarNomes,
+  roMoveUp, roMoveDown, roDragStart, roDragOver, roDrop,
+  roDragEnd, salvarOrdem, executarImpressaoClassificacoes,
+
+  // ── relatorio ──
+  abrirRelatorio, limparFiltrosRel, coletarDadosRel,
+  renderRelatorio, imprimirRelatorio, exportarRelatorioXlsx,
+
+  // ── auditoria ──
+  abrirAuditoria, rodarAuditoria, renderAuditoria,
+  removerDuplicatasAuditoria, imprimirAuditoria,
+
+  // ── mesclar ──
+  abrirMesclar, detectarDuplicatasProvas,
+  sugerirMescla, previewMesclar, confirmarMesclar,
+
+  // ── busca atleta ──
+  abrirBuscaAtleta, renderBuscaAtleta, rmAtletaDaBusca,
+  abrirIncluirEmProva, confirmarIncluirEmProva,
+  abrirEditarAtleta, eaProvaChange, salvarEdicaoAtleta,
+  excluirAtletaEditar,
+
+  // ── liberacao ──
+  toggleLiberarPlacarEtapa, abrirModalLiberarClassificacoes,
+  lcSelTodas, confirmarLiberarClassificacoes,
+  atualizarDropdownLiberacao, abrirModalImprimirClassificacoes,
+  icSelTodas, confirmarImprimirClassificacoes,
 };
 
-// ── Firebase ready ────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════════════════
+
+// Firebase pronto → carrega dados → libera UI
 window.addEventListener('firebaseReady', async () => {
   state.fbReady = true;
   await carregarDB();
-  // Se o usuário já estava logado (ex: reload), não há sessão — vai pra login
+  // UI liberada — usuário faz login manualmente
 });
 
-// ── Timeout de conexão ────────────────────────────────────
+// Timeout de 8s se Firebase não responder
 window.addEventListener('load', () => {
   setTimeout(() => {
     if (!state.fbReady) {
@@ -69,16 +266,16 @@ window.addEventListener('load', () => {
   }, 8000);
 });
 
-// ── Roteamento de navegação ───────────────────────────────
+// Roteamento de navegação via CustomEvents
 window.addEventListener('lne:navegar', e => {
   const pg = e.detail.pg;
-  if (pg === 'etapas')  LNE.renderEtapas?.();
-  if (pg === 'escolas') LNE.renderEscolas?.();
+  if (pg === 'etapas')  renderEtapas();
+  if (pg === 'escolas') renderEscolas();
   if (pg === 'ranking') renderRankingGeral();
-  if (pg === 'portal')  LNE.renderPortalEscola?.();
+  if (pg === 'portal')  renderPortalEscola();
 });
 
-// ── DB restaurado ─────────────────────────────────────────
+// DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
 });
