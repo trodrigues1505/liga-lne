@@ -298,4 +298,4 @@ export function imprimirRanking(){
   ${_rkPrintTable(_buildRkPrintRows(fed))}
   </div>`;
   LNE.openPrint(h);
-}
+}   
