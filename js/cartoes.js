@@ -6,10 +6,15 @@ function getCartoesCSS(pf) {
   const base = LNE.CARTOES_CSS;
   if (pf === 8) {
     // Portrait 2x4 — cartões maiores, mais legíveis
-    return base.replace(
-      '.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}',
-      '.folha{width:210mm;height:297mm;padding:4mm 5mm;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr);gap:2mm;page-break-after:always;}'
-    );
+    return base
+      .replace(
+        '.folha{width:297mm;height:210mm;padding:3mm 4mm;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:1mm;page-break-after:always;}',
+        '.folha{width:210mm;height:297mm;padding:4mm 5mm;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr);gap:2mm;page-break-after:always;}'
+      )
+      .replace(
+        '@page{size:A4 landscape;margin:0;}',
+        '@page{size:A4 portrait;margin:0;}'
+      );
   }
   return base;
 }
@@ -237,4 +242,4 @@ export function confirmarImprimirCartoes(){
 
 export function imprimirCartoesProva(nome){ abrirModalCartoes(nome); }
 
-export function imprimirTodosCartoes(){ abrirModalCartoes(null); }   
+export function imprimirTodosCartoes(){ abrirModalCartoes(null); }    
