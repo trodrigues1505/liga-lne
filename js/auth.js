@@ -90,11 +90,15 @@ export function construirNav() {
       <div class="nav-sep"></div>
       <button class="nav-btn" data-page="escolas" onclick="LNE.navegarPara('escolas')">🏫 Escolas</button>
       <div class="nav-sep"></div>
-      <button class="nav-btn" data-page="ranking" onclick="LNE.navegarPara('ranking')">🏆 Ranking Geral</button>`;
+      <button class="nav-btn" data-page="ranking" onclick="LNE.navegarPara('ranking')">🏆 Ranking Geral</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" onclick="LNE.abrirConsultaAtleta()">🔍 Atleta</button>`;
   } else {
     const p = state.perfil;
     nav.innerHTML = `
       <button class="nav-btn active" data-page="portal" onclick="LNE.navegarPara('portal')">🏫 ${esc(p.nome)}</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" onclick="LNE.abrirConsultaAtleta()">🔍 Atleta</button>
       ${state.db.rankingLiberado
         ? `<div class="nav-sep"></div><button class="nav-btn" data-page="ranking" onclick="LNE.navegarPara('ranking')">🏆 Ranking Geral</button>`
         : ''}`;

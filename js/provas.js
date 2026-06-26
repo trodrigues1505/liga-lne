@@ -45,7 +45,7 @@ export function renderProvasEtapa(){
   const contEl=document.getElementById('provasConteudo');
   if(!nomes.length){ document.getElementById('provasContainer').style.display='none'; document.getElementById('semProvas').style.display='block'; return; }
   document.getElementById('provasContainer').style.display='block'; document.getElementById('semProvas').style.display='none';
-  tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===LNE.state.curProva?'active':''}" data-prova="${LNE.esc(n)}" data-tid="${LNE.tid(n)}" onclick="switchProvaTab(${LNE.jstr(n)})">${LNE.esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
+  tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===LNE.state.curProva?'active':''}" data-prova="${LNE.esc(n)}" data-tid="${LNE.tid(n)}" onclick="LNE.switchProvaTab(${LNE.jstr(n)})">${LNE.esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
   contEl.innerHTML=nomes.map(n=>`<div class="prova-tab-content ${n===LNE.state.curProva?'active':''}" id="prova-tab-${LNE.tid(n)}">
     <!-- Fluxo da prova -->
     <div class="fluxo-bar" id="fluxo-${LNE.tid(n)}"></div>
@@ -154,7 +154,7 @@ export function renderPaineis(nome){
   el.innerHTML=`
   <!-- PAINEL BALIZAMENTO -->
   <div class="painel ${e.balizamento?'painel-ativo':''}" id="painel-balizamento-${t}">
-    <div class="painel-hd" onclick="togglePainel('painel-balizamento',LNE.state.curProva)">
+    <div class="painel-hd" onclick="LNE.togglePainel('painel-balizamento',LNE.state.curProva)">
       <div class="painel-icon azul">🏊</div>
       <div class="painel-titulo">
         <h4>Balizamento</h4>
@@ -165,12 +165,12 @@ export function renderPaineis(nome){
     </div>
     <div class="painel-body ${e.balizamento?'open':''}" id="painel-balizamento-body-${t}">
       <div class="painel-acoes">
-        <button class="btn b-pri" onclick="abrirModalBalizamento()">⚡ Gerar balizamento</button>
-        <button class="btn b-out" onclick="addAtleta(LNE.state.curProva)">+ Atleta</button>
+        <button class="btn b-pri" onclick="LNE.abrirModalBalizamento()">⚡ Gerar balizamento</button>
+        <button class="btn b-out" onclick="LNE.addAtleta(LNE.state.curProva)">+ Atleta</button>
         <button class="btn b-out" onclick="LNE.abrirBuscaAtleta()">🔎 Buscar atleta</button>
         <button class="btn b-out" onclick="LNE.printBal(LNE.state.curProva)">🖨️ Imprimir</button>
-        <button class="btn b-gray" onclick="apagarTempos(LNE.state.curProva)">⏱️ Apagar tempos</button>
-        <button class="btn b-red" style="font-size:11px;" onclick="excluirProva(LNE.state.curProva)">🗑️ Excluir prova</button>
+        <button class="btn b-gray" onclick="LNE.apagarTempos(LNE.state.curProva)">⏱️ Apagar tempos</button>
+        <button class="btn b-red" style="font-size:11px;" onclick="LNE.excluirProva(LNE.state.curProva)">🗑️ Excluir prova</button>
       </div>
       <div class="painel-liberacao">
         <div>
@@ -180,7 +180,7 @@ export function renderPaineis(nome){
             ${e.balLiberado?'<span style="color:#15803d;">Liberado</span>':'<span style="color:#64748b;">Fechado</span>'}
           </div>
         </div>
-        <button class="btn ${e.balLiberado?'b-red':'b-suc'}" style="font-size:11px;" onclick="toggleLiberarBalizamento()">
+        <button class="btn ${e.balLiberado?'b-red':'b-suc'}" style="font-size:11px;" onclick="LNE.toggleLiberarBalizamento()">
           ${e.balLiberado?'🔒 Fechar':'🔓 Liberar'}
         </button>
       </div>
@@ -189,7 +189,7 @@ export function renderPaineis(nome){
 
   <!-- PAINEL CRONOMETRAGEM -->
   <div class="painel ${e.cronometragem?'painel-ativo':''}" id="painel-cronometragem-${t}" style="border-color:${e.cronometragem?'#fbbf24':'var(--bd)'}">
-    <div class="painel-hd" onclick="togglePainel('painel-cronometragem',LNE.state.curProva)">
+    <div class="painel-hd" onclick="LNE.togglePainel('painel-cronometragem',LNE.state.curProva)">
       <div class="painel-icon laranja">⏱️</div>
       <div class="painel-titulo">
         <h4>Cronometragem</h4>
@@ -200,8 +200,8 @@ export function renderPaineis(nome){
     </div>
     <div class="painel-body" id="painel-cronometragem-body-${t}">
       <div class="painel-acoes">
-        <button class="btn b-pri" style="font-size:13px;padding:10px 18px;" onclick="abrirTelaCheia(LNE.state.curProva)">⛶ Abrir tela de tempos</button>
-        <button class="btn b-out" onclick="abrirModalCartaoManual()">🪪 Cartão manual</button>
+        <button class="btn b-pri" style="font-size:13px;padding:10px 18px;" onclick="LNE.abrirTelaCheia(LNE.state.curProva)">⛶ Abrir tela de tempos</button>
+        <button class="btn b-out" onclick="LNE.abrirModalCartaoManual()">🪪 Cartão manual</button>
       </div>
       <p style="font-size:11px;color:#64748b;margin-top:6px;">Use a tela de tempos para entrada rápida com teclado.</p>
     </div>
@@ -209,7 +209,7 @@ export function renderPaineis(nome){
 
   <!-- PAINEL RESULTADOS -->
   <div class="painel ${e.classificacao?'painel-ativo':''}" id="painel-resultados-${t}">
-    <div class="painel-hd" onclick="togglePainel('painel-resultados',LNE.state.curProva)">
+    <div class="painel-hd" onclick="LNE.togglePainel('painel-resultados',LNE.state.curProva)">
       <div class="painel-icon verde">🏆</div>
       <div class="painel-titulo">
         <h4>Resultados</h4>
@@ -223,8 +223,8 @@ export function renderPaineis(nome){
         <button class="btn b-suc" onclick="LNE.gerarClass(LNE.state.curProva)">🏅 Gerar classificação</button>
         <button class="btn b-out" onclick="LNE.printClass(LNE.state.curProva)">🖨️ Imprimir classificação</button>
         <button class="btn b-out" onclick="LNE.abrirSumula()">📄 Súmula</button>
-        <button class="btn b-out" onclick="imprimirCartoesProva(LNE.state.curProva)">🪪 Cartões</button>
-        <button class="btn b-out" onclick="abrirModalCartoesEmBranco()">🪪 Em branco</button>
+        <button class="btn b-out" onclick="LNE.imprimirCartoesProva(LNE.state.curProva)">🪪 Cartões</button>
+        <button class="btn b-out" onclick="LNE.abrirModalCartoesEmBranco()">🪪 Em branco</button>
         <button class="btn b-out" onclick="LNE.abrirPlacarEtapa()">🏅 Placar</button>
         <button class="btn b-out" onclick="LNE.abrirPlacarGeral()">🏆 Ranking</button>
       </div>
@@ -236,7 +236,7 @@ export function renderPaineis(nome){
             ${e.classLiberada?'<span style="color:#15803d;">Liberada</span>':'<span style="color:#64748b;">Fechada</span>'}
           </div>
         </div>
-        <button class="btn ${e.classLiberada?'b-red':'b-suc'}" style="font-size:11px;" onclick="toggleLiberarClassificacao()">
+        <button class="btn ${e.classLiberada?'b-red':'b-suc'}" style="font-size:11px;" onclick="LNE.toggleLiberarClassificacao()">
           ${e.classLiberada?'🔒 Fechar':'🏅 Liberar'}
         </button>
       </div>
@@ -256,4 +256,5 @@ export function renderStats(nome){
     <div class="sc"><div class="lbl">Com tempo</div><div class="val">${tempos}</div></div>
     <div class="sc"><div class="lbl">Categoria</div><div class="val" style="font-size:13px;font-weight:600;">${LNE.esc(p.categoria||'—')}</div></div>
     <div class="sc"><div class="lbl">Gênero</div><div class="val" style="font-size:13px;font-weight:600;">${LNE.esc(p.genero||'—')}</div></div>`;
-}       
+}
+

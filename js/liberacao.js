@@ -20,8 +20,8 @@ export function abrirModalLiberarClassificacoes(){
   if(!etapa.classLiberadaPorProva) etapa.classLiberadaPorProva={};
   let html=`<p style="font-size:12px;color:#64748b;margin-bottom:10px;">Selecione as provas cuja classificação ficará visível para as escolas.</p>
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-    <button class="btn b-suc" style="font-size:11px;" onclick="lcSelTodas(true)">✅ Liberar todas</button>
-    <button class="btn b-red" style="font-size:11px;" onclick="lcSelTodas(false)">🔒 Bloquear todas</button>
+    <button class="btn b-suc" style="font-size:11px;" onclick="LNE.lcSelTodas(true)">✅ Liberar todas</button>
+    <button class="btn b-red" style="font-size:11px;" onclick="LNE.lcSelTodas(false)">🔒 Bloquear todas</button>
   </div>
   <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
   nomes.forEach((nome,i)=>{
@@ -78,8 +78,8 @@ export function abrirModalImprimirClassificacoes(){
   if(!provas.length){LNE.showToast('Nenhuma prova cadastrada.');return;}
   let html=`
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <button class="btn b-out" style="font-size:11px;" onclick="icSelTodas(true)">✅ Com classificação</button>
-      <button class="btn b-out" style="font-size:11px;" onclick="icSelTodas(false)">☐ Nenhuma</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.icSelTodas(true)">✅ Com classificação</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.icSelTodas(false)">☐ Nenhuma</button>
     </div>
     <div style="max-height:50vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
   provas.forEach((nome,i)=>{
@@ -160,4 +160,5 @@ export function executarImpressaoClassificacoes(selecionadas, modo){
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Classificações — LNE 2026</title><style>${css}</style></head><body>${h}\n</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}    
+}
+

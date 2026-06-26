@@ -18,9 +18,9 @@ export function renderPortalEscola(){
       <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span style="font-size:11px;opacity:.8;">Código de acesso:</span>
         <span style="font-family:monospace;font-size:12px;font-weight:700;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:5px;letter-spacing:.5px;">${LNE.esc(escola.codigo)}</span>
-        <button onclick="copiarCodigoEscola()" title="Copiar código"
+        <button onclick="LNE.copiarCodigoEscola()" title="Copiar código"
           style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:5px;color:#fff;cursor:pointer;padding:2px 8px;font-size:11px;">📋 Copiar</button>
-        <button onclick="trocarCodigoEscola()" title="Trocar código de acesso"
+        <button onclick="LNE.trocarCodigoEscola()" title="Trocar código de acesso"
           style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:5px;color:#fff;cursor:pointer;padding:2px 8px;font-size:11px;">✏️ Trocar código</button>
       </div>
     </div>
@@ -69,9 +69,9 @@ export function renderPortalEscola(){
           <td style="text-align:center;">${atlE.length?`<span class="badge badge-green">${atlE.length}</span>`:'<span class="badge badge-gray">0</span>'}</td>
           <td style="text-align:center;">
             <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
-              ${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:4px 9px;" data-etapa="${e.id}" data-prova="${LNE.esc(n)}" onclick="gerenciarInscricaoBtn(this)">✏️ Inscrever</button>`:'<span style="font-size:10px;color:#94a3b8;">Encerrado</span>'}
-              ${temBal?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#7c3aed;color:#fff;" data-etapa="${e.id}" data-prova="${LNE.esc(n)}" onclick="verBalizamentoEscola(this)">🏊 Ver balizamento</button>`:''}
-              ${(LNE.isClassLiberada(e,n)&&(provas[n].classificacao||[]).length)?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#15803d;color:#fff;" data-etapa="${e.id}" data-prova="${LNE.esc(n)}" onclick="verClassificacaoEscola(this)">🏅 Ver classificação</button>`:''}
+              ${prazoOk?`<button class="btn b-out" style="font-size:10px;padding:4px 9px;" data-etapa="${e.id}" data-prova="${LNE.esc(n)}" onclick="LNE.gerenciarInscricaoBtn(this)">✏️ Inscrever</button>`:'<span style="font-size:10px;color:#94a3b8;">Encerrado</span>'}
+              ${temBal?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#7c3aed;color:#fff;" data-etapa="${e.id}" data-prova="${LNE.esc(n)}" onclick="LNE.verBalizamentoEscola(this)">🏊 Ver balizamento</button>`:''}
+              ${(LNE.isClassLiberada(e,n)&&(provas[n].classificacao||[]).length)?`<button class="btn" style="font-size:10px;padding:4px 9px;background:#15803d;color:#fff;" data-etapa="${e.id}" data-prova="${LNE.esc(n)}" onclick="LNE.verClassificacaoEscola(this)">🏅 Ver classificação</button>`:''}
             </div>
           </td>
         </tr>`;
@@ -211,7 +211,7 @@ export function gerenciarInscricao(etapaId,nomePr){
   modal.innerHTML=`<div class="mdl" style="max-width:580px;">
     <div class="mdl-hd">
       <h3>✏️ Inscrição de Atletas</h3>
-      <button class="mdl-x" onclick="fecharInscricaoModal()">×</button>
+      <button class="mdl-x" onclick="LNE.fecharInscricaoModal()">×</button>
     </div>
     <p style="font-size:12px;color:#64748b;margin-bottom:4px;">Prova: <strong id="inscrProvaNome"></strong></p>
     <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Escola: <strong>${LNE.esc(escola.nome)}</strong> · Etapa: <strong>${LNE.esc(etapa.nome)}</strong></p>
@@ -240,7 +240,7 @@ export function gerenciarInscricao(etapaId,nomePr){
               onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarAtletaPortal();}"/>
           </div>
         </div>
-        <button class="btn b-pri" style="width:100%;padding:12px;font-size:14px;" onclick="confirmarAtletaPortal()">✅ Adicionar atleta</button>
+        <button class="btn b-pri" style="width:100%;padding:12px;font-size:14px;" onclick="LNE.confirmarAtletaPortal()">✅ Adicionar atleta</button>
       </div>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:6px;">Atletas inscritos nesta prova:</div>
@@ -302,7 +302,7 @@ export function renderInscrAtletas(etapaId,nomePr){
         <div style="font-weight:600;font-size:13px;">${LNE.esc(a.nome)}</div>
         <div style="font-size:11px;color:#64748b;">Cat: <strong>${LNE.esc(a.categoria||'—')}</strong>${a.tempoRef?' · Ref: '+LNE.esc(a.tempoRef):''}</div>
       </div>
-      <button style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:6px;font-weight:600;" onclick="rmAtletaPortal(${idx})">✕ Remover</button>
+      <button style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:6px;font-weight:600;" onclick="LNE.rmAtletaPortal(${idx})">✕ Remover</button>
     </div>`;
   }).join('');
 }
@@ -336,4 +336,5 @@ export function trocarCodigoEscola(){
   LNE.markDirty(); LNE.renderPortalEscola();
   LNE.showToast(`Código atualizado para: ${novoFmt}`);
   setTimeout(()=>alert(`✅ Novo código salvo: ${novoFmt}\n\nAnote este código — você precisará dele para entrar no sistema da próxima vez!`),300);
-}    
+}
+

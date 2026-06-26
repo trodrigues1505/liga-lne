@@ -15,13 +15,13 @@ export function renderEscolas(){
       <small style="font-size:11px;color:#64748b;">${LNE.esc(e.responsavel)} · ${LNE.esc(e.email)} ${e.telefone?'· '+LNE.esc(e.telefone):''}</small>
       <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span style="font-family:monospace;font-size:12px;font-weight:700;background:#f3e8ff;color:#6d28d9;padding:3px 10px;border-radius:6px;letter-spacing:.5px;">${LNE.esc(e.codigo)}</span>
-        <button title="Copiar código" onclick="copiarCodigo('${LNE.esc(e.codigo)}')"
+        <button title="Copiar código" onclick="LNE.copiarCodigo('${LNE.esc(e.codigo)}')"
           style="background:none;border:1px solid var(--bd);border-radius:5px;cursor:pointer;padding:2px 7px;font-size:11px;color:#475569;">📋 Copiar</button>
-        <button title="Alterar código" onclick="alterarCodigo('${e.id}')"
+        <button title="Alterar código" onclick="LNE.alterarCodigo('${e.id}')"
           style="background:none;border:1px solid var(--bd);border-radius:5px;cursor:pointer;padding:2px 7px;font-size:11px;color:#0056b8;">✏️ Código</button>
       </div>
     </div>
-    <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="excluirEscola('${e.id}')">🗑️</button>
+    <button class="btn b-red" style="font-size:10px;padding:3px 8px;" onclick="LNE.excluirEscola('${e.id}')">🗑️</button>
   </div>`).join('');
 }
 

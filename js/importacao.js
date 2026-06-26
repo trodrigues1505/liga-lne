@@ -142,8 +142,8 @@ export function renderConflitos(){
     <!-- Barra de ações em lote -->
     <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--bd);flex-wrap:wrap;">
       <span style="font-size:11px;color:#64748b;flex:1;">${conflitos.length} conflito(s) — ${nAtualizar} para atualizar · ${nManter} para manter</span>
-      <button class="btn b-suc" style="font-size:11px;" onclick="decisaoLote('atualizar')">✅ Atualizar todos</button>
-      <button class="btn b-out" style="font-size:11px;" onclick="decisaoLote('manter')">🔒 Manter todos</button>
+      <button class="btn b-suc" style="font-size:11px;" onclick="LNE.decisaoLote('atualizar')">✅ Atualizar todos</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.decisaoLote('manter')">🔒 Manter todos</button>
     </div>
     <div style="overflow-y:auto;max-height:55vh;">`;
 
@@ -156,11 +156,11 @@ export function renderConflitos(){
         <span style="font-weight:700;font-size:13px;">${LNE.esc(c.antigo.nome)}</span>
         <span class="badge badge-blue" style="font-size:9px;">${LNE.esc(c.prova.slice(0,30))}</span>
         <div style="margin-left:auto;display:flex;gap:6px;">
-          <button onclick="decisaoIndividual(${ci},'manter')"
+          <button onclick="LNE.decisaoIndividual(${ci},'manter')"
             style="font-size:11px;padding:3px 10px;border-radius:5px;border:1.5px solid ${!isAtualizar?'var(--azm)':'var(--bd)'};background:${!isAtualizar?'var(--azc)':'#fff'};font-weight:${!isAtualizar?'700':'400'};cursor:pointer;">
             🔒 Manter atual
           </button>
-          <button onclick="decisaoIndividual(${ci},'atualizar')"
+          <button onclick="LNE.decisaoIndividual(${ci},'atualizar')"
             style="font-size:11px;padding:3px 10px;border-radius:5px;border:1.5px solid ${isAtualizar?'#15803d':'var(--bd)'};background:${isAtualizar?'#dcfce7':'#fff'};font-weight:${isAtualizar?'700':'400'};cursor:pointer;">
             ✅ Atualizar
           </button>
@@ -200,4 +200,5 @@ export function decisaoIndividual(ci,decisao){
 export function confirmarImport(){
   const {novos,conflitos,novasProvas}=_importPendente;
   LNE.aplicarImport(novos,conflitos,novasProvas);
-}   
+}
+

@@ -68,7 +68,7 @@ export function _buildClassRows(classArr,pontuarPts,nomePrv){
       <td style="text-align:center;font-weight:700;color:var(--az);">${pts||''}</td>
       <td style="font-size:11px;color:#64748b;">S${a.serie} R${a.raia}</td>
       <td>
-        <select onchange="setStatusClsGroup(${JSON.stringify(a._clsKey||'')},${i},this.value,${JSON.stringify(nomePrv||'')})"
+        <select onchange="LNE.setStatusClsGroup(${JSON.stringify(a._clsKey||'')},${i},this.value,${JSON.stringify(nomePrv||'')})"
           style="font-size:10px;border:1px solid var(--bd);border-radius:4px;padding:1px 3px;background:#fff;cursor:pointer;">
           <option value="" ${!st?'selected':''}>—</option>
           <option value="DQ" ${st==='DQ'?'selected':''}>DQ</option>
@@ -166,7 +166,7 @@ export function fsRender(p,filtro=''){
         <div style="width:22px;text-align:center;font-weight:700;color:#94a3b8;font-size:12px;">${li+1}</div>
         <div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;color:#f1f5f9;">${LNE.esc(a.nome)}</div>
         <div style="font-size:10px;color:#64748b;">${LNE.esc(a.escola||'')} · ${LNE.esc(a.categoria||'')}</div></div>
-        <input type="text" placeholder="00:00,00" value="${LNE.esc(t)}" data-k="${k}" oninput="fsUpd(this)" onkeydown="fsTab(event,this)"
+        <input type="text" placeholder="00:00,00" value="${LNE.esc(t)}" data-k="${k}" oninput="LNE.fsUpd(this)" onkeydown="LNE.fsTab(event,this)"
           style="width:95px;border-radius:5px;border:1px solid ${t?(ok?'#86efac':'#fca5a5'):'#475569'};background:${t?(ok?'#052e16':'#2d0000'):'#1e293b'};color:#f1f5f9;padding:5px 8px;font-family:monospace;font-size:13px;text-align:center;"/>
       </div>`;
     });

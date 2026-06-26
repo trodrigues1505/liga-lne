@@ -41,9 +41,9 @@ export function abrirModalBalizamento(){
 
   let html=`<p style="font-size:12px;color:#64748b;margin-bottom:12px;">Selecione as provas para gerar balizamento. Provas com ⚡ já possuem balizamento.</p>
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-    <button class="btn b-out" style="font-size:11px;" onclick="balSelecionarTodas(true)">✅ Todas</button>
-    <button class="btn b-out" style="font-size:11px;" onclick="balSelecionarTodas(false)">☐ Nenhuma</button>
-    <button class="btn b-out" style="font-size:11px;" onclick="balSelecionarSemBal()">🆕 Só sem balizamento</button>
+    <button class="btn b-out" style="font-size:11px;" onclick="LNE.balSelecionarTodas(true)">✅ Todas</button>
+    <button class="btn b-out" style="font-size:11px;" onclick="LNE.balSelecionarTodas(false)">☐ Nenhuma</button>
+    <button class="btn b-out" style="font-size:11px;" onclick="LNE.balSelecionarSemBal()">🆕 Só sem balizamento</button>
   </div>
   <div style="max-height:50vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
 
@@ -148,21 +148,21 @@ export function renderBal(nome){
       if(a&&!a._outra){
         const ok=a.tempo&&/^\d{1,2}:\d{2}[,.]\d{2}$/.test(a.tempo.trim());
         html+=`<tr class="drag-row${cen}" draggable="true"
-          ondragstart="dstart(event,${LNE.jstr(nome)},${si},${li})" ondragover="dover(event)"
-          ondrop="ddrop(event,${LNE.jstr(nome)},${si},${li})" ondragleave="dleave(event)" ondragend="dend(event)">
+          ondragstart="LNE.dstart(event,${LNE.jstr(nome)},${si},${li})" ondragover="LNE.dover(event)"
+          ondrop="LNE.ddrop(event,${LNE.jstr(nome)},${si},${li})" ondragleave="LNE.dleave(event)" ondragend="LNE.dend(event)">
           <td class="drag-handle">⠿</td><td class="rn">${raia}</td>
-          <td><input type="text" value="${LNE.esc(a.nome)}" onchange="updBal(${LNE.jstr(nome)},${si},${li},'nome',this.value)"/>${a.federado?`<span class="badge badge-purple" style="font-size:9px;margin-left:4px;vertical-align:middle;">FED</span>`:''}</td>
+          <td><input type="text" value="${LNE.esc(a.nome)}" onchange="LNE.updBal(${LNE.jstr(nome)},${si},${li},'nome',this.value)"/>${a.federado?`<span class="badge badge-purple" style="font-size:9px;margin-left:4px;vertical-align:middle;">FED</span>`:''}</td>
           <td style="font-size:11px;color:#64748b;text-align:center;">${LNE.esc(a.categoria||'')}</td>
-          <td><input type="text" value="${LNE.esc(a.escola||'')}" onchange="updBal(${LNE.jstr(nome)},${si},${li},'escola',this.value)"/></td>
+          <td><input type="text" value="${LNE.esc(a.escola||'')}" onchange="LNE.updBal(${LNE.jstr(nome)},${si},${li},'escola',this.value)"/></td>
           <td>
             <input type="text" class="ti${a.tempo?(ok?' ok':' err'):''}" placeholder="00:00,00" value="${LNE.esc(a.tempo||'')}"
               inputmode="decimal"
-              oninput="vTi(this)"
-              onchange="updBal(${LNE.jstr(nome)},${si},${li},'tempo',this.value)"
+              oninput="LNE.vTi(this)"
+              onchange="LNE.updBal(${LNE.jstr(nome)},${si},${li},'tempo',this.value)"
               style="width:95px;"/>
           </td>
           <td style="text-align:center;white-space:nowrap;">
-            <button onclick="excluirRaia(${LNE.jstr(nome)},${si},${li})"
+            <button onclick="LNE.excluirRaia(${LNE.jstr(nome)},${si},${li})"
               title="Remover desta raia"
               style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:4px 8px;border-radius:5px;font-weight:600;touch-action:manipulation;">✕</button>
           </td>
@@ -178,7 +178,7 @@ export function renderBal(nome){
         html+=`<tr class="${cen}" id="rvazia-${LNE.tid(nome)}-${si}-${li}">
           <td></td><td class="rn" style="color:#ccc;">${raia}</td>
           <td colspan="3" class="er">— raia vazia —</td>
-          <td style="text-align:right;" colspan="2"><button onclick="ativarRaiaVazia(${LNE.jstr(nome)},${si},${li})"
+          <td style="text-align:right;" colspan="2"><button onclick="LNE.ativarRaiaVazia(${LNE.jstr(nome)},${si},${li})"
             style="background:none;border:1px solid #d1d5db;border-radius:4px;color:#6b7280;cursor:pointer;font-size:11px;padding:2px 8px;">+ incluir</button></td>
         </tr>`;
       }
@@ -188,7 +188,7 @@ export function renderBal(nome){
   html+=`<div class="card-ft">
     <button class="btn b-pdf" onclick="LNE.printBal(${LNE.jstr(nome)})">🖨️ Imprimir balizamento</button>
     <button class="btn b-suc" onclick="LNE.gerarClass(${LNE.jstr(nome)})">🏅 Gerar classificação →</button>
-    <button class="btn b-out" onclick="abrirSerieManual(${LNE.jstr(nome)})">+ Série manual</button>
+    <button class="btn b-out" onclick="LNE.abrirSerieManual(${LNE.jstr(nome)})">+ Série manual</button>
   </div></div></div>`;
   el.innerHTML=html;
 }
@@ -205,7 +205,7 @@ export function ativarRaiaVazia(nome,si,li){
     <td><input type="text" id="rvcat-${si}-${li}" placeholder="Cat." style="width:65px;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
     <td><input type="text" id="rve-${si}-${li}" placeholder="Escola" style="width:100%;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
     <td colspan="2" style="white-space:nowrap;">
-      <button onclick="confRaiaVazia(${LNE.jstr(nome)},${si},${li})" style="background:var(--vd);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;padding:3px 8px;margin-right:3px;">✓</button>
+      <button onclick="LNE.confRaiaVazia(${LNE.jstr(nome)},${si},${li})" style="background:var(--vd);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;padding:3px 8px;margin-right:3px;">✓</button>
       <button onclick="LNE.renderBal(${LNE.jstr(nome)})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:11px;padding:3px 6px;color:#6b7280;">✕</button>
     </td>`;
   document.getElementById(`rvn-${si}-${li}`)?.focus();
@@ -250,7 +250,7 @@ export function abrirSerieManual(nome){
     html += `<tr class="${isCen?'rc':''}">
       <td class="rn">${raia}</td>
       <td>
-        <select id="smAtl_${li}" onchange="smSelecionarAtleta(${li})"
+        <select id="smAtl_${li}" onchange="LNE.smSelecionarAtleta(${li})"
           style="width:100%;border:1px solid var(--bd);border-radius:5px;padding:4px 6px;font-size:12px;">
           ${atletasOpts}
         </select>

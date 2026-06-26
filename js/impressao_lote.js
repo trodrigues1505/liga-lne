@@ -10,8 +10,8 @@ export function abrirModalImprimirBalizamentos(){
 
   let html=`
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <button class="btn b-out" style="font-size:11px;" onclick="ibSelTodas(true)">✅ Com balizamento</button>
-      <button class="btn b-out" style="font-size:11px;" onclick="ibSelTodas(false)">☐ Nenhuma</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.ibSelTodas(true)">✅ Com balizamento</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.ibSelTodas(false)">☐ Nenhuma</button>
     </div>
     <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
 
@@ -62,14 +62,14 @@ export function renderReordenarLista(nomes){
   el.innerHTML=nomes.map((n,i)=>`
     <div class="drag-row" draggable="true" data-idx="${i}"
       style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff;border:1px solid var(--bd);border-radius:7px;margin-bottom:6px;"
-      ondragstart="roDragStart(event,${i})" ondragover="roDragOver(event,${i})"
-      ondrop="roDrop(event,${i})" ondragend="roDragEnd()">
+      ondragstart="LNE.roDragStart(event,${i})" ondragover="LNE.roDragOver(event,${i})"
+      ondrop="LNE.roDrop(event,${i})" ondragend="LNE.roDragEnd()">
       <span style="cursor:grab;color:#94a3b8;font-size:16px;flex-shrink:0;">⠿</span>
       <span style="background:var(--az);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${i+1}</span>
       <span style="font-size:12px;flex:1;">${LNE.esc(n)}</span>
       <span style="display:flex;flex-direction:column;gap:2px;">
-        <button onclick="roMoveUp(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;" ${i===0?'disabled':''}>▲</button>
-        <button onclick="roMoveDown(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;" ${i===nomes.length-1?'disabled':''}>▼</button>
+        <button onclick="LNE.roMoveUp(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;" ${i===0?'disabled':''}>▲</button>
+        <button onclick="LNE.roMoveDown(${i})" style="background:none;border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-size:10px;padding:1px 6px;" ${i===nomes.length-1?'disabled':''}>▼</button>
       </span>
     </div>`).join('');
 }
@@ -95,4 +95,6 @@ export function salvarOrdem(){
   etapa.provasOrdem=getReordenarNomes();
   LNE.markDirty();LNE.fecharModal('modalReordenar');LNE.renderProvasEtapa();
   LNE.showToast('✅ Ordem das provas salva!');
-}    
+}
+
+

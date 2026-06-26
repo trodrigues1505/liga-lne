@@ -133,8 +133,8 @@ export function abrirModalCartoes(provaInicial){
 
   let html=`
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <button class="btn b-out" style="font-size:11px;" onclick="cartSelTodas(true)">✅ Todas com balizamento</button>
-      <button class="btn b-out" style="font-size:11px;" onclick="cartSelTodas(false)">☐ Nenhuma</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.cartSelTodas(true)">✅ Todas com balizamento</button>
+      <button class="btn b-out" style="font-size:11px;" onclick="LNE.cartSelTodas(false)">☐ Nenhuma</button>
     </div>
     <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">`;
 
@@ -184,4 +184,5 @@ export function confirmarImprimirCartoes(){
 
 export function imprimirCartoesProva(nome){ abrirModalCartoes(nome); }
 
-export function imprimirTodosCartoes(){ abrirModalCartoes(null); }       
+export function imprimirTodosCartoes(){ abrirModalCartoes(null); }
+

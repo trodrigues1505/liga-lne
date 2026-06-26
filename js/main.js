@@ -124,6 +124,8 @@ import { toggleLiberarPlacarEtapa, abrirModalLiberarClassificacoes,
          icSelTodas, confirmarImprimirClassificacoes ,
          executarImpressaoClassificacoes } from './liberacao.js';
 
+import { abrirConsultaAtleta, buscarAtletaConsulta } from './consulta_atleta.js';
+
 // ═══════════════════════════════════════════════════════════
 // NAMESPACE GLOBAL — window.LNE
 // Tudo que o HTML precisa chamar via onclick="LNE.fn()"
@@ -236,6 +238,9 @@ window.LNE = {
   abrirEditarAtleta, eaProvaChange, salvarEdicaoAtleta,
   excluirAtletaEditar,
 
+  // ── consulta atleta ──
+  abrirConsultaAtleta, buscarAtletaConsulta,
+
   // ── liberacao ──
   toggleLiberarPlacarEtapa, abrirModalLiberarClassificacoes,
   lcSelTodas, confirmarLiberarClassificacoes,
@@ -285,4 +290,4 @@ window.addEventListener('lne:navegar', e => {
 // DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
-});      
+});

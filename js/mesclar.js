@@ -51,7 +51,7 @@ export function detectarDuplicatasProvas(etapa, nomes){
     const dest=sorted[0], orig=sorted[sorted.length-1];
     html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
       <span style="font-size:11px;flex:1;color:#64748b;">${LNE.esc(counts)}</span>
-      <button class="btn b-war" style="font-size:10px;padding:3px 10px;" onclick="sugerirMescla(${JSON.stringify(orig)},${JSON.stringify(dest)})">Mesclar →</button>
+      <button class="btn b-war" style="font-size:10px;padding:3px 10px;" onclick="LNE.sugerirMescla(${JSON.stringify(orig)},${JSON.stringify(dest)})">Mesclar →</button>
     </div>`;
   });
   html+=`</div>`;

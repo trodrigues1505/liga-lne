@@ -89,7 +89,7 @@ export function renderBuscaAtleta(){
             style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:11px;line-height:1;padding:0 1px;"
             title="Remover desta prova"
             data-nome="${LNE.esc(a.nome)}" data-prova="${LNE.esc(ins.prova)}" data-idx="${ins.idx}"
-            onclick="rmAtletaDaBusca(this.dataset.nome,this.dataset.prova,+this.dataset.idx)">✕</button>
+            onclick="LNE.rmAtletaDaBusca(this.dataset.nome,this.dataset.prova,+this.dataset.idx)">✕</button>
         </span>`
       ).join('');
 
@@ -139,7 +139,7 @@ export function renderBuscaAtleta(){
             onclick="LNE.abrirIncluirEmProva(this.dataset.nome,this.dataset.prova,+this.dataset.idx)" title="Incluir em outra prova">＋🏊</button>
           <button class="btn b-red" style="font-size:10px;padding:3px 7px;"
             data-nome="${LNE.esc(atleta.nome)}" data-prova="${LNE.esc(prova)}" data-idx="${idx}"
-            onclick="rmAtletaDaBusca(this.dataset.nome,this.dataset.prova,+this.dataset.idx)" title="Remover desta prova">✕</button>
+            onclick="LNE.rmAtletaDaBusca(this.dataset.nome,this.dataset.prova,+this.dataset.idx)" title="Remover desta prova">✕</button>
         </td>
       </tr>`;
     });
@@ -217,7 +217,7 @@ export function abrirIncluirEmProva(nomeAtleta, nomeProvaRef, idxRef){
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn b-out" onclick="document.getElementById('incluirProvaModal').remove()">Cancelar</button>
       <button class="btn b-pri" data-nome="${LNE.esc(nomeAtleta)}" data-refprova="${LNE.esc(nomeProvaRef)}" data-refidx="${idxRef}"
-        onclick="confirmarIncluirEmProva(this.dataset.nome,this.dataset.refprova,+this.dataset.refidx)">✅ Incluir</button>
+        onclick="LNE.confirmarIncluirEmProva(this.dataset.nome,this.dataset.refprova,+this.dataset.refidx)">✅ Incluir</button>
     </div>
   </div>`;
   document.body.appendChild(el);
@@ -286,7 +286,7 @@ export function abrirEditarAtleta(nomeProva, idx){
     <div class="frow">
       <div class="fg grow">
         <label>Prova</label>
-        <select id="eaProva" style="border:1.5px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;" onchange="eaProvaChange()">
+        <select id="eaProva" style="border:1.5px solid var(--bd);border-radius:6px;padding:7px 10px;font-size:12px;" onchange="LNE.eaProvaChange()">
           <option value="">— sem alteração —</option>
           ${provasOpts}
         </select>
@@ -306,12 +306,12 @@ export function abrirEditarAtleta(nomeProva, idx){
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
       <button class="btn b-red" style="font-size:11px;"
         data-prova="${LNE.esc(nomeProva)}" data-idx="${idx}"
-        onclick="excluirAtletaEditar(this.dataset.prova,+this.dataset.idx)">🗑️ Excluir atleta</button>
+        onclick="LNE.excluirAtletaEditar(this.dataset.prova,+this.dataset.idx)">🗑️ Excluir atleta</button>
       <div style="display:flex;gap:8px;">
         <button class="btn b-out" onclick="LNE.fecharModal('modalEditarAtleta')">Cancelar</button>
         <button class="btn b-pri"
           data-prova="${LNE.esc(nomeProva)}" data-idx="${idx}"
-          onclick="salvarEdicaoAtleta(this.dataset.prova,+this.dataset.idx)">💾 Salvar</button>
+          onclick="LNE.salvarEdicaoAtleta(this.dataset.prova,+this.dataset.idx)">💾 Salvar</button>
       </div>
     </div>`;
 
