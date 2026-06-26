@@ -523,20 +523,20 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
           <div class="dropdown-wrap" id="dropMais">
             <button class="btn b-out dropdown-trigger" onclick="LNE.toggleDropdown('dropMaisMenu')">⚙️ Mais</button>
             <div class="dropdown-menu" id="dropMaisMenu">
-              <button class="dropdown-item" onclick="LNE.criarProvasPadraoLNE();fecharDropdowns()">🏊 Padrão LNE</button>
-              <button class="dropdown-item" onclick="LNE.abrirReordenar();fecharDropdowns()">↕️ Reordenar provas</button>
-              <button class="dropdown-item" onclick="LNE.abrirMesclar();fecharDropdowns()">🔀 Mesclar provas</button>
-              <button class="dropdown-item" onclick="LNE.abrirAuditoria();fecharDropdowns()">🔍 Auditoria</button>
-              <button class="dropdown-item" onclick="LNE.abrirRelatorio();fecharDropdowns()">📊 Relatório de atletas</button>
-              <button class="dropdown-item" onclick="LNE.abrirPlacarEtapa();fecharDropdowns()">🏅 Placar da etapa</button>
-              <button class="dropdown-item" onclick="LNE.abrirPlacarGeral();fecharDropdowns()">🏆 Ranking geral</button>
-              <button class="dropdown-item" onclick="LNE.imprimirTodosCartoes();fecharDropdowns()">🪪 Todos os cartões</button>
-              <button class="dropdown-item" onclick="LNE.abrirModalImprimirBalizamentos();fecharDropdowns()">🖨️ Imprimir balizamentos</button>
-              <button class="dropdown-item" onclick="LNE.abrirModalImprimirClassificacoes();fecharDropdowns()">🏅 Imprimir classificações</button>
+              <button class="dropdown-item" onclick="LNE.criarProvasPadraoLNE();LNE.fecharDropdowns()">🏊 Padrão LNE</button>
+              <button class="dropdown-item" onclick="LNE.abrirReordenar();LNE.fecharDropdowns()">↕️ Reordenar provas</button>
+              <button class="dropdown-item" onclick="LNE.abrirMesclar();LNE.fecharDropdowns()">🔀 Mesclar provas</button>
+              <button class="dropdown-item" onclick="LNE.abrirAuditoria();LNE.fecharDropdowns()">🔍 Auditoria</button>
+              <button class="dropdown-item" onclick="LNE.abrirRelatorio();LNE.fecharDropdowns()">📊 Relatório de atletas</button>
+              <button class="dropdown-item" onclick="LNE.abrirPlacarEtapa();LNE.fecharDropdowns()">🏅 Placar da etapa</button>
+              <button class="dropdown-item" onclick="LNE.abrirPlacarGeral();LNE.fecharDropdowns()">🏆 Ranking geral</button>
+              <button class="dropdown-item" onclick="LNE.imprimirTodosCartoes();LNE.fecharDropdowns()">🪪 Todos os cartões</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalImprimirBalizamentos();LNE.fecharDropdowns()">🖨️ Imprimir balizamentos</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalImprimirClassificacoes();LNE.fecharDropdowns()">🏅 Imprimir classificações</button>
               <div style="height:1px;background:var(--bd);margin:4px 0;"></div>
-              <button class="dropdown-item" id="ddItemRanking" onclick="LNE.toggleLiberarRanking();fecharDropdowns()">🏆 Liberar ranking</button>
-              <button class="dropdown-item" id="ddItemPlacar" onclick="LNE.toggleLiberarPlacarEtapa();fecharDropdowns()">🏅 Liberar placar da etapa</button>
-              <button class="dropdown-item" onclick="LNE.abrirModalLiberarClassificacoes();fecharDropdowns()">🔓 Liberar classificações…</button>
+              <button class="dropdown-item" id="ddItemRanking" onclick="LNE.toggleLiberarRanking();LNE.fecharDropdowns()">🏆 Liberar ranking</button>
+              <button class="dropdown-item" id="ddItemPlacar" onclick="LNE.toggleLiberarPlacarEtapa();LNE.fecharDropdowns()">🏅 Liberar placar da etapa</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalLiberarClassificacoes();LNE.fecharDropdowns()">🔓 Liberar classificações…</button>
             </div>
           </div>
         </div>
@@ -1177,4 +1177,4 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
 
 </body>
-</html>    
+</html>       
