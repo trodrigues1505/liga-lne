@@ -1,7 +1,7 @@
 // importacao.js — Importação Excel LNE 2026
 
 // Estado do import
-let LNE.state.importPendente = null;
+let _importPendente = null;
 
 export function importarExcel(inp){
   const etapa=LNE.getEtapa(LNE.state.curEtapaId); if(!etapa) return;
@@ -70,7 +70,7 @@ export function importarExcel(inp){
         alert('❌ Import bloqueado — corrija o Excel e tente novamente:\n\n'+errosImport.join('\n'));
         return;
       }
-      LNE.state.importPendente={novos,conflitos,novasProvas};
+      _importPendente={novos,conflitos,novasProvas};
       if(conflitos.length>0){
         abrirModalConflitos();
       } else {
@@ -109,7 +109,7 @@ export function aplicarImport(novos, conflitos, novasProvas){
   });
   LNE.markDirty(); LNE.renderProvasEtapa();
   LNE.fecharModal('modalConflitos');
-  LNE.state.importPendente=null;
+  _importPendente=null;
   const msgs=[];
   if(novasProvas.length) msgs.push(`${novasProvas.length} prova(s) nova(s)`);
   if(novos.length) msgs.push(`${novos.length} atleta(s) adicionado(s)`);
@@ -121,13 +121,13 @@ export function aplicarImport(novos, conflitos, novasProvas){
 
 export function abrirModalConflitos(){
   document.getElementById('conflitosTitulo').textContent=
-    `⚠️ ${LNE.state.importPendente.conflitos.length} conflito(s) encontrado(s)`;
+    `⚠️ ${_importPendente.conflitos.length} conflito(s) encontrado(s)`;
   LNE.renderConflitos();
   LNE.abrirModal('modalConflitos');
 }
 
 export function renderConflitos(){
-  const conflitos=LNE.state.importPendente.conflitos;
+  const conflitos=_importPendente.conflitos;
   const CAMPOS=[
     {k:'categoria', l:'Categoria'},
     {k:'escola',    l:'Escola'},
@@ -188,17 +188,16 @@ export function renderConflitos(){
 }
 
 export function decisaoLote(decisao){
-  LNE.state.importPendente.conflitos.forEach(c=>c.decisao=decisao);
+  _importPendente.conflitos.forEach(c=>c.decisao=decisao);
   LNE.renderConflitos();
 }
 
 export function decisaoIndividual(ci,decisao){
-  LNE.state.importPendente.conflitos[ci].decisao=decisao;
+  _importPendente.conflitos[ci].decisao=decisao;
   LNE.renderConflitos();
 }
 
 export function confirmarImport(){
-  const {novos,conflitos,novasProvas}=LNE.state.importPendente;
+  const {novos,conflitos,novasProvas}=_importPendente;
   LNE.aplicarImport(novos,conflitos,novasProvas);
-}
-
+}   
