@@ -4,15 +4,7 @@
 // ══════════════════════════════════════════════════════════
 // LIBERAÇÃO — RANKING / PLACAR / CLASSIFICAÇÕES
 // ══════════════════════════════════════════════════════════
-export function toggleLiberarRanking(){
-  LNE.state.db.rankingLiberado=!LNE.state.db.rankingLiberado;
-  LNE.markDirty();
-  LNE.construirNav();
-  LNE.renderRankingGeral();
-  const dd=document.getElementById('ddItemRanking');
-  if(dd) dd.textContent=LNE.state.db.rankingLiberado?'🔒 Bloquear ranking':'🏆 Liberar ranking';
-  LNE.showToast(LNE.state.db.rankingLiberado?'✅ Ranking liberado para as escolas!':'🔒 Ranking ocultado das escolas.');
-}
+
 export function toggleLiberarPlacarEtapa(){
   const e=LNE.getEtapa(LNE.state.curEtapaId); if(!e) return;
   e.placarLiberado=!e.placarLiberado;
@@ -168,4 +160,4 @@ export function executarImpressaoClassificacoes(selecionadas, modo){
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Classificações — LNE 2026</title><style>${css}</style></head><body>${h}\n</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}       
+}    
