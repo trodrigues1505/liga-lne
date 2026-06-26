@@ -84,6 +84,16 @@ export function renderPortalEscola(){
     html+=`</div></div>`;
   });
   document.getElementById('portalConteudo').innerHTML=html;
+  // Dashboard estatístico da escola
+  setTimeout(() => {
+    let dashEl = document.getElementById('dashEscolaPortal');
+    if (!dashEl) {
+      dashEl = document.createElement('div');
+      dashEl.id = 'dashEscolaPortal';
+      document.getElementById('portalConteudo').appendChild(dashEl);
+    }
+    LNE.renderDashboardEscola(escola.nome, 'dashEscolaPortal');
+  }, 50);
 }
 
 

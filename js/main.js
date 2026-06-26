@@ -125,6 +125,7 @@ import { toggleLiberarPlacarEtapa, abrirModalLiberarClassificacoes,
          executarImpressaoClassificacoes } from './liberacao.js';
 
 import { abrirConsultaAtleta, buscarAtletaConsulta } from './consulta_atleta.js';
+import { calcDashboardEscola, renderDashboardEscola, abrirDashboardAdmin, trocarEscolaDashboard } from './dashboard.js';
 
 // ═══════════════════════════════════════════════════════════
 // NAMESPACE GLOBAL — window.LNE
@@ -237,6 +238,14 @@ window.LNE = {
   abrirIncluirEmProva, confirmarIncluirEmProva,
   abrirEditarAtleta, eaProvaChange, salvarEdicaoAtleta,
   excluirAtletaEditar,
+
+  // ── PWA ──
+  instalarPWA() {
+    if (window.__pwaPrompt) {
+      window.__pwaPrompt.prompt();
+      window.__pwaPrompt.userChoice.then(r => { if (r.outcome === 'accepted') window.__pwaPrompt = null; });
+    }
+  },
 
   // ── consulta atleta ──
   abrirConsultaAtleta, buscarAtletaConsulta,
