@@ -1,5 +1,7 @@
 // impressao_lote.js — Impressão em lote e reordenar LNE 2026
 
+let reordenarDragIdx = null;
+
 const PRINT_CSS=`*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Calibri',Arial,sans-serif;font-size:9pt;color:#000;background:#fff;}
 .pg{width:100%;padding:10mm 14mm;}.ph{text-align:center;margin-bottom:8pt;}.ph div{font-size:9pt;font-weight:bold;text-transform:uppercase;line-height:1.55;letter-spacing:.2px;}
 table{width:100%;border-collapse:collapse;table-layout:fixed;}
@@ -250,13 +252,13 @@ export function roMoveUp(i){const n=getReordenarNomes();if(i===0)return;[n[i-1],
 
 export function roMoveDown(i){const n=getReordenarNomes();if(i>=n.length-1)return;[n[i],n[i+1]]=[n[i+1],n[i]];renderReordenarLista(n);}
 
-export function roDragStart(ev,i){LNE.state.reordenarDragIdx=i;ev.currentTarget.classList.add('dragging');ev.dataTransfer.effectAllowed='move';}
+export function roDragStart(ev,i){reordenarDragIdx=i;ev.currentTarget.classList.add('dragging');ev.dataTransfer.effectAllowed='move';}
 
-export function roDragOver(ev,i){ev.preventDefault();document.querySelectorAll('#reordenarLista .drag-over').forEach(r=>r.classList.remove('drag-over'));if(i!==LNE.state.reordenarDragIdx)ev.currentTarget.classList.add('drag-over');}
+export function roDragOver(ev,i){ev.preventDefault();document.querySelectorAll('#reordenarLista .drag-over').forEach(r=>r.classList.remove('drag-over'));if(i!==reordenarDragIdx)ev.currentTarget.classList.add('drag-over');}
 
-export function roDrop(ev,i){ev.preventDefault();if(LNE.state.reordenarDragIdx===null||LNE.state.reordenarDragIdx===i)return;const n=getReordenarNomes();const[m]=n.splice(LNE.state.reordenarDragIdx,1);n.splice(i,0,m);renderReordenarLista(n);}
+export function roDrop(ev,i){ev.preventDefault();if(reordenarDragIdx===null||reordenarDragIdx===i)return;const n=getReordenarNomes();const[m]=n.splice(reordenarDragIdx,1);n.splice(i,0,m);renderReordenarLista(n);}
 
-export function roDragEnd(){LNE.state.reordenarDragIdx=null;document.querySelectorAll('#reordenarLista .dragging,.drag-over').forEach(r=>r.classList.remove('dragging','drag-over'));}
+export function roDragEnd(){reordenarDragIdx=null;document.querySelectorAll('#reordenarLista .dragging,.drag-over').forEach(r=>r.classList.remove('dragging','drag-over'));}
 
 export function salvarOrdem(){
   const etapa=LNE.getEtapa(LNE.state.curEtapaId);if(!etapa)return;
@@ -296,5 +298,4 @@ export function imprimirRanking(){
   ${_rkPrintTable(_buildRkPrintRows(fed))}
   </div>`;
   LNE.openPrint(h);
-}
-
+}   
