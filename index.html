@@ -386,6 +386,31 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
   .etapa-sticky .btn{font-size:9px;padding:4px 7px;}
 }
 </style>
+
+<!-- Guard: garante que LNE.fn() funciona mesmo antes do módulo carregar -->
+<script>
+(function() {
+  const queue = [];
+  const proxy = new Proxy({}, {
+    get(_, prop) {
+      return function(...args) {
+        if (window.__LNE_READY) {
+          return window.LNE[prop](...args);
+        }
+        queue.push({ prop, args });
+      };
+    }
+  });
+  window.LNE = proxy;
+  window.__LNE_FLUSH = function(realLNE) {
+    window.LNE = realLNE;
+    window.__LNE_READY = true;
+    queue.forEach(({ prop, args }) => {
+      if (typeof realLNE[prop] === 'function') realLNE[prop](...args);
+    });
+  };
+})();
+</script>
 </head>
 <body>
 
@@ -1152,4 +1177,4 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
 
 </body>
-</html>
+</html>  
