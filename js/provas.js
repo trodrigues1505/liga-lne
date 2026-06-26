@@ -244,14 +244,6 @@ export function renderPaineis(nome){
   </div>`;
 }
 
-export function togglePainel(painelBase, nome){
-  const t=LNE.tid(nome);
-  const body=document.getElementById(painelBase+'-body-'+t);
-  const arrow=document.getElementById(painelBase+'-arrow-'+t);
-  if(!body) return;
-  body.classList.toggle('open');
-  if(arrow) arrow.classList.toggle('open');
-}
 
 export function renderAll(nome){ const p=LNE.getProva(nome); if(!p) return; LNE.renderFluxo(nome); LNE.renderPaineis(nome); LNE.renderStats(nome); LNE.renderAtletas(nome); if(p.series&&p.series.length) LNE.renderBal(nome); if(p.classificacao&&p.classificacao.length) LNE.renderClass(nome); }
 
