@@ -1,7 +1,7 @@
 // portal.js — Portal da escola LNE 2026
 
 // Estado inscrição
-let LNE.state.inscEtapaId = null, LNE.state.inscNomePr = null;
+let _inscEtapaId = null, _inscNomePr = null;
 
 export function renderPortalEscola(){
   if(!LNE.state.perfil||LNE.state.perfil==='admin') return;
@@ -211,7 +211,7 @@ export function gerenciarInscricao(etapaId,nomePr){
   const etapa=LNE.state.db.etapas.find(x=>x.id===etapaId);if(!etapa) return;
   const p=etapa.provas[nomePr];if(!p) return;
   // Salva estado global para o modal usar sem inline JSON
-  LNE.state.inscEtapaId=etapaId; LNE.state.inscNomePr=nomePr;
+  _inscEtapaId=etapaId; _inscNomePr=nomePr;
   const escola=LNE.state.perfil;
   document.getElementById('inscricaoModal')?.remove();
   const modal=document.createElement('div');
@@ -263,11 +263,11 @@ export function gerenciarInscricao(etapaId,nomePr){
 
 export function fecharInscricaoModal(){
   document.getElementById('inscricaoModal')?.remove();
-  LNE.state.inscEtapaId=null; LNE.state.inscNomePr=null;
+  _inscEtapaId=null; _inscNomePr=null;
 }
 
 export function confirmarAtletaPortal(){
-  const etapaId=LNE.state.inscEtapaId, nomePr=LNE.state.inscNomePr;
+  const etapaId=_inscEtapaId, nomePr=_inscNomePr;
   if(!etapaId||!nomePr) return;
   const nome=LNE.toTitle((document.getElementById('inscrNome')?.value||'').trim());
   const cat=(document.getElementById('inscrCat')?.value||'').trim();
@@ -317,7 +317,7 @@ export function renderInscrAtletas(etapaId,nomePr){
 
 export function rmAtletaPortal(idx){
   if(!confirm('Remover atleta?')) return;
-  const etapaId=LNE.state.inscEtapaId, nomePr=LNE.state.inscNomePr;
+  const etapaId=_inscEtapaId, nomePr=_inscNomePr;
   if(!etapaId||!nomePr) return;
   const etapa=LNE.state.db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
   p.atletas.splice(idx,1); LNE.markDirty(); LNE.renderInscrAtletas(etapaId,nomePr); LNE.renderPortalEscola();
@@ -344,5 +344,4 @@ export function trocarCodigoEscola(){
   LNE.markDirty(); LNE.renderPortalEscola();
   LNE.showToast(`Código atualizado para: ${novoFmt}`);
   setTimeout(()=>alert(`✅ Novo código salvo: ${novoFmt}\n\nAnote este código — você precisará dele para entrar no sistema da próxima vez!`),300);
-}
-
+}   
