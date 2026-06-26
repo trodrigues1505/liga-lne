@@ -250,12 +250,17 @@ if (window.__LNE_FLUSH) window.__LNE_FLUSH(window.LNE);
 // BOOTSTRAP
 // ═══════════════════════════════════════════════════════════
 
-// Firebase pronto → carrega dados → libera UI
-window.addEventListener('firebaseReady', async () => {
+// Firebase pode ter disparado antes do main.js terminar (race condition entre modules)
+async function onFirebaseReady() {
+  if (state.fbReady) return;
   state.fbReady = true;
   await carregarDB();
-  // UI liberada — usuário faz login manualmente
-});
+}
+if (window.__firebaseReady) {
+  onFirebaseReady();
+} else {
+  window.addEventListener('firebaseReady', onFirebaseReady);
+}
 
 // Timeout de 8s se Firebase não responder
 window.addEventListener('load', () => {
@@ -280,4 +285,4 @@ window.addEventListener('lne:navegar', e => {
 // DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
-});    
+});      
