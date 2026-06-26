@@ -121,7 +121,7 @@ export function confirmarImprimirClassificacoes(){
 export function executarImpressaoClassificacoes(selecionadas, modo){
   const etapa=LNE.getEtapa(LNE.state.curEtapaId);
   const pageBreakCSS=modo==='folha'?'.pg{page-break-after:always;}.pg:last-child{page-break-after:auto;}':'';
-  const css=PRINT_CSS+pageBreakCSS;
+  const css=LNE.PRINT_CSS+pageBreakCSS;
   const colgroup=`<colgroup><col style="width:28pt"/><col style="width:170pt"/><col style="width:60pt"/><col/><col style="width:55pt"/><col style="width:36pt"/></colgroup>`;
   const thead=`<thead><tr><th class="tc">Pos.</th><th>Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th><th class="tc">Pts</th></tr></thead>`;
   const buildRows=(arr)=>{
