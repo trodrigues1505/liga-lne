@@ -86,14 +86,6 @@ export function renderPortalEscola(){
   document.getElementById('portalConteudo').innerHTML=html;
 }
 
-export function abrirPlacarEtapaEscola(etapaId){
-  const e=LNE.state.db.etapas.find(x=>x.id===etapaId); if(!e) return;
-  if(LNE.state.perfil&&LNE.state.perfil!=='admin'&&!e.placarLiberado){LNE.showToast('🔒 Placar ainda não liberado.');return;}
-  const {nfed,fed}=LNE.calcPlacarEtapa(etapaId);
-  document.getElementById('placarTitulo').textContent=`🏅 Placar — ${e.nome}`;
-  document.getElementById('placarConteudo').innerHTML=LNE.rkDuplo(nfed,fed);
-  LNE.abrirModal('modalPlacar');
-}
 
 export function verClassificacaoEscola(btn){
   const etapaId=btn.dataset.etapa, nomePr=btn.dataset.prova;
@@ -344,4 +336,4 @@ export function trocarCodigoEscola(){
   LNE.markDirty(); LNE.renderPortalEscola();
   LNE.showToast(`Código atualizado para: ${novoFmt}`);
   setTimeout(()=>alert(`✅ Novo código salvo: ${novoFmt}\n\nAnote este código — você precisará dele para entrar no sistema da próxima vez!`),300);
-}   
+}    
