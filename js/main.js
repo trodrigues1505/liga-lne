@@ -247,6 +247,9 @@ window.LNE = {
     }
   },
 
+  // ── dashboard ──
+  calcDashboardEscola, renderDashboardEscola, abrirDashboardAdmin, trocarEscolaDashboard,
+
   // ── consulta atleta ──
   abrirConsultaAtleta, buscarAtletaConsulta,
 
@@ -299,4 +302,4 @@ window.addEventListener('lne:navegar', e => {
 // DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
-});
+});   
