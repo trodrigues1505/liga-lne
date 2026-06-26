@@ -125,7 +125,7 @@ import { toggleLiberarPlacarEtapa, abrirModalLiberarClassificacoes,
          executarImpressaoClassificacoes } from './liberacao.js';
 
 import { abrirConsultaAtleta, buscarAtletaConsulta } from './consulta_atleta.js';
-import { calcDashboardEscola, renderDashboardEscola, abrirDashboardAdmin, trocarEscolaDashboard } from './dashboard.js';
+import { calcDashboardEscola, renderDashboardEscola, renderPanoramaGeral, abrirDashboardAdmin, trocarEscolaDashboard, selecionarEscolaDashboard } from './dashboard.js';
 
 // ═══════════════════════════════════════════════════════════
 // NAMESPACE GLOBAL — window.LNE
@@ -248,7 +248,8 @@ window.LNE = {
   },
 
   // ── dashboard ──
-  calcDashboardEscola, renderDashboardEscola, abrirDashboardAdmin, trocarEscolaDashboard,
+  calcDashboardEscola, renderDashboardEscola, renderPanoramaGeral,
+  abrirDashboardAdmin, trocarEscolaDashboard, selecionarEscolaDashboard,
 
   // ── consulta atleta ──
   abrirConsultaAtleta, buscarAtletaConsulta,
