@@ -71,7 +71,7 @@ export function switchProvaTab(nome){
   LNE.renderAll(nome); mostrarSticky(nome);
 }
 
-export function mostrarSticky(nome){ document.getElementById('etapaSticky').classList.add('visible'); document.getElementById('stickyEtapaNome').textContent=nome; }
+export function mostrarSticky(nome){ /* sticky removida — painéis inline */ }
 
 export function getFluxoEstado(nome){
   const p=LNE.getProva(nome); if(!p) return {};
@@ -264,5 +264,4 @@ export function renderStats(nome){
     <div class="sc"><div class="lbl">Com tempo</div><div class="val">${tempos}</div></div>
     <div class="sc"><div class="lbl">Categoria</div><div class="val" style="font-size:13px;font-weight:600;">${LNE.esc(p.categoria||'—')}</div></div>
     <div class="sc"><div class="lbl">Gênero</div><div class="val" style="font-size:13px;font-weight:600;">${LNE.esc(p.genero||'—')}</div></div>`;
-}
-
+}       
