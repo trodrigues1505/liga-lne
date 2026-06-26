@@ -458,6 +458,17 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
           <span style="font-size:28px;">🏫</span>Escola / Colégio
         </button>
       </div>
+      <!-- Acesso público: consulta de atleta sem login -->
+      <button onclick="LNE.abrirConsultaAtleta()"
+        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+               padding:12px;border-radius:10px;border:1.5px solid var(--bd);
+               background:#f8fafc;cursor:pointer;font-size:13px;font-weight:600;
+               color:#475569;transition:all .15s;margin-bottom:4px;"
+        onmouseover="this.style.borderColor='var(--azm)';this.style.background='var(--azc)';this.style.color='var(--azm)'"
+        onmouseout="this.style.borderColor='var(--bd)';this.style.background='#f8fafc';this.style.color='#475569'">
+        🔍 Consultar resultado de atleta
+      </button>
+      <p style="font-size:11px;color:#94a3b8;text-align:center;margin-bottom:12px;">Pais e atletas podem consultar resultados sem login</p>
       <div id="loginAdminForm" style="display:none;border-top:1px solid var(--bd);padding-top:14px;margin-top:4px;">
         <div class="frow">
           <div class="fg grow"><label>Senha do administrador</label>
@@ -1178,4 +1189,4 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg-body);color:var
 
 
 </body>
-</html>       
+</html>    
