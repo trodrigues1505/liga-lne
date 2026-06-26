@@ -48,7 +48,7 @@ import { abrirModalNovaEtapa, salvarEtapa, criarProvasPadraoLNE,
 import { setCat, abrirModalNovaProva, salvarProva, excluirProva,
          renderProvasEtapa, switchProvaTab, mostrarSticky,
          getFluxoEstado, renderFluxo, abrirSecao,
-         renderPaineis, togglePainel as togglePainelProva,
+         renderPaineis,
          renderAll, renderStats } from './provas.js';
 
 // ── atletas ───────────────────────────────────────────────
@@ -280,4 +280,4 @@ window.addEventListener('lne:navegar', e => {
 // DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
-});
+});    
