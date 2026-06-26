@@ -211,6 +211,151 @@ function _statsAtletas(nomeEscola) {
   return { atletasUnicos: nomes.size, totalInscricoes, topAtletas };
 }
 
+
+// ── Panorama geral de todas as escolas ───────────────────
+export function renderPanoramaGeral(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const { nfed, fed } = LNE.calcRankingGeral();
+  const db = LNE.state.db;
+  const esc = LNE.esc;
+  const PONTOS = LNE.PONTOS_LNE;
+
+  // Mapa unificado de todas as escolas (fed + nfed)
+  const todasEscolas = {};
+  [...nfed, ...fed].forEach(r => {
+    if (!todasEscolas[r.nome]) todasEscolas[r.nome] = { nome: r.nome, nfed: null, fed: null };
+  });
+  nfed.forEach((r, i) => { if (todasEscolas[r.nome]) todasEscolas[r.nome].nfed = { pos: i+1, ...r }; });
+  fed.forEach((r, i)  => { if (todasEscolas[r.nome]) todasEscolas[r.nome].fed  = { pos: i+1, ...r  }; });
+
+  // Pontos totais (fed + nfed) para ranking visual
+  const lista = Object.values(todasEscolas)
+    .map(e => ({ ...e, total: (e.nfed?.pts||0) + (e.fed?.pts||0) }))
+    .sort((a,b) => b.total - a.total);
+
+  const maxPts = lista[0]?.total || 1;
+  const totalEscolas = lista.length;
+  const totalEtapas = db.etapas.length;
+
+  // ── Stats globais ──
+  let totalAtletas = 0, totalInscricoes = 0;
+  const atletasUnicos = new Set();
+  db.etapas.forEach(e => Object.values(e.provas||{}).forEach(p => {
+    p.atletas.forEach(a => { atletasUnicos.add(a.nome.toLowerCase().trim()); totalInscricoes++; });
+  }));
+  totalAtletas = atletasUnicos.size;
+
+  // ── Maior pontuador individual ──
+  const ptsPorAtleta = {};
+  db.etapas.forEach(e => Object.values(e.provas||{}).forEach(p => {
+    ['classificacaoNFed','classificacaoFed','classificacao'].some(key => {
+      const arr = p[key]||[];
+      if (!arr.length) return false;
+      arr.filter(a => !a.status && a.tempo).forEach((a,i) => {
+        const k = a.nome.toLowerCase().trim();
+        if (!ptsPorAtleta[k]) ptsPorAtleta[k] = { nome:a.nome, escola:a.escola||'', pts:0 };
+        ptsPorAtleta[k].pts += PONTOS[i]||0;
+      });
+      return true;
+    });
+  }));
+  const topAtl = Object.values(ptsPorAtleta).sort((a,b)=>b.pts-a.pts)[0];
+
+  // ── Evolução acumulada por escola por etapa ──
+  const evolEscolas = {};
+  db.etapas.forEach(e => {
+    const { nfed: en, fed: ef } = LNE.calcPlacarEtapa(e.id);
+    [...en,...ef].forEach(r => {
+      if (!evolEscolas[r.nome]) evolEscolas[r.nome] = [];
+      const last = evolEscolas[r.nome].slice(-1)[0]?.total || 0;
+      evolEscolas[r.nome].push({ etapa: e.nome, pts: r.pts, total: last + r.pts });
+    });
+  });
+
+  // ── Diferença entre 1º e 2º ──
+  const gap12nfed = nfed.length >= 2 ? nfed[0].pts - nfed[1].pts : null;
+  const gap12fed  = fed.length  >= 2 ? fed[0].pts  - fed[1].pts  : null;
+
+  el.innerHTML = `
+    <!-- ── Stats globais ── -->
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px;">
+      <div class="sc"><div class="lbl">Escolas</div><div class="val">${totalEscolas}</div></div>
+      <div class="sc"><div class="lbl">Etapas</div><div class="val">${totalEtapas}</div></div>
+      <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${totalAtletas}</div></div>
+      <div class="sc"><div class="lbl">Inscrições totais</div><div class="val">${totalInscricoes}</div></div>
+      ${topAtl ? `<div class="sc" style="min-width:160px;"><div class="lbl">Top atleta</div><div class="val" style="font-size:13px;font-weight:700;">${esc(topAtl.nome)}</div><div style="font-size:11px;color:#64748b;">${esc(topAtl.escola)} · ${topAtl.pts}pts</div></div>` : ''}
+    </div>
+
+    <!-- ── Ranking visual comparativo ── -->
+    <div style="background:#fff;border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+      <div style="padding:12px 16px;background:var(--czc);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:12px;font-weight:700;color:var(--cz);">🏆 Ranking Comparativo — Pontuação Total</span>
+        <div style="display:flex;gap:12px;font-size:11px;color:#64748b;">
+          <span><span style="display:inline-block;width:10px;height:10px;background:#0056b8;border-radius:2px;vertical-align:middle;"></span> Não fed.</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#7c3aed;border-radius:2px;vertical-align:middle;"></span> Fed.</span>
+        </div>
+      </div>
+      <div style="padding:12px 16px;">
+        ${lista.map((e, i) => {
+          const pctNFed = Math.round(((e.nfed?.pts||0) / maxPts) * 100);
+          const pctFed  = Math.round(((e.fed?.pts||0)  / maxPts) * 100);
+          const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          const posLabel = i === 0 ? '1°' : i === 1 ? '2°' : i === 2 ? '3°' : `${i+1}°`;
+          return `<div style="margin-bottom:12px;" class="dash-escola-row" data-escola="${esc(e.nome)}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;cursor:pointer;"
+                 onclick="LNE.selecionarEscolaDashboard('${esc(e.nome).replace(/'/g,"\'")}')"
+                 title="Ver detalhes de ${esc(e.nome)}">
+              <span style="font-size:13px;font-weight:800;width:28px;color:#94a3b8;">${posLabel}</span>
+              <span style="font-size:14px;">${medal}</span>
+              <span style="font-size:12px;font-weight:600;flex:1;color:var(--cz);">${esc(e.nome)}</span>
+              <span style="font-size:13px;font-weight:800;color:var(--az);">${e.total} <span style="font-size:10px;font-weight:500;color:#64748b;">pts</span></span>
+              <span style="font-size:10px;color:#0056b8;opacity:.6;">ver →</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              ${pctNFed > 0 ? `<div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:9px;color:#64748b;width:50px;text-align:right;">NF ${e.nfed?.pts||0}pts</span>
+                <div style="flex:1;background:#f1f5f9;border-radius:3px;height:10px;overflow:hidden;">
+                  <div style="height:100%;width:${pctNFed}%;background:#0056b8;border-radius:3px;transition:width .6s ease;"></div>
+                </div>
+                ${e.nfed ? `<span style="font-size:9px;color:#64748b;width:20px;">${e.nfed.pos}°</span>` : ''}
+              </div>` : ''}
+              ${pctFed > 0 ? `<div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:9px;color:#64748b;width:50px;text-align:right;">FD ${e.fed?.pts||0}pts</span>
+                <div style="flex:1;background:#f3e8ff;border-radius:3px;height:10px;overflow:hidden;">
+                  <div style="height:100%;width:${pctFed}%;background:#7c3aed;border-radius:3px;transition:width .6s ease;"></div>
+                </div>
+                ${e.fed ? `<span style="font-size:9px;color:#64748b;width:20px;">${e.fed.pos}°</span>` : ''}
+              </div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- ── Gap entre líderes ── -->
+    ${(gap12nfed !== null || gap12fed !== null) ? `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      ${gap12nfed !== null ? `<div style="flex:1;min-width:180px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;">
+        <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px;">🏅 Disputa Não Federados</div>
+        <div style="font-size:12px;"><strong>${esc(nfed[0]?.nome||'')}</strong> lidera com <strong style="color:#0056b8;">${gap12nfed} pts</strong> de vantagem sobre <strong>${esc(nfed[1]?.nome||'')}</strong></div>
+      </div>` : ''}
+      ${gap12fed !== null ? `<div style="flex:1;min-width:180px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:12px 14px;">
+        <div style="font-size:11px;font-weight:700;color:#6d28d9;margin-bottom:4px;">⭐ Disputa Federados</div>
+        <div style="font-size:12px;"><strong>${esc(fed[0]?.nome||'')}</strong> lidera com <strong style="color:#7c3aed;">${gap12fed} pts</strong> de vantagem sobre <strong>${esc(fed[1]?.nome||'')}</strong></div>
+      </div>` : ''}
+    </div>` : ''}
+
+    <!-- ── Divisor ── -->
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0 12px;">
+      <div style="flex:1;height:1px;background:var(--bd);"></div>
+      <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Análise individual por escola</span>
+      <div style="flex:1;height:1px;background:var(--bd);"></div>
+    </div>
+  `;
+}
+
 // ── Render do dashboard ───────────────────────────────────
 export function renderDashboardEscola(nomeEscola, containerId) {
   const el = document.getElementById(containerId);
@@ -408,29 +553,53 @@ export function abrirDashboardAdmin() {
     modal.className = 'mover';
     modal.id = 'modalDashboard';
     modal.innerHTML = `
-      <div class="mdl" style="max-width:900px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:93vh;">
+      <div class="mdl" style="max-width:920px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:93vh;">
         <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
-          <h3>📊 Dashboard da Escola</h3>
+          <h3>📊 Dashboard — LNE 2026</h3>
           <button class="mdl-x" onclick="LNE.fecharModal('modalDashboard')">×</button>
         </div>
-        <div style="padding:10px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
-          <select id="dashEscolaSelect" onchange="LNE.trocarEscolaDashboard()"
-            style="width:100%;border:1.5px solid var(--azm);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;">
-            ${db.escolas.map(e => `<option value="${LNE.esc(e.nome)}">${LNE.esc(e.nome)}</option>`).join('')}
-          </select>
+        <div style="overflow-y:auto;flex:1;">
+          <!-- Panorama geral -->
+          <div id="dashboardPanorama" style="padding:14px;"></div>
+          <!-- Seletor de escola -->
+          <div style="padding:10px 18px 14px;background:#f8fafc;border-top:1px solid var(--bd);">
+            <label style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;">
+              🔍 Análise individual por escola:
+            </label>
+            <select id="dashEscolaSelect" onchange="LNE.trocarEscolaDashboard()"
+              style="width:100%;border:1.5px solid var(--azm);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
+              <option value="">— Selecione uma escola —</option>
+              ${db.escolas.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('')}
+            </select>
+          </div>
+          <!-- Análise individual -->
+          <div id="dashboardConteudo" style="padding:14px;display:none;"></div>
         </div>
-        <div id="dashboardConteudo" style="overflow-y:auto;flex:1;padding:14px;"></div>
       </div>`;
     document.body.appendChild(modal);
+  } else {
+    // Recria select com escolas atualizadas
+    const sel = document.getElementById('dashEscolaSelect');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Selecione uma escola —</option>' +
+        db.escolas.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('');
+    }
   }
 
   modal.classList.add('open');
-  // Renderiza a primeira escola
-  const primeira = db.escolas[0]?.nome;
-  if (primeira) renderDashboardEscola(primeira, 'dashboardConteudo');
+  renderPanoramaGeral('dashboardPanorama');
 }
 
 export function trocarEscolaDashboard() {
   const nome = document.getElementById('dashEscolaSelect')?.value;
-  if (nome) renderDashboardEscola(nome, 'dashboardConteudo');
+  const conteudo = document.getElementById('dashboardConteudo');
+  if (!nome || !conteudo) return;
+  conteudo.style.display = 'block';
+  renderDashboardEscola(nome, 'dashboardConteudo');
+  setTimeout(() => conteudo.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
 }
+
+export function selecionarEscolaDashboard(nome) {
+  const sel = document.getElementById('dashEscolaSelect');
+  if (sel) { sel.value = nome; trocarEscolaDashboard(); }
+}    
