@@ -220,4 +220,4 @@ export function executarImpressaoClassificacoes(selecionadas, modo){
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Classificações — LNE 2026</title><style>${css}</style></head><body>${h}\n</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}
+}   
