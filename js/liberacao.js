@@ -116,7 +116,7 @@ export function confirmarImprimirClassificacoes(){
   if(!selecionadas.length){LNE.showToast('⚠️ Selecione pelo menos uma prova.');return;}
   const modo=document.querySelector('input[name="impClassModo"]:checked')?.value||'corrido';
   LNE.fecharModal('modalImpClass');
-  LNE.executarImpressaoClassificacoes(selecionadas, modo);
+  executarImpressaoClassificacoes(selecionadas, modo);
 }
 export function executarImpressaoClassificacoes(selecionadas, modo){
   const etapa=LNE.getEtapa(LNE.state.curEtapaId);
@@ -168,56 +168,4 @@ export function executarImpressaoClassificacoes(selecionadas, modo){
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Classificações — LNE 2026</title><style>${css}</style></head><body>${h}\n</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}
-
-export function executarImpressaoClassificacoes(selecionadas, modo){
-  const etapa=LNE.getEtapa(LNE.state.curEtapaId);
-  const pageBreakCSS=modo==='folha'?'.pg{page-break-after:always;}.pg:last-child{page-break-after:auto;}':'';
-  const css=LNE.PRINT_CSS+pageBreakCSS;
-  const colgroup=`<colgroup><col style="width:28pt"/><col style="width:170pt"/><col style="width:60pt"/><col/><col style="width:55pt"/><col style="width:36pt"/></colgroup>`;
-  const thead=`<thead><tr><th class="tc">Pos.</th><th>Atleta</th><th class="tc">Cat.</th><th class="tc">Escola</th><th class="tc">Tempo</th><th class="tc">Pts</th></tr></thead>`;
-  const buildRows=(arr)=>{
-    const validos=arr.filter(a=>!a.status&&a.tempo&&a.tempo.trim());
-    const rankMap={};
-    let cursor=0;
-    while(cursor<validos.length){
-      const tAtual=LNE.tempoMs(validos[cursor].tempo);
-      let fim=cursor;
-      while(fim<validos.length&&LNE.tempoMs(validos[fim].tempo)===tAtual) fim++;
-      const posicao=cursor+1; const pts=LNE.PONTOS_LNE[cursor]||0; const empate=fim-cursor>1;
-      validos.slice(cursor,fim).forEach(a=>{rankMap[a.nome+'|'+a.serie+'|'+a.raia]={pos:posicao,pts,empate};});
-      cursor=fim;
-    }
-    return arr.map(a=>{
-      const st=a.status||''; const semTempo=!a.tempo||!a.tempo.trim();
-      const rank=rankMap[a.nome+'|'+a.serie+'|'+a.raia];
-      const pts=(!rank||st||semTempo)?0:rank.pts;
-      const posLabel=st?st:rank?(rank.empate?`${rank.pos}°=`:`${rank.pos}°`):'—';
-      return `<tr><td class="c-pos">${posLabel}</td><td class="c-nome">${LNE.esc(a.nome)}${a.federado?' ⭐':''}</td><td class="c-doc">${LNE.esc(a.categoria||'')}</td><td class="c-inst">${LNE.esc(a.escola||'')}</td><td class="c-tempo">${st?st:(a.tempo||'—')}</td><td class="c-pos">${pts||'—'}</td></tr>`;
-    }).join('');
-  };
-  let h='';
-  selecionadas.forEach(nome=>{
-    const p=LNE.getProva(nome);
-    if(!p||!p.classificacao||!p.classificacao.length) return;
-    const hasFed=(p.classificacaoFed||[]).length>0;
-    const hasNFed=(p.classificacaoNFed||[]).length>0;
-    const hasBoth=hasFed&&hasNFed;
-    h+=`<div class="pg"><div class="ph">
-      <div>Liga de Natação Escolar — LNE 2026</div>
-      <div>Classificação — ${LNE.esc(nome)}</div>
-      ${etapa?`<div>${LNE.esc(etapa.nome)}${etapa.data?' · '+LNE.fmtData(etapa.data):''}</div>`:''}
-    </div>`;
-    if(hasBoth){
-      h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:8pt 0 3pt;border-bottom:1pt solid #000;padding-bottom:1pt;">Não Federados</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoNFed)}</tbody></table>`;
-      h+=`<div style="font-size:8pt;font-weight:bold;text-transform:uppercase;margin:10pt 0 3pt;border-bottom:1pt solid #666;padding-bottom:1pt;color:#555;">Federados / Vinculados ⭐</div><table>${colgroup}${thead}<tbody>${buildRows(p.classificacaoFed)}</tbody></table>`;
-    } else {
-      h+=`<table>${colgroup}${thead}<tbody>${buildRows(p.classificacao)}</tbody></table>`;
-    }
-    h+='</div>';
-  });
-  if(!h){showToast('Nenhuma classificação para imprimir.');return;}
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Classificações — LNE 2026</title><style>${css}</style></head><body>${h}\n</body></html>`);
-  w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
-}   
+}       
