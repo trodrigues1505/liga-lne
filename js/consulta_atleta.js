@@ -2,6 +2,18 @@
 // Busca cross-etapa: mostra escola, provas nadadas, tempos, medalhas, pontos
 
 export function abrirConsultaAtleta() {
+  // Funciona com e sem login — DB já foi carregado pelo Firebase no boot
+  // Se DB ainda vazio (Firebase ainda carregando), mostra aviso
+  const db = LNE.state.db;
+  if (!db || (!db.etapas?.length && !db.escolas?.length)) {
+    // Tenta aguardar até 3s
+    if (!window.__firebaseReady) {
+      LNE.showToast('⏳ Aguardando conexão com o servidor…');
+      setTimeout(() => abrirConsultaAtleta(), 1500);
+      return;
+    }
+  }
+
   // Cria modal dinamicamente se não existir
   let modal = document.getElementById('modalConsultaAtleta');
   if (!modal) {
@@ -213,4 +225,4 @@ function _renderAtletaCard(atleta) {
 
   html += `</tbody></table></div></div>`;
   return html;
-}
+}   
