@@ -96,8 +96,7 @@ import { abrirModalImprimirBalizamentos, ibSelTodas,
          confirmarImprimirBalizamentos, printBalizamentosSelecionados,
          abrirReordenar, renderReordenarLista, getReordenarNomes,
          roMoveUp, roMoveDown, roDragStart, roDragOver, roDrop,
-         roDragEnd, salvarOrdem,
-         executarImpressaoClassificacoes } from './impressao_lote.js';
+         roDragEnd, salvarOrdem } from './impressao_lote.js';
 
 // ── relatorio ─────────────────────────────────────────────
 import { abrirRelatorio, limparFiltrosRel, coletarDadosRel,
@@ -243,6 +242,9 @@ window.LNE = {
   atualizarDropdownLiberacao, abrirModalImprimirClassificacoes,
   icSelTodas, confirmarImprimirClassificacoes,
 };
+// Avisa o proxy guard que LNE está pronto
+if (window.__LNE_FLUSH) window.__LNE_FLUSH(window.LNE);
+
 
 // ═══════════════════════════════════════════════════════════
 // BOOTSTRAP
@@ -278,4 +280,4 @@ window.addEventListener('lne:navegar', e => {
 // DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
-});   
+});    
