@@ -1,0 +1,26 @@
+{
+  "name": "LNE 2026 — Liga de Natação Escolar",
+  "short_name": "LNE 2026",
+  "description": "Sistema de gerenciamento da Liga de Natação Escolar 2026",
+  "start_url": "/liga-lne/",
+  "display": "standalone",
+  "background_color": "#e8f0fb",
+  "theme_color": "#003f8a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "education"],
+  "lang": "pt-BR"
+}
