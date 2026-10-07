@@ -4,12 +4,23 @@
 const ic = (name, cls = 'ic') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const hint = (txt) => `<div class="hint">${ic('search')}${txt}</div>`;
 
+// LGPD — três modos de acesso:
+//  • público (sem login): exige nome completo do atleta + escola; no máximo 10 resultados
+//  • escola logada: só enxerga atletas da própria escola
+//  • administrador: busca livre (mínimo 2 caracteres)
+function _modo() {
+  const p = LNE.state.perfil;
+  return p === 'admin' ? 'admin' : p ? 'escola' : 'publico';
+}
+
+const _norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const _palavras = (q) => _norm(q).split(/\s+/).filter(w => w.length >= 2);
+
 export function abrirConsultaAtleta() {
   // Funciona com e sem login — DB já foi carregado pelo Firebase no boot
   // Se DB ainda vazio (Firebase ainda carregando), mostra aviso
   const db = LNE.state.db;
   if (!db || (!db.etapas?.length && !db.escolas?.length)) {
-    // Tenta aguardar até 3s
     if (!window.__firebaseReady) {
       LNE.showToast('Aguardando conexão com o servidor…');
       setTimeout(() => abrirConsultaAtleta(), 1500);
@@ -17,13 +28,33 @@ export function abrirConsultaAtleta() {
     }
   }
 
-  // Cria modal dinamicamente se não existir
+  const modo = _modo();
+  const escolas = (db.escolas || []).map(e => e.nome).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const campoEscola = modo === 'publico' ? `
+    <div class="fg" style="margin-top:10px;">
+      <label for="consultaAtletaEscola">Escola do atleta</label>
+      <select id="consultaAtletaEscola" onchange="LNE.buscarAtletaConsulta()">
+        <option value="">Selecione a escola…</option>
+        ${escolas.map(n => `<option value="${LNE.esc(n)}">${LNE.esc(n)}</option>`).join('')}
+      </select>
+    </div>` : '';
+
+  const aviso = modo === 'escola'
+    ? `Mostrando apenas atletas da sua escola.`
+    : modo === 'publico'
+      ? `Informe o nome completo do atleta e a escola. `
+      : '';
+
+  // Cria/recria o modal conforme o perfil atual (público, escola ou admin)
   let modal = document.getElementById('modalConsultaAtleta');
   if (!modal) {
     modal = document.createElement('div');
     modal.className = 'mover';
     modal.id = 'modalConsultaAtleta';
-    modal.innerHTML = `
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
       <div class="mdl mdl-panel" style="max-width:860px;max-height:92vh;">
         <div class="mdl-hd mdl-bar">
           <h3>Consulta de atleta</h3>
@@ -32,35 +63,46 @@ export function abrirConsultaAtleta() {
         <div class="mdl-sub" style="background:#fff;">
           <div class="search">
             ${ic('search')}
-            <input type="text" id="consultaAtletaQ" placeholder="Digite o nome do atleta…"
+            <input type="text" id="consultaAtletaQ" placeholder="${modo === 'publico' ? 'Nome completo do atleta…' : 'Digite o nome do atleta…'}"
               autocomplete="off" oninput="LNE.buscarAtletaConsulta()"/>
           </div>
+          ${campoEscola}
+          <p class="help" style="margin-top:10px;">${aviso}Os dados são tratados conforme o <button type="button" class="link-btn" data-privacidade>Aviso de Privacidade</button>.</p>
         </div>
         <div id="consultaAtletaResultado" class="mdl-scroll"></div>
       </div>`;
-    document.body.appendChild(modal);
-  }
   modal.classList.add('open');
-  document.getElementById('consultaAtletaQ').value = '';
-  document.getElementById('consultaAtletaResultado').innerHTML = hint('Digite o nome para buscar.');
+  document.getElementById('consultaAtletaResultado').innerHTML =
+    hint(modo === 'publico' ? 'Informe o nome completo e a escola para buscar.' : 'Digite o nome para buscar.');
   setTimeout(() => document.getElementById('consultaAtletaQ').focus(), 100);
 }
 
 export function buscarAtletaConsulta() {
-  const q = (document.getElementById('consultaAtletaQ')?.value || '').trim().toLowerCase();
+  const qRaw = (document.getElementById('consultaAtletaQ')?.value || '').trim();
   const el = document.getElementById('consultaAtletaResultado');
   if (!el) return;
 
-  if (q.length < 2) {
-    el.innerHTML = hint('Digite pelo menos 2 caracteres.');
-    return;
+  const modo = _modo();
+  let filtroEscola = '';
+
+  if (modo === 'publico') {
+    filtroEscola = document.getElementById('consultaAtletaEscola')?.value || '';
+    if (_palavras(qRaw).length < 2 || !filtroEscola) {
+      el.innerHTML = hint('Informe o nome completo (nome e sobrenome) e selecione a escola.');
+      return;
+    }
+  } else {
+    if (_norm(qRaw).length < 2) { el.innerHTML = hint('Digite pelo menos 2 caracteres.'); return; }
+    if (modo === 'escola') filtroEscola = LNE.state.perfil?.nome || '';
   }
 
   // Coleta todos os registros do atleta em todas as etapas e provas
-  const resultados = _coletarDadosAtleta(q);
+  const resultados = _coletarDadosAtleta(qRaw, filtroEscola);
 
   if (!resultados.length) {
-    el.innerHTML = hint(`Nenhum atleta encontrado para <strong>${LNE.esc(q)}</strong>.`);
+    el.innerHTML = hint(modo === 'publico'
+      ? 'Nenhum atleta encontrado com esse nome nessa escola.'
+      : `Nenhum atleta encontrado para <strong>${LNE.esc(qRaw)}</strong>.`);
     return;
   }
 
@@ -72,15 +114,18 @@ export function buscarAtletaConsulta() {
     porAtleta[key].registros.push(r);
   }
 
-  let html = '';
-  for (const [, atleta] of Object.entries(porAtleta)) {
-    html += _renderAtletaCard(atleta);
+  const lista = Object.values(porAtleta);
+  const LIMITE_PUBLICO = 10;
+  const exibidos = modo === 'publico' ? lista.slice(0, LIMITE_PUBLICO) : lista;
+  let html = exibidos.map(_renderAtletaCard).join('');
+  if (exibidos.length < lista.length) {
+    html += `<p class="hint" style="padding:18px;">Mostrando ${exibidos.length} de ${lista.length} atletas. Informe o nome completo para refinar.</p>`;
   }
-
   el.innerHTML = html;
 }
 
-function _coletarDadosAtleta(q) {
+function _coletarDadosAtleta(q, filtroEscola = '') {
+  const palavras = _palavras(q);
   const db = LNE.state.db;
   const resultados = [];
   const PONTOS_LNE = LNE.PONTOS_LNE;
@@ -89,7 +134,9 @@ function _coletarDadosAtleta(q) {
     for (const [nomeProva, prova] of Object.entries(etapa.provas || {})) {
       // Verifica atletas inscritos
       for (const atl of (prova.atletas || [])) {
-        if (!atl.nome.toLowerCase().includes(q)) continue;
+        const nomeNorm = _norm(atl.nome);
+        if (!palavras.length || !palavras.every(w => nomeNorm.includes(w))) continue;
+        if (filtroEscola && atl.escola !== filtroEscola) continue;
 
         // Busca resultado na classificação
         const classArr = prova.classificacao || [];

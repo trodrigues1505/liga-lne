@@ -16,11 +16,6 @@
 <meta name="apple-mobile-web-app-title" content="LNE 2026">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-<!-- Tipografia -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <!-- SheetJS para importação Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -94,6 +89,7 @@ window.dispatchEvent(new Event("firebaseReady"));
 
 <!-- App LNE — ponto de entrada ES Module -->
 <script type="module" src="js/main.js"></script>
+<script type="module" src="js/privacidade.js"></script>
 
 <style>
 /* ═══════════════════════════════════════════════════════════
@@ -101,6 +97,11 @@ window.dispatchEvent(new Event("firebaseReady"));
    Tokens → base → layout → componentes → módulos → mobile → print
    Todas as classes antigas foram mantidas (módulos JS dependem delas).
 ═══════════════════════════════════════════════════════════ */
+/* Fonte hospedada no próprio site (sem requisição ao Google) */
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url('fonts/inter-latin-wght-normal.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+
 :root{
   /* Marca (nomes legados preservados) */
   --az:#0b2f6b;--azm:#1463e6;--azc:#e8f0fe;
@@ -636,6 +637,16 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
 .swap-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start;}
 .swap-arrow{color:var(--muted-2);padding-top:30px;display:flex;justify-content:center;}
 @media(max-width:768px){.swap-grid{grid-template-columns:1fr;}.swap-arrow{padding-top:0;transform:rotate(90deg);}}
+
+/* ── Privacidade ──────────────────────────────────────────── */
+.link-btn{background:none;border:none;padding:0;color:var(--azm);font:inherit;font-size:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.link-btn:hover{color:var(--az);}
+.priv-foot{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;}
+.priv-doc h4{font-size:14px;font-weight:650;margin:18px 0 6px;}
+.priv-doc h4:first-child{margin-top:0;}
+.priv-doc p,.priv-doc li{font-size:13px;line-height:1.6;color:#334155;}
+.priv-doc ul{padding-left:20px;margin:4px 0;}
+.priv-doc .priv-ver{font-size:12px;color:var(--muted);margin-top:18px;}
 </style>
 
 <!-- Guard: garante que LNE.fn() funciona mesmo antes do módulo carregar -->
@@ -803,6 +814,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
             <svg class="ic ic-lg" aria-hidden="true"><use href="#i-search"/></svg>
             <span><strong>Consultar resultado de atleta</strong><small>Aberto a pais e atletas, sem login</small></span>
           </button>
+          <p class="priv-foot">Seus dados são tratados conforme o <button type="button" class="link-btn" data-privacidade>Aviso de Privacidade</button>.</p>
         </div>
       </div>
     </div>
@@ -943,6 +955,10 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
     </div>
     <div class="frow"><div class="fg grow"><label>Telefone</label><input type="text" id="cadTel" placeholder="(11) 99999-9999"/></div></div>
     <div class="note note-warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><div>Após o cadastro, você receberá um <strong>código de acesso único</strong>. Guarde-o para entrar no sistema.</div></div>
+    <label class="opt-card">
+      <input type="checkbox" id="cadAceite"/>
+      <span><strong>Li e aceito o Aviso de Privacidade</strong><small>Declaro que tenho autorização dos pais ou responsáveis para inscrever atletas menores de idade. <button type="button" class="link-btn" data-privacidade>Ler o aviso</button></small></span>
+    </label>
     <div class="mdl-actions">
       <button class="btn b-out" onclick="LNE.fecharModal('modalCadEscola')">Cancelar</button>
       <button class="btn b-pri" onclick="LNE.cadastrarEscola()">Cadastrar</button>

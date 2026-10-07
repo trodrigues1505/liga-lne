@@ -48,13 +48,22 @@ export async function cadastrarEscola() {
   const email = document.getElementById('cadEmail').value.trim();
   const tel   = document.getElementById('cadTel').value.trim();
   if (!nome || !resp || !email) { alert('Preencha nome, responsável e e-mail.'); return; }
+  // LGPD: sem aceite do Aviso de Privacidade não há cadastro
+  if (!document.getElementById('cadAceite')?.checked) {
+    alert('Para cadastrar a escola, leia e aceite o Aviso de Privacidade.');
+    return;
+  }
   const codigo = gerarCodigo(nome);
+  const agora = new Date().toISOString();
   const escola = {
     id: uid(), nome: toTitle(nome), responsavel: toTitle(resp),
-    email, telefone: tel, codigo, dataCadastro: new Date().toISOString()
+    email, telefone: tel, codigo, dataCadastro: agora,
+    // registro do aceite (comprova quando e qual versão do aviso foi aceita)
+    aceitePrivacidade: { versao: '2026-10', em: agora }
   };
   state.db.escolas.push(escola);
   await salvarFirebase();
+  const chk = document.getElementById('cadAceite'); if (chk) chk.checked = false;
   fecharModal('modalCadEscola');
   alert(`✅ Escola cadastrada!\n\nSeu código de acesso:\n\n${codigo}\n\n⚠️ Guarde este código — você precisará dele para entrar no sistema.`);
   document.getElementById('loginCodigo').value = codigo;

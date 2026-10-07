@@ -3,6 +3,11 @@
 // ── Todas as categorias e provas da liga ──────────────────
 const TODAS_CATS = ['A7','A8','A9','A10','A11','A12','A13','A14','A15','A16-17'];
 
+// LGPD/confidencialidade: só o administrador vê resultados de provas ainda não liberadas
+const _ehAdmin = () => LNE.state.perfil === 'admin';
+const _verResultado = (etapa, nomeProva) =>
+  _ehAdmin() || (LNE.isClassLiberada ? !!LNE.isClassLiberada(etapa, nomeProva) : true);
+
 // ── Cálculo principal do dashboard ───────────────────────
 export function calcDashboardEscola(nomeEscola) {
   const db = LNE.state.db;
@@ -63,6 +68,7 @@ function _atletasProximosDeSobir(nomeEscola, nfed, fed) {
 
   for (const etapa of (db.etapas || [])) {
     for (const [nomeProva, prova] of Object.entries(etapa.provas || {})) {
+      if (!_verResultado(etapa, nomeProva)) continue;
       for (const arrKey of ['classificacaoNFed', 'classificacaoFed', 'classificacao']) {
         const arr = prova[arrKey] || [];
         if (!arr.length) continue;
@@ -137,7 +143,8 @@ function _medalhasPorCategoria(nomeEscola) {
   const db = LNE.state.db;
   const por = {};
   for (const etapa of (db.etapas || [])) {
-    for (const [, prova] of Object.entries(etapa.provas || {})) {
+    for (const [nomeProva, prova] of Object.entries(etapa.provas || {})) {
+      if (!_verResultado(etapa, nomeProva)) continue;
       for (const arrKey of ['classificacaoNFed', 'classificacaoFed', 'classificacao']) {
         const arr = prova[arrKey] || [];
         if (!arr.length) continue;
@@ -187,7 +194,8 @@ function _statsAtletas(nomeEscola) {
         nomes.add(atl.nome.toLowerCase().trim());
         totalInscricoes++;
       }
-      // Pontos por atleta
+      // Pontos por atleta (só provas com resultado liberado)
+      if (!_verResultado(etapa, nomeProva)) continue;
       for (const arrKey of ['classificacaoNFed', 'classificacaoFed', 'classificacao']) {
         const arr = prova[arrKey] || [];
         if (!arr.length) continue;
@@ -296,20 +304,23 @@ function _bindDash(root) {
 // table-layout:fixed com colgroup (padrão dos relatórios LNE)
 // ═══════════════════════════════════════════════════════════
 const PRINT_CSS_DASH = `
-  @page { size: A4 portrait; margin: 14mm 12mm; }
+  @page { size: A4 portrait; margin: 12mm 12mm 16mm;
+          @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 8pt Calibri, Arial, sans-serif; color: #000; } }
   * { box-sizing: border-box; }
-  body { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 11pt; color: #000; background: #fff; margin: 0; }
-  h1 { font-size: 17pt; margin: 0 0 2pt; }
-  h2 { font-size: 12.5pt; margin: 16pt 0 5pt; page-break-after: avoid; }
-  .sub { font-size: 11pt; margin: 0 0 2pt; }
-  .meta { font-size: 9pt; margin: 0 0 8pt; padding-bottom: 6pt; border-bottom: 1.5pt solid #000; }
-  .resumo { font-size: 10.5pt; margin: 8pt 0 0; }
-  .nota { font-size: 10pt; margin: 4pt 0; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 4pt; }
+  html, body { height: auto; overflow: visible; }
+  body { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 10.5pt; color: #000; background: #fff; margin: 0; }
+  h1 { font-size: 16pt; margin: 0 0 1pt; }
+  h2 { font-size: 11.5pt; margin: 11pt 0 4pt; break-after: avoid; page-break-after: avoid; }
+  .sub { font-size: 10.5pt; margin: 0 0 2pt; }
+  .meta { font-size: 8.5pt; margin: 0 0 6pt; padding-bottom: 5pt; border-bottom: 1.5pt solid #000; }
+  .resumo { font-size: 10pt; margin: 6pt 0 0; }
+  .nota { font-size: 9.5pt; margin: 3pt 0; }
+  .keep { break-inside: avoid; page-break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 3pt; }
   thead { display: table-header-group; }
-  th, td { border: .5pt solid #000; padding: 3pt 5pt; font-size: 10pt; vertical-align: middle; overflow-wrap: anywhere; }
+  th, td { border: .5pt solid #000; padding: 2.5pt 4pt; font-size: 9.5pt; vertical-align: middle; overflow-wrap: anywhere; }
   th { font-weight: bold; text-align: left; border-bottom: 1.2pt solid #000; }
-  tr { page-break-inside: avoid; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
   .c { text-align: center; }
   .r { text-align: right; }
   .b { font-weight: bold; }
@@ -332,7 +343,8 @@ function _cabecalhoImpressao(titulo, subtitulo) {
 function _imprimirHtml(titulo, corpo) {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  // Tamanho de uma folha A4 e fora da tela: um iframe 0x0 pode gerar impressão cortada
+  iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
   document.body.appendChild(iframe);
   const w = iframe.contentWindow;
   w.document.open();
@@ -340,7 +352,7 @@ function _imprimirHtml(titulo, corpo) {
   w.document.close();
   const limpar = () => setTimeout(() => iframe.remove(), 500);
   w.onafterprint = limpar;
-  setTimeout(() => { w.focus(); w.print(); }, 250);
+  setTimeout(() => { w.focus(); w.print(); }, 350);
   setTimeout(() => { if (iframe.isConnected) iframe.remove(); }, 120000); // segurança
 }
 
@@ -368,7 +380,7 @@ function _htmlQuadroGeral(d) {
   ].join('');
 
   return `${_cabecalhoImpressao('Quadro geral', 'Pontuação acumulada de todas as etapas')}
-    <p class="resumo">Escolas: <b>${d.totalEscolas}</b> · Etapas: <b>${d.totalEtapas}</b> · Atletas únicos: <b>${d.totalAtletas}</b> · Inscrições: <b>${d.totalInscricoes}</b>${d.topAtl ? ` · Maior pontuador: <b>${esc(d.topAtl.nome)}</b> (${esc(d.topAtl.escola)}, ${d.topAtl.pts} pts)` : ''}</p>
+    <p class="resumo">Escolas: <b>${d.totalEscolas}</b> · Etapas: <b>${d.totalEtapas}</b> · Atletas únicos: <b>${d.totalAtletas}</b> · Inscrições: <b>${d.totalInscricoes}</b>${(d.topAtl && _ehAdmin()) ? ` · Maior pontuador: <b>${esc(d.topAtl.nome)}</b> (${esc(d.topAtl.escola)}, ${d.topAtl.pts} pts)` : ''}</p>
 
     <h2>Pontuação total por escola</h2>
     ${geral.length
@@ -419,25 +431,26 @@ function _htmlRelatorioEscola(nomeEscola, d) {
   return `${_cabecalhoImpressao(nomeEscola, 'Relatório de desempenho da escola')}
     <p class="resumo">Atletas únicos: <b>${d.atletasUnicos}</b> · Inscrições: <b>${d.totalInscricoes}</b> · Etapas: <b>${d.evolucao.length}</b> · Categorias sem atleta: <b>${d.catsSemAtleta.length}</b></p>
 
-    <h2>Posição no ranking</h2>
+    <div class="keep"><h2>Posição no ranking</h2>
     ${linhasPos.length
       ? _tabela([17, 9, 10, 8, 8, 9, 39], ['Ranking', 'Pos.', 'Pontos', 'Ouro', 'Prata', 'Bronze', 'Para alcançar o anterior'], linhasPos, ['', 'c', 'c', 'c', 'c', 'c', ''])
-      : '<p class="nota">Sem pontuação registrada ainda.</p>'}
+      : '<p class="nota">Sem pontuação registrada ainda.</p>'}</div>
 
     ${evol.length ? `<h2>Evolução por etapa</h2>${_tabela([30, 14, 11, 10, 11, 10, 14], ['Etapa', 'Data', 'Não fed. (pts)', 'Pos. NF', 'Fed. (pts)', 'Pos. FD', 'Total'], evol, ['', 'c', 'c', 'c', 'c', 'c', 'c'])}` : ''}
 
     ${prox.length ? `<h2>Atletas próximos de subir de posição</h2>${_tabela([22, 8, 28, 7, 11, 10, 14], ['Atleta', 'Cat.', 'Prova', 'Pos.', 'Tempo', 'Dif.', 'Meta'], prox, ['', 'c', '', 'c', 'c', 'c', 'c'])}` : ''}
 
-    <h2>Categorias sem atleta inscrito</h2>
-    <p class="nota">${d.catsSemAtleta.length ? d.catsSemAtleta.map(esc).join(', ') + '. Cada categoria sem atleta é uma prova sem pontuação para a escola.' : 'Todas as categorias estão cobertas.'}</p>
+    <div class="keep"><h2>Categorias sem atleta inscrito</h2>
+    <p class="nota">${d.catsSemAtleta.length ? d.catsSemAtleta.map(esc).join(', ') + '. Cada categoria sem atleta é uma prova sem pontuação para a escola.' : 'Todas as categorias estão cobertas.'}</p></div>
 
-    ${top.length ? `<h2>Maiores pontuadores</h2>${_tabela([9, 61, 15, 15], ['Pos.', 'Atleta', 'Pontos', 'Medalhas'], top, ['c', '', 'c', 'c'])}` : ''}
+    ${top.length ? `<div class="keep"><h2>Maiores pontuadores</h2>${_tabela([9, 61, 15, 15], ['Pos.', 'Atleta', 'Pontos', 'Medalhas'], top, ['c', '', 'c', 'c'])}</div>` : ''}
 
-    ${porCat.length ? `<h2>Desempenho por categoria</h2>${_tabela([34, 16, 16, 16, 18], ['Categoria', 'Ouro', 'Prata', 'Bronze', 'Pontos'], porCat, ['', 'c', 'c', 'c', 'c'])}` : ''}`;
+    ${porCat.length ? `<div class="keep"><h2>Desempenho por categoria</h2>${_tabela([34, 16, 16, 16, 18], ['Categoria', 'Ouro', 'Prata', 'Bronze', 'Pontos'], porCat, ['', 'c', 'c', 'c', 'c'])}</div>` : ''}`;
 }
 
 export function imprimirRelatorioEscola(nomeEscola) {
   if (!nomeEscola) { LNE.showToast('Selecione uma escola.'); return; }
+  if (!_ehAdmin() && nomeEscola !== LNE.state.perfil?.nome) { LNE.showToast('Você só pode imprimir o relatório da sua escola.'); return; }
   _imprimirHtml(`Relatório — ${nomeEscola}`, _htmlRelatorioEscola(nomeEscola, calcDashboardEscola(nomeEscola)));
 }
 
@@ -450,6 +463,8 @@ export function renderPanoramaGeral(containerId) {
   const { lista, totalEscolas, totalEtapas, totalAtletas, totalInscricoes,
           topAtl, nfed, fed, gap12nfed, gap12fed } = _dadosPanorama();
   const maxPts = lista[0]?.total || 1;
+  const admin = _ehAdmin();
+  const minhaEscola = admin ? null : (LNE.state.perfil?.nome || null);
 
   const linhaBarra = (rotulo, pts, pos, pct, cls) => `
     <div class="bar-row">
@@ -462,10 +477,13 @@ export function renderPanoramaGeral(containerId) {
     const ptsN = e.nfed?.pts || 0, ptsF = e.fed?.pts || 0;
     const pctN = Math.round((ptsN / maxPts) * 100);
     const pctF = Math.round((ptsF / maxPts) * 100);
-    return `<div class="rk" role="button" tabindex="0" data-escola="${esc(e.nome)}"
+    // Escola logada só abre o detalhe da própria escola; admin abre qualquer uma
+    const abre = admin || e.nome === minhaEscola;
+    const acao = abre ? `role="button" tabindex="0" data-escola="${esc(e.nome)}"
          onclick="LNE.selecionarEscolaDashboard(this.dataset.escola)"
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();LNE.selecionarEscolaDashboard(this.dataset.escola);}"
-         title="Ver detalhes de ${esc(e.nome)}">
+         title="Ver detalhes de ${esc(e.nome)}"` : 'style="cursor:default;"';
+    return `<div class="rk" ${acao}>
       ${posBadge(i)}
       <span class="rk-name">${esc(e.nome)}</span>
       <span class="rk-total">${e.total} <small>pts</small></span>
@@ -482,7 +500,7 @@ export function renderPanoramaGeral(containerId) {
       <div class="sc"><div class="lbl">Etapas</div><div class="val">${totalEtapas}</div></div>
       <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${totalAtletas}</div></div>
       <div class="sc"><div class="lbl">Inscrições</div><div class="val">${totalInscricoes}</div></div>
-      ${topAtl ? `<div class="sc sc-wide">
+      ${(admin && topAtl) ? `<div class="sc sc-wide">
         <div class="lbl">Maior pontuador</div>
         <div class="val" style="font-size:16px;">${esc(topAtl.nome)}</div>
         <div style="font-size:12px;color:var(--muted);">${esc(topAtl.escola)} · ${topAtl.pts} pts</div>
@@ -493,7 +511,7 @@ export function renderPanoramaGeral(containerId) {
       <div class="dcard-hd">
         <div>
           <h4>Ranking comparativo</h4>
-          <small>Pontuação total por escola. Selecione uma escola para ver o detalhe.</small>
+          <small>${admin ? 'Pontuação total por escola. Selecione uma escola para ver o detalhe.' : 'Pontuação total por escola.'}</small>
         </div>
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           <div class="legend">
@@ -726,9 +744,15 @@ export function renderDashboardEscola(nomeEscola, containerId) {
 export function abrirDashboardAdmin() {
   const db = LNE.state.db;
   if (!db.escolas.length) { LNE.showToast('Nenhuma escola cadastrada.'); return; }
+  // Escola logada: o dashboard só existe depois que a organização libera o ranking
+  if (!_ehAdmin() && !db.rankingLiberado) {
+    LNE.showToast('O dashboard fica disponível quando o ranking for liberado.');
+    return;
+  }
 
+  const escolasVisiveis = _ehAdmin() ? db.escolas : db.escolas.filter(e => e.nome === LNE.state.perfil?.nome);
   const opcoes = '<option value="">Selecione uma escola…</option>' +
-    db.escolas.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('');
+    escolasVisiveis.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('');
 
   let modal = document.getElementById('modalDashboard');
   if (!modal) {
@@ -746,7 +770,7 @@ export function abrirDashboardAdmin() {
           <div id="dashboardPanorama" style="padding:22px 22px 4px;"></div>
           <!-- Seletor de escola -->
           <div class="dash-picker">
-            <label for="dashEscolaSelect">Analisar uma escola</label>
+            <label for="dashEscolaSelect">${_ehAdmin() ? 'Analisar uma escola' : 'Analisar minha escola'}</label>
             <select id="dashEscolaSelect" onchange="LNE.trocarEscolaDashboard()">${opcoes}</select>
           </div>
           <!-- Análise individual -->
@@ -761,6 +785,8 @@ export function abrirDashboardAdmin() {
   }
 
   modal.classList.add('open');
+  const lbSel = modal.querySelector('.dash-picker label');
+  if (lbSel) lbSel.textContent = _ehAdmin() ? 'Analisar uma escola' : 'Analisar minha escola';
   fecharAnaliseEscola();   // não reabre com a escola da consulta anterior
   renderPanoramaGeral('dashboardPanorama');
 }
@@ -770,6 +796,7 @@ export function trocarEscolaDashboard() {
   const conteudo = document.getElementById('dashboardConteudo');
   if (!conteudo) return;
   if (!nome) { fecharAnaliseEscola(); return; }
+  if (!_ehAdmin() && nome !== LNE.state.perfil?.nome) { fecharAnaliseEscola(); return; }
   conteudo.style.display = 'block';
   renderDashboardEscola(nome, 'dashboardConteudo');
   setTimeout(() => conteudo.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
