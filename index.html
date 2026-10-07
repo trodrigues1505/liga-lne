@@ -58,7 +58,7 @@ window._fb = {
   async saveDB(data) {
     try {
       // Firestore tem limite de 1MB por doc — dividimos em etapas + escolas
-      await setDoc(doc(fsdb, "lne2026", "escolas"), { escolas: data.escolas || [], ts: Date.now() });
+      await setDoc(doc(fsdb, "lne2026", "escolas"), { escolas: data.escolas || [], rankingLiberado: !!data.rankingLiberado, ts: Date.now() });
       // Cada etapa em documento separado
       for (const e of (data.etapas || [])) {
         await setDoc(doc(fsdb, "lne2026", "etapa_" + e.id), { etapa: e, ts: Date.now() });
@@ -71,6 +71,7 @@ window._fb = {
     try {
       const escolasSnap = await getDoc(doc(fsdb, "lne2026", "escolas"));
       const escolas = escolasSnap.exists() ? (escolasSnap.data().escolas || []) : [];
+      const rankingLiberado = escolasSnap.exists() ? !!escolasSnap.data().rankingLiberado : false;
       // Buscar todas as etapas
       const colSnap = await getDocs(collection(fsdb, "lne2026"));
       const etapas = [];
@@ -81,7 +82,7 @@ window._fb = {
         }
       });
       etapas.sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
-      return { escolas, etapas };
+      return { escolas, etapas, rankingLiberado };
     } catch(err) { console.error("Firebase load error:", err); return null; }
   },
 
@@ -805,7 +806,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
         </div>
 
         <div id="loginAdminForm" class="login-form" style="display:none;">
-          <div class="frow" id="adminEmailWrap" style="display:none;">
+          <div class="frow" id="adminEmailWrap">
             <div class="fg grow"><label for="adminEmail">E-mail do administrador</label>
               <input type="email" id="adminEmail" placeholder="voce@exemplo.com" autocomplete="username"/>
             </div>
