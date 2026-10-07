@@ -15,13 +15,10 @@ export function renderPortalEscola(){
     <div style="flex:1;">
       <h3 style="font-size:14px;font-weight:700;">${LNE.esc(escola.nome)}</h3>
       <p style="font-size:11px;opacity:.8;">${LNE.esc(escola.responsavel)}</p>
-      <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span style="font-size:11px;opacity:.8;">Código de acesso:</span>
-        <span style="font-family:monospace;font-size:12px;font-weight:700;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:5px;letter-spacing:.5px;">${LNE.esc(escola.codigo)}</span>
-        <button onclick="LNE.copiarCodigoEscola()" title="Copiar código"
-          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:5px;color:#fff;cursor:pointer;padding:2px 8px;font-size:11px;">📋 Copiar</button>
-        <button onclick="LNE.trocarCodigoEscola()" title="Trocar código de acesso"
-          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:5px;color:#fff;cursor:pointer;padding:2px 8px;font-size:11px;">✏️ Trocar código</button>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;opacity:.85;">${LNE.esc(escola.email||'')}</span>
+        <button data-portal-act="senha" title="Enviar e-mail para alterar a senha"
+          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:8px;color:#fff;cursor:pointer;padding:4px 10px;font-size:12px;">Alterar senha</button>
       </div>
     </div>
   </div>
@@ -325,26 +322,23 @@ export function rmAtletaPortal(idx){
   p.atletas.splice(idx,1); LNE.markDirty(); LNE.renderInscrAtletas(etapaId,nomePr); LNE.renderPortalEscola();
 }
 
-export function copiarCodigoEscola(){
-  if(!LNE.state.perfil||LNE.state.perfil==='admin') return;
-  navigator.clipboard.writeText(LNE.state.perfil.codigo).then(()=>LNE.showToast('Código copiado!')).catch(()=>{
-    prompt('Copie o código:',LNE.state.perfil.codigo);
-  });
-}
+// Compatibilidade com o main.js (ainda importa estes nomes): os códigos foram aposentados
+export function copiarCodigoEscola(){ LNE.showToast('O acesso agora é feito com e-mail e senha.'); }
+export function trocarCodigoEscola(){ LNE.showToast('Use "Alterar senha" para receber o link por e-mail.'); }
 
-export function trocarCodigoEscola(){
-  if(!LNE.state.perfil||LNE.state.perfil==='admin') return;
-  const novo=prompt(`Escolha um novo código de acesso para "${LNE.state.perfil.nome}":\n(atual: ${LNE.state.perfil.codigo})\n\nUse letras maiúsculas e números, sem espaços.`,LNE.state.perfil.codigo);
-  if(!novo||!novo.trim()) return;
-  const novoFmt=novo.trim().toUpperCase().replace(/\s+/g,'-');
-  if(novoFmt.length<6){alert('O código deve ter pelo menos 6 caracteres.');return;}
-  if(LNE.state.db.escolas.some(x=>x.id!==LNE.state.perfil.id&&x.codigo===novoFmt)){alert('Este código já está em uso por outra escola. Escolha outro.');return;}
-  // Atualiza no LNE.state.db e no LNE.state.perfil ativo
-  const escola=LNE.state.db.escolas.find(x=>x.id===LNE.state.perfil.id);
-  if(!escola) return;
-  escola.codigo=novoFmt; LNE.state.perfil.codigo=novoFmt;
-  LNE.markDirty(); LNE.renderPortalEscola();
-  LNE.showToast(`Código atualizado para: ${novoFmt}`);
-  setTimeout(()=>alert(`✅ Novo código salvo: ${novoFmt}\n\nAnote este código — você precisará dele para entrar no sistema da próxima vez!`),300);
+// Alterar senha: o Firebase envia ao e-mail da escola um link para definir a nova senha
+async function _alterarSenhaPorEmail(){
+  const escola=LNE.state.perfil;
+  if(!escola||escola==='admin'||!escola.email) return;
+  if(!confirm(`Enviar para ${escola.email} um e-mail com o link para criar uma nova senha?`)) return;
+  try{
+    await window._fb.enviarEmailAcesso(String(escola.email).trim().toLowerCase());
+    LNE.showToast('E-mail enviado. Confira também a caixa de spam.');
+  }catch(e){
+    console.warn('Alterar senha falhou:',e?.code);
+    LNE.showToast('Não foi possível enviar o e-mail agora. Tente novamente em alguns minutos.');
+  }
 }
-
+document.addEventListener('click',ev=>{
+  if(ev.target.closest('[data-portal-act="senha"]')) _alterarSenhaPorEmail();
+});

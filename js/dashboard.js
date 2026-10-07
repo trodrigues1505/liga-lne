@@ -308,7 +308,9 @@ const PRINT_CSS_DASH = `
           @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 8pt Calibri, Arial, sans-serif; color: #000; } }
   * { box-sizing: border-box; }
   html, body { height: auto; overflow: visible; }
-  body { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 10.5pt; color: #000; background: #fff; margin: 0; }
+  /* Largura fixa = folha A4 (210mm) menos as margens laterais (12mm + 12mm).
+     Assim a tabela nunca depende da largura do quadro de impressão e não passa da margem direita. */
+  body { width: 186mm; font-family: Calibri, Carlito, Arial, sans-serif; font-size: 10.5pt; color: #000; background: #fff; margin: 0; }
   h1 { font-size: 16pt; margin: 0 0 1pt; }
   h2 { font-size: 11.5pt; margin: 11pt 0 4pt; break-after: avoid; page-break-after: avoid; }
   .sub { font-size: 10.5pt; margin: 0 0 2pt; }

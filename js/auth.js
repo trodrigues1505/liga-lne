@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════
 // auth.js — Autenticação e navegação LNE 2026
 // ═══════════════════════════════════════════════════════════
-import { state } from './state.js';
-import { esc, uid, toTitle, gerarCodigo, getProvasOrdenadas } from './utils.js';
+import { state, ADMIN_EMAIL } from './state.js';
+import { esc, uid, toTitle, getProvasOrdenadas } from './utils.js';
 import { showToast, abrirModal, fecharModal } from './ui.js';
 import { markDirty, salvarFirebase } from './firebase.js';
 
@@ -18,11 +18,18 @@ export async function confirmarLoginAdmin() {
   if (!email) { alert('Digite o e-mail do administrador.'); return; }
   if (!s) { alert('Digite a senha.'); return; }
   if (!window._fb?.loginAdmin) { alert('Serviço de autenticação indisponível. Recarregue a página.'); return; }
+  let cred;
   try {
-    await window._fb.loginAdmin(email, s);
+    cred = await window._fb.loginAdmin(email, s);
   } catch (e) {
     console.warn('Login admin falhou:', e?.code);
     alert('E-mail ou senha incorretos.');
+    return;
+  }
+  // Contas de escola também existem no Firebase: só a do administrador pode entrar aqui
+  if ((cred?.user?.email || '').toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    try { await window._fb.logout(); } catch (e) {}
+    alert('Esta conta não é de administrador. Use a opção "Escola / Colégio".');
     return;
   }
   state.perfil = 'admin';
@@ -32,17 +39,52 @@ export async function confirmarLoginAdmin() {
 // ── Login Escola ──────────────────────────────────────────
 export function mostrarLoginEscola() {
   document.getElementById('loginEscolaForm').style.display = 'block';
-  setTimeout(() => document.getElementById('loginCodigo').focus(), 100);
+  setTimeout(() => document.getElementById('loginEmail')?.focus(), 100);
 }
 
-export function loginEscola() {
-  const cod = document.getElementById('loginCodigo').value.trim().toUpperCase();
-  if (!cod) { alert('Digite o código de acesso.'); return; }
-  const escola = state.db.escolas.find(e => e.codigo === cod);
-  if (!escola) { alert('Código não encontrado. Verifique ou cadastre sua escola.'); return; }
+const _norm = (t) => String(t || '').trim().toLowerCase();
+const _escolaPorEmail = (email) => state.db.escolas.find(e => _norm(e.email) === _norm(email));
+
+export async function loginEscola() {
+  const email = _norm(document.getElementById('loginEmail')?.value);
+  const senha = document.getElementById('loginSenha')?.value || '';
+  if (!email || !senha) { alert('Digite o e-mail e a senha.'); return; }
+  if (!state.fbReady || !state.db.escolas.length) { alert('Os dados ainda estão carregando. Tente novamente em instantes.'); return; }
+  if (email === _norm(ADMIN_EMAIL)) { alert('Para entrar como administrador, use o botão "Administrador".'); return; }
+
+  const escola = _escolaPorEmail(email);
+  if (!escola || !escola.acessoCriado) {
+    alert('O acesso desta escola ainda não foi liberado. Fale com a organização da liga.');
+    return;
+  }
+  try {
+    await window._fb.login(email, senha);
+  } catch (e) {
+    console.warn('Login escola falhou:', e?.code);
+    alert('E-mail ou senha incorretos. No primeiro acesso, use "Primeiro acesso ou esqueci a senha" para criar a sua senha.');
+    return;
+  }
   state.perfil = escola;
   iniciarApp();
 }
+
+// Primeiro acesso / esqueci a senha: envia o link para criar ou redefinir a senha.
+// A resposta é sempre a mesma (não revela se o e-mail está cadastrado).
+export async function esqueciSenhaEscola() {
+  const email = _norm(document.getElementById('loginEmail')?.value);
+  if (!email) { alert('Digite o e-mail da escola no campo "E-mail" e clique novamente.'); return; }
+  const escola = _escolaPorEmail(email);
+  if (escola?.acessoCriado) {
+    try { await window._fb.enviarEmailAcesso(email); }
+    catch (e) { console.warn('Envio do e-mail de acesso falhou:', e?.code); }
+  }
+  alert('Se este e-mail estiver liberado, você receberá em instantes uma mensagem com o link para criar ou redefinir a senha. Confira também a caixa de spam.');
+}
+
+// Botão "Primeiro acesso ou esqueci a senha" (sem depender do namespace LNE)
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-esqueci-senha]')) { e.preventDefault(); esqueciSenhaEscola(); }
+});
 
 // ── Cadastrar escola ──────────────────────────────────────
 export async function cadastrarEscola() {
@@ -56,11 +98,10 @@ export async function cadastrarEscola() {
     alert('Para cadastrar a escola, leia e aceite o Aviso de Privacidade.');
     return;
   }
-  const codigo = gerarCodigo(nome);
   const agora = new Date().toISOString();
   const escola = {
     id: uid(), nome: toTitle(nome), responsavel: toTitle(resp),
-    email, telefone: tel, codigo, dataCadastro: agora,
+    email, telefone: tel, status: 'pendente', dataCadastro: agora,
     // registro do aceite (comprova quando e qual versão do aviso foi aceita)
     aceitePrivacidade: { versao: '2026-10', em: agora }
   };
@@ -68,9 +109,7 @@ export async function cadastrarEscola() {
   await salvarFirebase();
   const chk = document.getElementById('cadAceite'); if (chk) chk.checked = false;
   fecharModal('modalCadEscola');
-  alert(`✅ Escola cadastrada!\n\nSeu código de acesso:\n\n${codigo}\n\n⚠️ Guarde este código — você precisará dele para entrar no sistema.`);
-  document.getElementById('loginCodigo').value = codigo;
-  mostrarLoginEscola();
+  alert('✅ Cadastro recebido!\n\nA organização da liga vai liberar o acesso da escola. Quando isso acontecer, você receberá um e-mail para criar a sua senha.');
 }
 
 // ── Logout ────────────────────────────────────────────────
@@ -85,7 +124,8 @@ export function fazerLogout() {
   document.getElementById('loginEscolaForm').style.display = 'none';
   document.getElementById('adminSenha').value  = '';
   const em = document.getElementById('adminEmail'); if (em) em.value = '';
-  document.getElementById('loginCodigo').value = '';
+  const le = document.getElementById('loginEmail'); if (le) le.value = '';
+  const ls = document.getElementById('loginSenha'); if (ls) ls.value = '';
   document.getElementById('etapaSticky').classList.remove('visible');
 }
 
