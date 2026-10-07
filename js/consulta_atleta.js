@@ -129,6 +129,15 @@ function _coletarDadosAtleta(q) {
         let tempo = resultado?.tempo || atl.tempoRef || '';
         let status = resultado?.status || '';
 
+        // Só exibe resultado de provas com classificação liberada pelo admin
+        // (administrador logado enxerga tudo)
+        const ehAdmin = LNE.state.perfil === 'admin';
+        const liberada = ehAdmin || (LNE.isClassLiberada ? !!LNE.isClassLiberada(etapa, nomeProva) : true);
+        if (!liberada) {
+          tempo = ''; status = '';
+          posGeral = null; pontos = 0; medalha = null;
+        }
+
         resultados.push({
           nome: atl.nome,
           escola: atl.escola || '',
@@ -142,7 +151,7 @@ function _coletarDadosAtleta(q) {
           posicao: posGeral,
           pontos,
           medalha,
-          classLiberada: LNE.isClassLiberada ? LNE.isClassLiberada(etapa, nomeProva) : true,
+          classLiberada: liberada,
         });
       }
     }
@@ -180,6 +189,13 @@ function _renderAtletaCard(atleta) {
   // Ordena por etapa
   const sorted = [...registros].sort((a, b) => a.etapaData.localeCompare(b.etapaData));
   const linhas = sorted.map(r => {
+    if (!r.classLiberada) {
+      return `<tr>
+      <td class="res-etapa">${esc(r.etapaNome)}${r.etapaData ? `<small>${LNE.fmtData(r.etapaData)}</small>` : ''}</td>
+      <td style="font-size:12px;">${esc(r.prova)}</td>
+      <td class="t-c" colspan="4"><span class="badge badge-gray">Resultado ainda não liberado</span></td>
+    </tr>`;
+    }
     const posLabel = r.status
       ? `<span class="badge badge-red">${esc(r.status)}</span>`
       : r.posicao ? `${r.posicao}°` : '<span style="color:var(--muted-2);">—</span>';
