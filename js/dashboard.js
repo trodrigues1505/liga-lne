@@ -216,14 +216,10 @@ function _statsAtletas(nomeEscola) {
 const ic = (name, cls = 'ic') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const posBadge = (i) => `<span class="pb ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : 'pn'}">${i + 1}</span>`;
 
-// ── Panorama geral de todas as escolas ───────────────────
-export function renderPanoramaGeral(containerId) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-
+// ── Dados do panorama (usados na tela e na impressão) ─────
+function _dadosPanorama() {
   const { nfed, fed } = LNE.calcRankingGeral();
   const db = LNE.state.db;
-  const esc = LNE.esc;
   const PONTOS = LNE.PONTOS_LNE;
 
   // Mapa unificado de todas as escolas (fed + nfed)
@@ -239,17 +235,12 @@ export function renderPanoramaGeral(containerId) {
     .map(e => ({ ...e, total: (e.nfed?.pts||0) + (e.fed?.pts||0) }))
     .sort((a,b) => b.total - a.total);
 
-  const maxPts = lista[0]?.total || 1;
-  const totalEscolas = lista.length;
-  const totalEtapas = (db.etapas || []).length;
-
   // ── Stats globais ──
   let totalInscricoes = 0;
   const atletasUnicos = new Set();
   (db.etapas || []).forEach(e => Object.values(e.provas||{}).forEach(p => {
     (p.atletas || []).forEach(a => { atletasUnicos.add(a.nome.toLowerCase().trim()); totalInscricoes++; });
   }));
-  const totalAtletas = atletasUnicos.size;
 
   // ── Maior pontuador individual ──
   const ptsPorAtleta = {};
@@ -265,11 +256,200 @@ export function renderPanoramaGeral(containerId) {
       return true;
     });
   }));
-  const topAtl = Object.values(ptsPorAtleta).sort((a,b)=>b.pts-a.pts)[0];
 
-  // ── Diferença entre 1º e 2º ──
-  const gap12nfed = nfed.length >= 2 ? nfed[0].pts - nfed[1].pts : null;
-  const gap12fed  = fed.length  >= 2 ? fed[0].pts  - fed[1].pts  : null;
+  return {
+    nfed, fed, lista,
+    totalEscolas: lista.length,
+    totalEtapas: (db.etapas || []).length,
+    totalAtletas: atletasUnicos.size,
+    totalInscricoes,
+    topAtl: Object.values(ptsPorAtleta).sort((a,b)=>b.pts-a.pts)[0],
+    gap12nfed: nfed.length >= 2 ? nfed[0].pts - nfed[1].pts : null,
+    gap12fed:  fed.length  >= 2 ? fed[0].pts  - fed[1].pts  : null,
+  };
+}
+
+// ── Fechar a análise individual ───────────────────────────
+export function fecharAnaliseEscola() {
+  const c = document.getElementById('dashboardConteudo');
+  if (c) { c.style.display = 'none'; c.innerHTML = ''; }
+  const sel = document.getElementById('dashEscolaSelect');
+  if (sel) sel.value = '';
+  document.querySelector('#modalDashboard .mdl-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Liga os botões [data-dash-act] de um trecho recém-renderizado
+// (sem depender do namespace LNE, que é montado no main.js)
+function _bindDash(root) {
+  root.querySelectorAll('[data-dash-act]').forEach(b => {
+    b.addEventListener('click', () => {
+      const act = b.dataset.dashAct;
+      if (act === 'print-geral')        imprimirPanoramaGeral();
+      else if (act === 'print-escola')  imprimirRelatorioEscola(b.dataset.escola);
+      else if (act === 'fechar-escola') fecharAnaliseEscola();
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMPRESSÃO — estritamente preto e branco, Calibri,
+// table-layout:fixed com colgroup (padrão dos relatórios LNE)
+// ═══════════════════════════════════════════════════════════
+const PRINT_CSS_DASH = `
+  @page { size: A4 portrait; margin: 14mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 11pt; color: #000; background: #fff; margin: 0; }
+  h1 { font-size: 17pt; margin: 0 0 2pt; }
+  h2 { font-size: 12.5pt; margin: 16pt 0 5pt; page-break-after: avoid; }
+  .sub { font-size: 11pt; margin: 0 0 2pt; }
+  .meta { font-size: 9pt; margin: 0 0 8pt; padding-bottom: 6pt; border-bottom: 1.5pt solid #000; }
+  .resumo { font-size: 10.5pt; margin: 8pt 0 0; }
+  .nota { font-size: 10pt; margin: 4pt 0; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0 0 4pt; }
+  thead { display: table-header-group; }
+  th, td { border: .5pt solid #000; padding: 3pt 5pt; font-size: 10pt; vertical-align: middle; overflow-wrap: anywhere; }
+  th { font-weight: bold; text-align: left; border-bottom: 1.2pt solid #000; }
+  tr { page-break-inside: avoid; }
+  .c { text-align: center; }
+  .r { text-align: right; }
+  .b { font-weight: bold; }
+`;
+
+function _tabela(cols, head, rows, aligns = []) {
+  const cg = cols.map(w => `<col style="width:${w}%">`).join('');
+  const th = head.map((h, i) => `<th class="${aligns[i] || ''}">${h}</th>`).join('');
+  const tr = rows.map(r => `<tr>${r.map((c, i) => `<td class="${aligns[i] || ''}">${c}</td>`).join('')}</tr>`).join('');
+  return `<table><colgroup>${cg}</colgroup><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+}
+
+function _cabecalhoImpressao(titulo, subtitulo) {
+  const agora = new Date().toLocaleString('pt-BR');
+  return `<h1>${LNE.esc(titulo)}</h1>
+    <p class="sub">${LNE.esc(subtitulo)}</p>
+    <p class="meta">Liga de Natação Escolar · LNE 2026 · Gerado em ${agora}</p>`;
+}
+
+function _imprimirHtml(titulo, corpo) {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+  const w = iframe.contentWindow;
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${LNE.esc(titulo)}</title><style>${PRINT_CSS_DASH}</style></head><body>${corpo}</body></html>`);
+  w.document.close();
+  const limpar = () => setTimeout(() => iframe.remove(), 500);
+  w.onafterprint = limpar;
+  setTimeout(() => { w.focus(); w.print(); }, 250);
+  setTimeout(() => { if (iframe.isConnected) iframe.remove(); }, 120000); // segurança
+}
+
+// ── Quadro geral ──────────────────────────────────────────
+function _htmlQuadroGeral(d) {
+  const esc = LNE.esc;
+  const trofeus = (arr) => arr.map((r, i) => [
+    `${i + 1}°`, esc(r.nome), r.ouros ?? 0, r.pratas ?? 0, r.bronzes ?? 0, `<b>${r.pts}</b>`,
+  ]);
+  const tabelaRank = (arr) => _tabela(
+    [9, 43, 12, 12, 12, 12],
+    ['Pos.', 'Escola', 'Ouro', 'Prata', 'Bronze', 'Pontos'],
+    trofeus(arr), ['c', '', 'c', 'c', 'c', 'c']);
+
+  const geral = d.lista.map((e, i) => [
+    `${i + 1}°`, esc(e.nome),
+    e.nfed ? e.nfed.pts : '—', e.nfed ? `${e.nfed.pos}°` : '—',
+    e.fed  ? e.fed.pts  : '—', e.fed  ? `${e.fed.pos}°`  : '—',
+    `<b>${e.total}</b>`,
+  ]);
+
+  const disputas = [
+    d.gap12nfed !== null ? `<p class="nota">Não federados: <b>${esc(d.nfed[0].nome)}</b> lidera com ${d.gap12nfed} pts de vantagem sobre ${esc(d.nfed[1].nome)}.</p>` : '',
+    d.gap12fed  !== null ? `<p class="nota">Federados: <b>${esc(d.fed[0].nome)}</b> lidera com ${d.gap12fed} pts de vantagem sobre ${esc(d.fed[1].nome)}.</p>` : '',
+  ].join('');
+
+  return `${_cabecalhoImpressao('Quadro geral', 'Pontuação acumulada de todas as etapas')}
+    <p class="resumo">Escolas: <b>${d.totalEscolas}</b> · Etapas: <b>${d.totalEtapas}</b> · Atletas únicos: <b>${d.totalAtletas}</b> · Inscrições: <b>${d.totalInscricoes}</b>${d.topAtl ? ` · Maior pontuador: <b>${esc(d.topAtl.nome)}</b> (${esc(d.topAtl.escola)}, ${d.topAtl.pts} pts)` : ''}</p>
+
+    <h2>Pontuação total por escola</h2>
+    ${geral.length
+      ? _tabela([7, 35, 13, 10, 13, 10, 12], ['Pos.', 'Escola', 'Não fed. (pts)', 'Pos. NF', 'Fed. (pts)', 'Pos. FD', 'Total'], geral, ['c', '', 'c', 'c', 'c', 'c', 'c'])
+      : '<p class="nota">Nenhuma pontuação registrada ainda.</p>'}
+
+    ${d.nfed.length ? `<h2>Ranking — não federados</h2>${tabelaRank(d.nfed)}` : ''}
+    ${d.fed.length  ? `<h2>Ranking — federados</h2>${tabelaRank(d.fed)}` : ''}
+    ${disputas ? `<h2>Disputa pela liderança</h2>${disputas}` : ''}`;
+}
+
+export function imprimirPanoramaGeral() {
+  _imprimirHtml('Quadro geral — LNE 2026', _htmlQuadroGeral(_dadosPanorama()));
+}
+
+// ── Relatório por escola ──────────────────────────────────
+function _htmlRelatorioEscola(nomeEscola, d) {
+  const esc = LNE.esc;
+
+  const posicao = (rank, frente, label) => rank ? [
+    label, `${rank.pos}°`, `<b>${rank.pts}</b>`, rank.ouros ?? 0, rank.pratas ?? 0, rank.bronzes ?? 0,
+    frente ? `${esc(frente.nome)} (${frente.pos}°): +${frente.diff} pts` : 'Líder do ranking',
+  ] : null;
+  const linhasPos = [
+    posicao(d.rankNFed, d.frente.nfed, 'Não federados'),
+    posicao(d.rankFed,  d.frente.fed,  'Federados'),
+  ].filter(Boolean);
+
+  const evol = d.evolucao.map(e => [
+    esc(e.etapa), e.data ? esc(LNE.fmtData(e.data)) : '—',
+    e.ptNFed || '—', e.posNFed ? `${e.posNFed}°` : '—',
+    e.ptFed  || '—', e.posFed  ? `${e.posFed}°`  : '—',
+    `<b>${e.ptNFed + e.ptFed}</b>`,
+  ]);
+
+  const prox = d.atletasProximos.map(a => [
+    esc(a.nome), esc(a.categoria),
+    esc(a.prova.replace(/^\d+[ªº]\s*Prova\s*[—-]\s*/i, '')),
+    `${a.pos}°`, esc(a.tempoAtual), esc(a.diffTempo), `+${a.diffPts} pts`,
+  ]);
+
+  const top = d.topAtletas.map((a, i) => [`${i + 1}°`, esc(a.nome), `<b>${a.pts}</b>`, a.medalhas || '—']);
+
+  const porCat = Object.entries(d.medalhasPorCat)
+    .filter(([, v]) => v.pts > 0).sort((a, b) => b[1].pts - a[1].pts)
+    .map(([cat, v]) => [esc(cat), v.ouros || '—', v.pratas || '—', v.bronzes || '—', `<b>${v.pts}</b>`]);
+
+  return `${_cabecalhoImpressao(nomeEscola, 'Relatório de desempenho da escola')}
+    <p class="resumo">Atletas únicos: <b>${d.atletasUnicos}</b> · Inscrições: <b>${d.totalInscricoes}</b> · Etapas: <b>${d.evolucao.length}</b> · Categorias sem atleta: <b>${d.catsSemAtleta.length}</b></p>
+
+    <h2>Posição no ranking</h2>
+    ${linhasPos.length
+      ? _tabela([17, 9, 10, 8, 8, 9, 39], ['Ranking', 'Pos.', 'Pontos', 'Ouro', 'Prata', 'Bronze', 'Para alcançar o anterior'], linhasPos, ['', 'c', 'c', 'c', 'c', 'c', ''])
+      : '<p class="nota">Sem pontuação registrada ainda.</p>'}
+
+    ${evol.length ? `<h2>Evolução por etapa</h2>${_tabela([30, 14, 11, 10, 11, 10, 14], ['Etapa', 'Data', 'Não fed. (pts)', 'Pos. NF', 'Fed. (pts)', 'Pos. FD', 'Total'], evol, ['', 'c', 'c', 'c', 'c', 'c', 'c'])}` : ''}
+
+    ${prox.length ? `<h2>Atletas próximos de subir de posição</h2>${_tabela([22, 8, 28, 7, 11, 10, 14], ['Atleta', 'Cat.', 'Prova', 'Pos.', 'Tempo', 'Dif.', 'Meta'], prox, ['', 'c', '', 'c', 'c', 'c', 'c'])}` : ''}
+
+    <h2>Categorias sem atleta inscrito</h2>
+    <p class="nota">${d.catsSemAtleta.length ? d.catsSemAtleta.map(esc).join(', ') + '. Cada categoria sem atleta é uma prova sem pontuação para a escola.' : 'Todas as categorias estão cobertas.'}</p>
+
+    ${top.length ? `<h2>Maiores pontuadores</h2>${_tabela([9, 61, 15, 15], ['Pos.', 'Atleta', 'Pontos', 'Medalhas'], top, ['c', '', 'c', 'c'])}` : ''}
+
+    ${porCat.length ? `<h2>Desempenho por categoria</h2>${_tabela([34, 16, 16, 16, 18], ['Categoria', 'Ouro', 'Prata', 'Bronze', 'Pontos'], porCat, ['', 'c', 'c', 'c', 'c'])}` : ''}`;
+}
+
+export function imprimirRelatorioEscola(nomeEscola) {
+  if (!nomeEscola) { LNE.showToast('Selecione uma escola.'); return; }
+  _imprimirHtml(`Relatório — ${nomeEscola}`, _htmlRelatorioEscola(nomeEscola, calcDashboardEscola(nomeEscola)));
+}
+
+// ── Panorama geral de todas as escolas (tela) ─────────────
+export function renderPanoramaGeral(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const esc = LNE.esc;
+  const { lista, totalEscolas, totalEtapas, totalAtletas, totalInscricoes,
+          topAtl, nfed, fed, gap12nfed, gap12fed } = _dadosPanorama();
+  const maxPts = lista[0]?.total || 1;
 
   const linhaBarra = (rotulo, pts, pos, pct, cls) => `
     <div class="bar-row">
@@ -315,9 +495,12 @@ export function renderPanoramaGeral(containerId) {
           <h4>Ranking comparativo</h4>
           <small>Pontuação total por escola. Selecione uma escola para ver o detalhe.</small>
         </div>
-        <div class="legend">
-          <span><i class="dot dot-nf"></i>Não federados</span>
-          <span><i class="dot dot-fd"></i>Federados</span>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div class="legend">
+            <span><i class="dot dot-nf"></i>Não federados</span>
+            <span><i class="dot dot-fd"></i>Federados</span>
+          </div>
+          <button class="btn b-out" data-dash-act="print-geral">${ic('printer')}Imprimir quadro geral</button>
         </div>
       </div>
       <div class="dcard-bd" style="padding:0 8px 10px;">
@@ -339,6 +522,7 @@ export function renderPanoramaGeral(containerId) {
 
     <div class="dash-sec"><h4>Análise por escola</h4></div>
   `;
+  _bindDash(el);
 }
 
 // ── Render do dashboard ───────────────────────────────────
@@ -499,7 +683,21 @@ export function renderDashboardEscola(nomeEscola, containerId) {
 
   // ── Monta o HTML final ──
   const semCats = d.catsSemAtleta.length;
+  const podeFechar = containerId === 'dashboardConteudo';
   el.innerHTML = `
+    <div class="dcard">
+      <div class="dcard-hd">
+        <div>
+          <h4>${esc(nomeEscola)}</h4>
+          <small>Análise individual da escola</small>
+        </div>
+        <div class="page-head-act">
+          <button class="btn b-out" data-dash-act="print-escola" data-escola="${esc(nomeEscola)}">${ic('printer')}Imprimir relatório</button>
+          ${podeFechar ? `<button class="btn b-gray" data-dash-act="fechar-escola">Fechar análise</button>` : ''}
+        </div>
+      </div>
+    </div>
+
     <div class="stat-grid">
       <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${d.atletasUnicos}</div></div>
       <div class="sc"><div class="lbl">Inscrições</div><div class="val">${d.totalInscricoes}</div></div>
@@ -521,6 +719,7 @@ export function renderDashboardEscola(nomeEscola, containerId) {
       <div>${cardMedalhas()}</div>
     </div>
   `;
+  _bindDash(el);
 }
 
 // ── Abre modal de dashboard (para admin ver qualquer escola) ──
@@ -562,13 +761,15 @@ export function abrirDashboardAdmin() {
   }
 
   modal.classList.add('open');
+  fecharAnaliseEscola();   // não reabre com a escola da consulta anterior
   renderPanoramaGeral('dashboardPanorama');
 }
 
 export function trocarEscolaDashboard() {
   const nome = document.getElementById('dashEscolaSelect')?.value;
   const conteudo = document.getElementById('dashboardConteudo');
-  if (!nome || !conteudo) return;
+  if (!conteudo) return;
+  if (!nome) { fecharAnaliseEscola(); return; }
   conteudo.style.display = 'block';
   renderDashboardEscola(nome, 'dashboardConteudo');
   setTimeout(() => conteudo.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
