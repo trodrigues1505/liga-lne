@@ -40,7 +40,7 @@ function _html() {
     <ul>
       <li><b>Resultados e rankings</b> são divulgados às escolas e aos participantes somente depois de liberados pela organização.</li>
       <li><b>Consulta de atleta:</b> sem login, exige nome completo do atleta e escola; escolas logadas veem apenas os próprios atletas.</li>
-      <li><b>Infraestrutura:</b> os dados ficam armazenados no Google Firebase, que pode processá-los fora do Brasil.</li>
+      <li><b>Infraestrutura:</b> os dados ficam armazenados no Google Firebase, em servidores em São Paulo (Brasil). O site é hospedado no GitHub Pages, cujos servidores podem estar fora do Brasil.</li>
     </ul>
 
     <h4>6. Por quanto tempo guardamos</h4>
