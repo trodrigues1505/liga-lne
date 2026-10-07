@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sistema LNE — Liga de Natação Escolar 2026</title>
+
+
+<!-- PWA -->
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b2f6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LNE 2026">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<!-- Tipografia -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- SheetJS para importação Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- Firebase (inicializa e expõe window._fb) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAU2I5CZFPwuJcNKRXWMsNG2ZTOJSHBw-0",
+  authDomain: "liga-lne.firebaseapp.com",
+  projectId: "liga-lne",
+  storageBucket: "liga-lne.firebasestorage.app",
+  messagingSenderId: "631393516368",
+  appId: "1:631393516368:web:471f45e346ad11a9f58a55"
+};
+
+const app = initializeApp(firebaseConfig);
+const fsdb = getFirestore(app);
+
+// ── Expõe helpers globais para o código não-module ──
+window._fb = {
+  // Salva objeto principal no Firestore
+  async saveDB(data) {
+    try {
+      // Firestore tem limite de 1MB por doc — dividimos em etapas + escolas
+      await setDoc(doc(fsdb, "lne2026", "escolas"), { escolas: data.escolas || [], ts: Date.now() });
+      // Cada etapa em documento separado
+      for (const e of (data.etapas || [])) {
+        await setDoc(doc(fsdb, "lne2026", "etapa_" + e.id), { etapa: e, ts: Date.now() });
+      }
+      return true;
+    } catch(err) { console.error("Firebase save error:", err); return false; }
+  },
+
+  async loadDB() {
+    try {
+      const escolasSnap = await getDoc(doc(fsdb, "lne2026", "escolas"));
+      const escolas = escolasSnap.exists() ? (escolasSnap.data().escolas || []) : [];
+      // Buscar todas as etapas
+      const colSnap = await getDocs(collection(fsdb, "lne2026"));
+      const etapas = [];
+      colSnap.forEach(d => {
+        if (d.id.startsWith("etapa_")) {
+          const et = d.data().etapa;
+          if (et) etapas.push(et);
+        }
+      });
+      etapas.sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
+      return { escolas, etapas };
+    } catch(err) { console.error("Firebase load error:", err); return null; }
+  },
+
+  async deleteEtapa(id) {
+    try { await deleteDoc(doc(fsdb, "lne2026", "etapa_" + id)); return true; }
+    catch(err) { console.error(err); return false; }
+  },
+
+  // Listener em tempo real para escolas (útil para portal escola)
+  onEscolasChange(cb) {
+    return onSnapshot(doc(fsdb, "lne2026", "escolas"), snap => {
+      if (snap.exists()) cb(snap.data().escolas || []);
+    });
+  }
+};
+
+window.__firebaseReady = true;
+window.dispatchEvent(new Event("firebaseReady"));
+</script>
+
+<!-- App LNE — ponto de entrada ES Module -->
+<script type="module" src="js/main.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   LNE 2026 — Design system
+   Tokens → base → layout → componentes → módulos → mobile → print
+   Todas as classes antigas foram mantidas (módulos JS dependem delas).
+═══════════════════════════════════════════════════════════ */
+:root{
+  /* Marca (nomes legados preservados) */
+  --az:#0b2f6b;--azm:#1463e6;--azc:#e8f0fe;
+  --vd:#15803d;--la:#c2410c;--cz:#0f172a;
+  --czc:#f1f5f9;--bd:#dde3ec;--bg-body:#f3f5f9;
+  --tbl-head:#f6f8fb;--rn-color:#1463e6;--rc-bg:#f0f6ff;--stat-val:#0b2f6b;
+
+  /* Novos tokens */
+  --surface:#fff;--muted:#64748b;--muted-2:#94a3b8;--line:#e8ecf2;
+  --violet:#6d28d9;--violet-soft:#f3efff;
+  --amber:#b45309;--amber-soft:#fff7e6;
+  --red:#dc2626;--red-soft:#fff1f1;
+  --green-soft:#ecfdf3;
+
+  --r-sm:8px;--r-md:10px;--r-lg:14px;--r-xl:20px;
+  --sh-1:0 1px 2px rgba(15,23,42,.05);
+  --sh-2:0 4px 14px -4px rgba(15,23,42,.10);
+  --sh-pop:0 16px 40px -12px rgba(15,23,42,.28),0 2px 8px rgba(15,23,42,.06);
+  --ring:0 0 0 3px rgba(20,99,230,.20);
+
+  --hdr-h:60px;--nav-h:50px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{font-family:var(--font);background:var(--bg-body);color:var(--cz);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+button{font-family:inherit;}
+:focus-visible{outline:2px solid var(--azm);outline-offset:2px;border-radius:6px;}
+.ic{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.ic-lg{width:22px;height:22px;}
+.ic-xl{width:28px;height:28px;}
+
+/* Campos de formulário: base com especificidade zero (classes específicas vencem) */
+:where(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),select,textarea){
+  font-family:inherit;font-size:14px;color:var(--cz);background:#fff;
+  border:1px solid var(--bd);border-radius:var(--r-md);padding:9px 12px;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+:where(input,select,textarea):focus{border-color:var(--azm);box-shadow:var(--ring);}
+:where(input,textarea)::placeholder{color:var(--muted-2);}
+:where(input,select,textarea):disabled{background:var(--czc);color:var(--muted-2);cursor:not-allowed;}
+:where(select){appearance:none;-webkit-appearance:none;padding-right:34px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;}
+input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
+
+/* ── Header ───────────────────────────────────────────────── */
+.hdr{background:var(--az);color:#fff;padding:var(--safe-top) 24px 0;height:calc(var(--hdr-h) + var(--safe-top));display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:300;}
+.hdr-logo{width:38px;height:38px;background:#fff;color:var(--az);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hdr h1{font-size:15px;font-weight:600;line-height:1.25;letter-spacing:-.01em;}
+.hdr small{font-size:12px;opacity:.66;display:block;font-weight:400;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sync-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.82);background:rgba(255,255,255,.10);padding:6px 12px;border-radius:999px;margin-right:4px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;transition:background .3s;}
+.sync-dot.saving{background:#fbbf24;animation:pulse .8s ease infinite;}
+.sync-dot.error{background:#f87171;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.hdr .hdr-btn{background:rgba(255,255,255,.10);color:#fff;border:none;font-size:13px;}
+.hdr .hdr-btn:hover{background:rgba(255,255,255,.20);}
+
+/* ── Navegação principal ──────────────────────────────────── */
+.nav-main{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:calc(var(--hdr-h) + var(--safe-top));z-index:200;display:flex;align-items:center;gap:4px;padding:8px 24px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.nav-main::-webkit-scrollbar{display:none;}
+.nav-btn{padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);border-radius:var(--r-md);white-space:nowrap;transition:background .15s,color .15s;display:inline-flex;align-items:center;gap:6px;}
+.nav-btn:hover{color:var(--cz);background:var(--czc);}
+.nav-btn.active{color:var(--az);background:var(--azc);font-weight:600;}
+.nav-sep{width:1px;height:20px;background:var(--line);align-self:center;margin:0 6px;flex-shrink:0;}
+
+/* ── Layout de página ─────────────────────────────────────── */
+.wrap{max-width:1280px;margin:0 auto;padding:28px 24px 48px;}
+.page{display:none;} .page.active{display:block;animation:fadeIn .2s ease both;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+.page-head{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap;}
+.page-head-tx{min-width:0;flex:1 1 240px;}
+.page-head h2{font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--cz);line-height:1.2;}
+.page-head p{font-size:13px;color:var(--muted);margin-top:3px;}
+.page-head-act{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto;}
+.etapa-topbar{margin-bottom:20px;}
+
+/* ── Botões ───────────────────────────────────────────────── */
+.btn{padding:0 14px;height:36px;border-radius:var(--r-md);font-size:13px;font-weight:500;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .15s,border-color .15s,box-shadow .15s,transform .1s;line-height:1;white-space:nowrap;}
+.btn:active{transform:scale(.98);}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.btn-block{width:100%;}
+.btn-lg{height:42px;font-size:14px;padding:0 18px;}
+.btn-icon{width:36px;padding:0;}
+.b-pri{background:var(--azm);color:#fff;box-shadow:0 1px 2px rgba(20,99,230,.35);} .b-pri:hover{background:#0f52c4;}
+.b-suc{background:#16a34a;color:#fff;} .b-suc:hover{background:#15803d;}
+.b-war{background:#d97706;color:#fff;} .b-war:hover{background:#b45309;}
+.b-pdf{background:#1e293b;color:#fff;} .b-pdf:hover{background:#0f172a;}
+.b-cya{background:var(--azc);color:var(--az);} .b-cya:hover{background:#d6e4fd;}
+.b-out{background:#fff;color:var(--cz);border-color:var(--bd);box-shadow:var(--sh-1);} .b-out:hover{background:var(--czc);border-color:#cbd5e1;}
+.b-gray{background:var(--czc);color:#334155;} .b-gray:hover{background:#e6ebf2;}
+.b-red{background:var(--red);color:#fff;} .b-red:hover{background:#b91c1c;}
+.sep{width:1px;height:22px;background:var(--line);flex-shrink:0;}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card{background:#fff;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);margin-bottom:16px;box-shadow:var(--sh-1);}
+.card-hd{padding:14px 18px;font-size:13px;font-weight:600;color:var(--cz);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-bd{padding:18px;}
+.card-ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;background:#fafbfd;}
+
+/* ── Tabelas ──────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;}
+.tbl th{background:var(--tbl-head);color:var(--muted);padding:10px 12px;text-align:left;font-weight:600;font-size:12px;border-bottom:1px solid var(--line);}
+.tbl td{padding:10px 12px;border-bottom:1px solid #f0f3f8;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tbody tr{transition:background .1s;}
+.tbl tbody tr:hover td{background:#f7faff;}
+.tbl input[type=text]{width:100%;border:1px solid transparent;padding:4px 6px;border-radius:6px;font-size:13px;background:transparent;font-family:inherit;color:inherit;}
+.tbl input[type=text]:focus{outline:none;border-color:var(--azm);background:#fff;box-shadow:none;}
+.rn{font-weight:600;color:var(--rn-color);text-align:center;width:34px;}
+.rc{background:var(--rc-bg)!important;}
+.ti{width:92px;border:1px solid var(--bd)!important;padding:5px 8px!important;border-radius:8px!important;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace!important;text-align:center!important;background:#fff!important;}
+.ti:focus{outline:none;border-color:var(--azm)!important;box-shadow:var(--ring);}
+.ti.ok{border-color:#86efac!important;background:#f0fdf4!important;}
+.ti.err{border-color:#fca5a5!important;background:#fff5f5!important;}
+.er{color:#b6bfcc;font-style:italic;}
+
+/* ── Indicadores ──────────────────────────────────────────── */
+.srow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.sc{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 16px;min-width:96px;box-shadow:var(--sh-1);}
+.sc .lbl{font-size:12px;color:var(--muted);font-weight:500;}
+.sc .val{font-size:22px;font-weight:700;color:var(--stat-val);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:2px;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:10px;margin-bottom:18px;}
+.stat-grid .sc{min-width:0;}
+.sc-wide{grid-column:span 2;}
+
+/* ── Formulários ──────────────────────────────────────────── */
+.frow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
+.fg{display:flex;flex-direction:column;gap:6px;min-width:120px;}
+.fg label,.lbl-sm{font-size:12px;font-weight:600;color:#475569;display:block;}
+.fg input,.fg select,.fg textarea{width:100%;}
+.fg.grow{flex:1;}
+.filter-box{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;margin-bottom:16px;}
+.filter-title{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:12px;}
+.filter-box .frow{margin-bottom:0;}
+
+/* ── Badges, chips e avisos ───────────────────────────────── */
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;line-height:1.3;}
+.badge-blue{background:#e4edff;color:#1d4ed8;}
+.badge-green{background:#dcfce7;color:#15803d;}
+.badge-amber{background:#fef3c7;color:#92400e;}
+.badge-red{background:#fee2e2;color:#b91c1c;}
+.badge-gray{background:#eef1f6;color:#475569;}
+.badge-purple{background:var(--violet-soft);color:var(--violet);}
+.bc{display:inline-flex;align-items:center;justify-content:center;background:var(--azm);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;margin-left:4px;padding:0 5px;}
+
+.chip{padding:6px 13px;border-radius:999px;border:1px solid var(--bd);background:#fff;font-size:12px;font-weight:500;color:#334155;cursor:pointer;transition:background .15s,border-color .15s,color .15s;}
+.chip:hover{background:var(--azc);border-color:#b9d0fb;color:var(--az);}
+.chip-static{cursor:default;}
+.chip-danger{background:var(--red-soft);border-color:#fecaca;color:var(--red);font-weight:600;cursor:default;}
+.chip-danger:hover{background:var(--red-soft);border-color:#fecaca;color:var(--red);}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-lg);font-size:13px;line-height:1.5;margin-bottom:16px;}
+.note .ic{margin-top:2px;}
+.note-warn{background:var(--amber-soft);color:#8a4b08;}
+.note-info{background:#eef4ff;color:#1e40af;}
+.note-ok{background:var(--green-soft);color:#166534;}
+.note-danger{background:var(--red-soft);color:#b91c1c;}
+
+.empty{text-align:center;padding:56px 20px;color:var(--muted);font-size:13px;}
+.empty .ic{width:40px;height:40px;margin:0 auto 14px;color:var(--muted-2);display:block;stroke-width:1.5;}
+.empty strong{display:block;font-size:15px;color:var(--cz);font-weight:600;margin-bottom:4px;}
+.empty .empty-act{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+
+/* ── Recolher/expandir e arrastar ─────────────────────────── */
+.coll-hd{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;}
+.coll-hd:hover{background:var(--czc)!important;}
+.coll-arrow{font-size:11px;transition:transform .2s;margin-left:8px;color:var(--muted);}
+.coll-arrow.open{transform:rotate(180deg);}
+.coll-body{overflow:hidden;transition:max-height .3s ease;}
+.drag-row{user-select:none;}
+.drag-row.dragging{opacity:.35;background:#e0f2fe!important;}
+.drag-row.drag-over{box-shadow:inset 0 2px 0 var(--azm);}
+.drag-handle{cursor:grab;color:#b6bfcc;font-size:13px;padding:0 4px;text-align:center;}
+
+/* ── Modais ───────────────────────────────────────────────── */
+.mover{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:400;align-items:center;justify-content:center;}
+.mover.open{display:flex;}
+.mdl{background:#fff;border-radius:var(--r-xl);padding:26px;max-width:780px;width:96%;max-height:93vh;overflow-y:auto;box-shadow:var(--sh-pop);animation:fadeInUp .22s ease both;}
+.mdl-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;}
+.mdl-hd h3{font-size:17px;font-weight:650;color:var(--cz);letter-spacing:-.01em;}
+.mdl-x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted-2);line-height:1;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,color .15s;flex-shrink:0;}
+.mdl-x:hover{color:var(--cz);background:var(--czc);}
+.mdl.mdl-panel{padding:0;overflow:hidden;display:flex;flex-direction:column;}
+.mdl-bar{padding:18px 22px;margin-bottom:0;border-bottom:1px solid var(--line);flex-shrink:0;}
+.mdl-sub{padding:12px 22px;border-bottom:1px solid var(--line);flex-shrink:0;background:#fafbfd;font-size:13px;color:var(--muted);}
+.mdl-scroll{overflow-y:auto;flex:1;}
+.mdl-ft{display:flex;gap:8px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--line);background:#fafbfd;flex-shrink:0;flex-wrap:wrap;}
+.mdl-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap;}
+.mdl-lead{font-size:13px;color:var(--muted);margin-bottom:16px;}
+
+/* ── Toast ────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:#0f172a;color:#fff;padding:12px 20px;border-radius:var(--r-lg);font-size:13px;font-weight:500;z-index:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;box-shadow:var(--sh-pop);max-width:calc(100% - 32px);text-align:center;}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+
+/* ── Medalhas / posições ──────────────────────────────────── */
+.pb{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:12px;flex-shrink:0;font-variant-numeric:tabular-nums;}
+.p1{background:#fde68a;color:#78350f;} .p2{background:#e2e8f0;color:#334155;} .p3{background:#f5c9a3;color:#7c2d12;} .pn{background:#eef1f6;color:#475569;}
+
+/* ── Etapas e escolas ─────────────────────────────────────── */
+.etapa-card{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;box-shadow:var(--sh-1);}
+.etapa-card:hover{border-color:#b9d0fb;box-shadow:var(--sh-2);}
+.etapa-num{width:42px;height:42px;border-radius:12px;background:var(--azc);color:var(--az);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;}
+.escola-card{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh-1);}
+
+/* ── Abas de provas ───────────────────────────────────────── */
+.provas-tabs{display:flex;gap:4px;overflow-x:auto;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);scrollbar-width:thin;}
+.prova-tab{padding:7px 13px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);border-radius:var(--r-sm);white-space:nowrap;transition:background .15s,color .15s;flex-shrink:0;}
+.prova-tab:hover{color:var(--cz);background:var(--czc);}
+.prova-tab.active{color:var(--az);background:var(--azc);font-weight:600;}
+.prova-tab-content{display:none;padding:18px;}
+.prova-tab-content.active{display:block;}
+
+.etapa-sticky{position:sticky;top:calc(var(--hdr-h) + var(--nav-h) + var(--safe-top));z-index:150;background:#fff;border-bottom:1px solid var(--line);padding:8px 24px;display:none;gap:8px;flex-wrap:wrap;align-items:center;}
+.etapa-sticky.visible{display:flex;}
+.etapa-sticky>span[style*='letter-spacing']{display:flex;align-items:center;flex-shrink:0;}
+
+.ranking-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:var(--r-lg);margin-bottom:8px;}
+
+/* ── Login ────────────────────────────────────────────────── */
+.login-wrap{max-width:960px;margin:48px auto;padding:16px;}
+.login-shell{display:grid;grid-template-columns:1fr 1.05fr;background:#fff;border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--sh-pop);animation:fadeInUp .35s ease both;}
+.login-brand{position:relative;background:var(--az);color:#fff;padding:40px 36px;display:flex;flex-direction:column;justify-content:space-between;min-height:480px;overflow:hidden;}
+/* Raias: o motivo visual do app — linhas verticais com boias alternadas */
+.login-brand::before{content:"";position:absolute;inset:0;background:
+  repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),rgba(255,255,255,.10) calc(12.5% - 1px),rgba(255,255,255,.10) 12.5%);pointer-events:none;}
+.login-brand::after{content:"";position:absolute;inset:0;background:
+  repeating-linear-gradient(0deg,transparent 0,transparent 14px,rgba(255,255,255,.05) 14px,rgba(255,255,255,.05) 16px);
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 70%);mask-image:linear-gradient(180deg,transparent,#000 70%);pointer-events:none;}
+.login-brand>*{position:relative;z-index:1;}
+.brand-mark{width:46px;height:46px;border-radius:14px;background:#fff;color:var(--az);display:flex;align-items:center;justify-content:center;}
+.brand-title{font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.03em;margin-top:28px;max-width:11ch;}
+.brand-sub{font-size:14px;line-height:1.55;color:rgba(255,255,255,.74);margin-top:14px;max-width:34ch;}
+.brand-foot{font-size:12px;color:rgba(255,255,255,.56);}
+.login-box{padding:40px 36px;display:flex;flex-direction:column;justify-content:center;}
+.login-title{font-size:20px;font-weight:650;letter-spacing:-.02em;}
+.login-sub{font-size:13px;color:var(--muted);margin:4px 0 22px;}
+.role-list{display:flex;flex-direction:column;gap:10px;}
+.role-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r-lg);border:1px solid var(--bd);background:#fff;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;text-align:left;color:var(--cz);width:100%;}
+.role-btn:hover{border-color:var(--azm);background:#f7faff;box-shadow:var(--sh-2);}
+.role-ic{width:40px;height:40px;border-radius:12px;background:var(--azc);color:var(--az);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.role-tx{flex:1;min-width:0;}
+.role-tx strong{display:block;font-size:14px;font-weight:600;}
+.role-tx small{display:block;font-size:12px;color:var(--muted);margin-top:1px;}
+.role-btn .chev{color:var(--muted-2);}
+.login-form{border-top:1px solid var(--line);padding-top:18px;margin-top:18px;}
+.login-form-hint{font-size:13px;color:var(--muted);margin-bottom:12px;}
+.login-form-row{display:flex;gap:8px;flex-wrap:wrap;}
+.login-form-row .btn-pri-grow{flex:1;}
+.login-public{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
+.public-link{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r-lg);border:1px dashed #c5cfdd;background:#fafbfd;cursor:pointer;color:#334155;text-align:left;transition:border-color .15s,background .15s,color .15s;}
+.public-link:hover{border-color:var(--azm);background:#f7faff;color:var(--az);}
+.public-link strong{display:block;font-size:13px;font-weight:600;}
+.public-link small{display:block;font-size:12px;color:var(--muted);}
+
+.portal-badge{background:var(--az);color:#fff;border-radius:var(--r-lg);padding:20px 22px;display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+
+/* ── Cartões de inscrição (impressão — NÃO ALTERAR) ───────── */
+.folha-cartoes{width:210mm;height:297mm;padding:5mm 6mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);gap:2mm;page-break-after:always;}
+.folha-cartoes:last-child{page-break-after:auto;}
+.cartao-inscricao{border:.5pt solid #888;padding:5pt 8pt 4pt;display:flex;flex-direction:column;overflow:hidden;font-family:'Calibri',Arial,sans-serif;}
+
+/* ── Loading ──────────────────────────────────────────────── */
+.loading-over{display:none;position:fixed;inset:0;background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);z-index:600;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.loading-over.show{display:flex;}
+.spinner{width:34px;height:34px;border:3px solid var(--azc);border-top-color:var(--azm);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── PWA ──────────────────────────────────────────────────── */
+#btnInstalarPWA{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:450;background:var(--az);color:#fff;border:none;border-radius:999px;padding:12px 22px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--sh-pop);gap:8px;align-items:center;white-space:nowrap;animation:fadeInUp .35s ease both;transition:background .15s;}
+#btnInstalarPWA:hover{background:#0a2655;}
+.ios-banner{display:none;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:450;background:var(--az);color:#fff;padding:16px 44px 16px 16px;border-radius:var(--r-xl);box-shadow:var(--sh-pop);animation:fadeInUp .35s ease both;}
+.ios-banner .ios-x{position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;line-height:1;width:28px;height:28px;border-radius:8px;}
+.ios-banner .ios-x:hover{background:rgba(255,255,255,.12);color:#fff;}
+.ios-banner-in{display:flex;align-items:flex-start;gap:12px;}
+.ios-banner strong{display:block;font-size:14px;margin-bottom:3px;}
+.ios-banner p{font-size:13px;opacity:.84;line-height:1.5;}
+
+/* ── Fluxo da prova ───────────────────────────────────────── */
+.fluxo-bar{display:flex;align-items:center;gap:0;padding:12px 18px;background:#fafbfd;border-bottom:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;}
+.fluxo-step{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted-2);white-space:nowrap;transition:background .15s,color .15s;position:relative;}
+.fluxo-step:hover{color:var(--azm);background:var(--azc);}
+.fluxo-step.done{color:#15803d;background:#dcfce7;}
+.fluxo-step.active{color:#fff;background:var(--az);}
+.fluxo-step .step-icon{font-size:14px;}
+.fluxo-step .step-num{width:18px;height:18px;border-radius:50%;background:currentColor;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+.fluxo-step.done .step-num{background:#15803d;}
+.fluxo-step.active .step-num{background:rgba(255,255,255,.28);}
+.fluxo-step:not(.done):not(.active) .step-num{background:#d5dce8;color:#64748b;}
+.fluxo-arrow{color:#cbd5e1;font-size:12px;margin:0 3px;flex-shrink:0;}
+
+/* ── Painéis principais ───────────────────────────────────── */
+.paineis-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px;margin-bottom:4px;}
+.painel{border-radius:var(--r-lg);border:1px solid var(--line);background:#fff;overflow:hidden;transition:border-color .15s,box-shadow .15s;}
+.painel:hover{border-color:#b9d0fb;}
+.painel.painel-ativo{border-color:var(--azm);box-shadow:var(--ring);}
+.painel-hd{padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;}
+.painel-hd:hover{background:#fafbfd;}
+.painel-icon{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.painel-icon.azul{background:#e4edff;} .painel-icon.verde{background:#dcfce7;} .painel-icon.laranja{background:#ffedd5;}
+.painel-titulo{flex:1;min-width:0;}
+.painel-titulo h4{font-size:14px;font-weight:600;color:var(--cz);margin-bottom:1px;}
+.painel-titulo p{font-size:12px;color:var(--muted);}
+.painel-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+.painel-status.aberto{background:#dcfce7;color:#15803d;}
+.painel-status.fechado{background:#eef1f6;color:#64748b;}
+.painel-status.andamento{background:#fef3c7;color:#92400e;}
+.painel-arrow{font-size:11px;color:var(--muted-2);transition:transform .2s;margin-left:4px;}
+.painel-arrow.open{transform:rotate(180deg);}
+.painel-body{border-top:1px solid var(--line);padding:14px 16px;display:none;}
+.painel-body.open{display:block;}
+.painel-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.painel-liberacao{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#f7f9fc;border-radius:var(--r-md);margin-top:10px;}
+.painel-liberacao .lib-label{font-size:12px;font-weight:600;color:#475569;}
+.painel-liberacao .lib-status{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;}
+.lib-dot{width:8px;height:8px;border-radius:50%;background:var(--muted-2);display:inline-block;}
+.lib-dot.on{background:#22c55e;}
+.painel-body{transition:opacity .2s;}
+
+/* ── Dropdown ─────────────────────────────────────────────── */
+.dropdown-wrap{position:relative;display:inline-flex;}
+.dropdown-menu{display:none;position:absolute;top:100%;right:0;z-index:250;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-pop);min-width:240px;padding:6px;margin-top:6px;}
+.dropdown-menu.open{display:block;animation:fadeInUp .15s ease both;}
+.dropdown-label{font-size:11px;font-weight:600;color:var(--muted-2);padding:10px 10px 4px;}
+.dropdown-label:first-child{padding-top:6px;}
+.dropdown-item{display:flex;align-items:center;gap:8px;padding:9px 10px;font-size:13px;font-weight:500;color:var(--cz);cursor:pointer;border:none;background:none;width:100%;text-align:left;white-space:nowrap;border-radius:var(--r-sm);transition:background .1s;}
+.dropdown-item:hover{background:var(--czc);}
+.dropdown-item.danger{color:var(--red);}
+.dropdown-sep{height:1px;background:var(--line);margin:6px 4px;}
+.dropdown-trigger::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);margin-left:4px;display:inline-block;}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* ═══ Dashboard ═══════════════════════════════════════════════ */
+.dcard{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:16px;overflow:hidden;}
+.dcard-hd{padding:16px 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.dcard-hd h4{font-size:14px;font-weight:600;color:var(--cz);}
+.dcard-hd small{font-size:12px;color:var(--muted);font-weight:400;display:block;margin-top:1px;}
+.dcard-bd{padding:0 18px 18px;}
+.dcard-warn{background:var(--amber-soft);}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);align-items:center;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.dot-nf{background:var(--azm);} .dot-fd{background:#7c3aed;}
+
+.rk{display:grid;grid-template-columns:30px 1fr auto;gap:6px 12px;align-items:center;padding:12px;border-radius:var(--r-md);cursor:pointer;transition:background .15s;}
+.rk:hover{background:#f5f8fd;}
+.rk-name{font-weight:600;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.rk-total{font-weight:700;font-size:14px;color:var(--az);font-variant-numeric:tabular-nums;}
+.rk-total small{font-size:11px;font-weight:500;color:var(--muted);}
+.rk-bars{grid-column:2 / 4;display:grid;gap:6px;}
+.bar-row{display:grid;grid-template-columns:24px 1fr 86px;gap:10px;align-items:center;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
+.bar-row span:last-child{text-align:right;}
+.bar{height:6px;border-radius:999px;background:#edf1f7;overflow:hidden;}
+.bar>i{display:block;height:100%;border-radius:999px;background:var(--azm);transition:width .6s ease;}
+.bar.fd>i{background:#7c3aed;}
+
+.callouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:16px;}
+.callout{border-radius:var(--r-lg);padding:14px 16px;font-size:13px;line-height:1.5;}
+.callout h5{font-size:12px;font-weight:600;margin-bottom:4px;}
+.callout-nf{background:#eef4ff;} .callout-nf h5,.callout-nf b{color:#1d4ed8;}
+.callout-fd{background:var(--violet-soft);} .callout-fd h5,.callout-fd b{color:var(--violet);}
+
+.dash-sec{display:flex;align-items:center;gap:14px;margin:26px 0 14px;}
+.dash-sec h4{font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;}
+.dash-sec::after{content:"";flex:1;height:1px;background:var(--line);}
+.dash-picker{padding:16px 22px;background:#fafbfd;border-top:1px solid var(--line);}
+.dash-picker label{font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:6px;}
+.dash-picker select{width:100%;}
+
+.rank-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px;}
+.rcard{--acc:var(--azm);--acc-bg:#eef4ff;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;}
+.rcard.fd{--acc:var(--violet);--acc-bg:var(--violet-soft);}
+.rcard-label{font-size:12px;font-weight:600;color:var(--acc);}
+.rcard-main{display:flex;align-items:center;gap:14px;margin:10px 0 4px;}
+.rcard-pos{font-size:38px;font-weight:700;color:var(--acc);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
+.rcard-pts{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums;}
+.rcard-pts small{font-size:12px;font-weight:500;color:var(--muted);}
+.rcard-med{font-size:12px;color:var(--muted);margin-top:2px;}
+.rcard-gap{margin-top:12px;padding:10px 12px;background:var(--acc-bg);border-radius:var(--r-md);font-size:12px;color:#334155;}
+.rcard-gap b{color:var(--red);margin-left:4px;}
+.rcard-lead{margin-top:12px;font-size:12px;font-weight:600;color:#15803d;}
+.rcard-empty{font-size:13px;color:var(--muted-2);margin-top:10px;}
+
+.evo{display:flex;gap:10px;align-items:flex-end;overflow-x:auto;padding-bottom:4px;}
+.evo-col{flex:1;min-width:58px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.evo-bars{display:flex;align-items:flex-end;gap:3px;height:88px;}
+.evo-bar{width:16px;border-radius:5px 5px 0 0;min-height:4px;background:var(--azm);}
+.evo-bar.fd{background:#7c3aed;}
+.evo-bar.ph{background:transparent;}
+.evo-lbl{font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;}
+.evo-pts{font-size:11px;font-weight:700;color:var(--az);font-variant-numeric:tabular-nums;}
+
+.list-row{display:flex;align-items:center;gap:12px;padding:10px 0;}
+.list-row+.list-row{border-top:1px solid #f0f3f8;}
+.list-row .grow{flex:1;min-width:0;font-size:13px;font-weight:600;}
+.list-row .val{font-size:13px;font-weight:700;color:var(--az);font-variant-numeric:tabular-nums;}
+.list-row .sub{font-size:12px;color:var(--muted);}
+
+.goal{display:inline-block;background:#fef3c7;color:#92400e;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;}
+.td-prova{font-size:12px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.t-c{text-align:center;}
+.mono{font-variant-numeric:tabular-nums;font-weight:600;}
+
+/* ═══ Consulta de atleta ═════════════════════════════════════ */
+.search{position:relative;}
+.search .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted-2);pointer-events:none;}
+.search input{width:100%;padding:12px 14px 12px 42px;font-size:15px;border-radius:var(--r-lg);}
+.hint{text-align:center;color:var(--muted-2);padding:56px 20px;font-size:13px;}
+.hint .ic{width:36px;height:36px;display:block;margin:0 auto 12px;stroke-width:1.5;}
+.ath{padding:22px;}
+.ath+.ath{border-top:1px solid var(--line);}
+.ath-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+.avatar{width:46px;height:46px;border-radius:14px;background:var(--azc);color:var(--az);font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ath-id{flex:1;min-width:180px;}
+.ath-name{font-size:16px;font-weight:650;letter-spacing:-.01em;}
+.ath-meta{font-size:13px;color:var(--muted);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.ath-stats{display:flex;gap:8px;flex-wrap:wrap;}
+.ath-stats .sc{min-width:64px;padding:8px 12px;text-align:center;box-shadow:none;}
+.ath-stats .sc .val{font-size:18px;}
+.ath .tbl-wrap{border:1px solid var(--line);border-radius:var(--r-md);}
+.res-etapa{font-weight:600;font-size:12px;}
+.res-etapa small{display:block;font-weight:400;color:var(--muted);font-size:11px;}
+
+/* ═══ Tablet ═════════════════════════════════════════════════ */
+@media(max-width:900px){
+  .paineis-wrap{grid-template-columns:1fr;}
+  .login-shell{grid-template-columns:1fr;}
+  .login-brand{min-height:0;padding:28px 24px;}
+  .brand-title{font-size:24px;margin-top:20px;max-width:none;}
+  .brand-foot{display:none;}
+  .login-box{padding:28px 24px;}
+}
+
+/* ═══ Mobile ═════════════════════════════════════════════════ */
+@media(max-width:768px){
+  .hdr{height:auto;min-height:calc(var(--hdr-h) + var(--safe-top));padding:calc(var(--safe-top) + 10px) 14px 10px;flex-wrap:wrap;gap:10px;}
+  .hdr h1{font-size:14px;}
+  .hdr small{font-size:11px;}
+  .hdr-right{gap:6px;}
+  .sync-pill{padding:5px 10px;font-size:11px;}
+  .hdr .hdr-btn{height:32px;padding:0 10px;font-size:12px;}
+  .hdr-right .hdr-btn:not(#btnLogout){display:none;}
+
+  .nav-main{top:auto;position:relative;padding:8px 12px;}
+  .nav-btn{padding:8px 12px;font-size:13px;}
+
+  .wrap{padding:18px 14px 40px;}
+  .page-head{margin-bottom:18px;}
+  .page-head h2{font-size:19px;}
+  .page-head-act{margin-left:0;width:100%;}
+  .dropdown-menu{right:auto;left:0;}
+
+  .etapa-sticky{position:fixed;bottom:0;left:0;right:0;top:auto;z-index:200;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;box-shadow:0 -4px 16px rgba(15,23,42,.10);flex-wrap:nowrap;border-bottom:none;}
+  .etapa-sticky .sep{display:none;}
+  .etapa-sticky .btn{font-size:12px;padding:0 11px;height:34px;flex-shrink:0;}
+  .etapa-sticky>span[style*='letter-spacing']{display:none;}
+  #page-balizamento .wrap{padding-bottom:84px;}
+
+  .card-hd{padding:12px 14px;}
+  .card-bd{padding:14px;}
+  .card-ft{padding:10px 14px;gap:6px;}
+
+  .frow{flex-direction:column;align-items:stretch;gap:10px;}
+  .fg{min-width:unset;}
+  :where(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){font-size:16px;} /* evita zoom no iOS */
+
+  .grid-2{grid-template-columns:1fr;}
+  .sc-wide{grid-column:span 1;}
+
+  .login-wrap{margin:0 auto;padding:12px;}
+  .etapa-card{padding:14px;gap:10px;}
+  .etapa-num{width:38px;height:38px;font-size:14px;}
+  .escola-card{flex-wrap:wrap;gap:10px;padding:14px;}
+
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tbl{min-width:500px;}
+  .tbl th,.tbl td{padding:8px 10px;}
+  .ath .tbl{min-width:420px;}
+
+  .prova-tab{padding:7px 11px;}
+  .prova-tab-content{padding:14px;}
+
+  .srow{gap:8px;}
+  .sc{padding:10px 12px;min-width:80px;}
+  .sc .val{font-size:19px;}
+
+  .mdl{width:100%;max-width:100%!important;border-radius:var(--r-xl) var(--r-xl) 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;max-height:92vh;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));animation:sheetUp .25s ease both;}
+  .mdl.mdl-panel{padding:0;}
+  .mdl-bar{padding:16px;}
+  .mdl-ft{padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));}
+  .mdl-ft .btn{flex:1;}
+  .mover{align-items:flex-end;}
+  @keyframes sheetUp{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+  .btn{touch-action:manipulation;}
+  .col-doc{display:none;}
+  .ranking-row{padding:10px 12px;}
+  .portal-badge{padding:16px;gap:12px;}
+  .ath{padding:18px 14px;}
+  .ath-stats{width:100%;}
+  .bar-row{grid-template-columns:22px 1fr 74px;}
+  .toast{bottom:calc(20px + env(safe-area-inset-bottom,0px));}
+}
+@media(max-width:380px){
+  .hdr h1{font-size:13px;}
+  .nav-btn{padding:7px 10px;font-size:12px;}
+  .etapa-sticky .btn{font-size:11px;padding:0 9px;}
+}
+
+/* ═══ Acessibilidade e impressão ═════════════════════════════ */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
+}
+@media print{.no-print{display:none!important;}}
+
+/* ── Extras de formulário/modais estáticos ────────────────── */
+.opt-card{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:1px solid var(--bd);border-radius:var(--r-lg);background:#fff;cursor:pointer;margin-bottom:16px;transition:border-color .15s,background .15s;}
+.opt-card:hover{border-color:#b9d0fb;}
+.opt-card:has(input:checked){border-color:var(--azm);background:#f7faff;}
+.opt-card input{width:18px;height:18px;margin-top:2px;flex-shrink:0;}
+.opt-card strong{display:block;font-size:13px;font-weight:600;}
+.opt-card small{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.45;}
+.help{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.5;}
+.swap-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start;}
+.swap-arrow{color:var(--muted-2);padding-top:30px;display:flex;justify-content:center;}
+@media(max-width:768px){.swap-grid{grid-template-columns:1fr;}.swap-arrow{padding-top:0;transform:rotate(90deg);}}
+</style>
+
+<!-- Guard: garante que LNE.fn() funciona mesmo antes do módulo carregar -->
+<script>
+(function() {
+  const queue = [];
+  const proxy = new Proxy({}, {
+    get(_, prop) {
+      return function(...args) {
+        if (window.__LNE_READY) {
+          return window.LNE[prop](...args);
+        }
+        queue.push({ prop, args });
+      };
+    }
+  });
+  window.LNE = proxy;
+  window.__LNE_FLUSH = function(realLNE) {
+    window.LNE = realLNE;
+    window.__LNE_READY = true;
+    queue.forEach(({ prop, args }) => {
+      if (typeof realLNE[prop] === 'function') realLNE[prop](...args);
+    });
+  };
+})();
+</script>
+
+<!-- PWA: registra service worker + lógica de instalação -->
+<script>
+(function() {
+  // Registra SW
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/liga-lne/service-worker.js')
+        .catch(e => console.log('SW:', e));
+    });
+  }
+  // Guarda o prompt de instalação
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    window.__pwaPrompt = e;
+    // Mostra botão de instalação
+    const btn = document.getElementById('btnInstalarPWA');
+    if (btn) btn.style.display = 'flex';
+  });
+  // Quando instalado, esconde o botão
+  window.addEventListener('appinstalled', () => {
+    const btn = document.getElementById('btnInstalarPWA');
+    if (btn) btn.style.display = 'none';
+    window.__pwaPrompt = null;
+  });
+})();
+</script>
+
+
+<script>
+(function() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('lne_ios_banner_dismissed');
+  
+  if (isIOS && isSafari && !isStandalone && !dismissed) {
+    window.addEventListener('DOMContentLoaded', () => {
+      const banner = document.getElementById('iosBanner');
+      if (banner) {
+        // Mostra após 2s para não assustar na entrada
+        setTimeout(() => banner.style.display = 'block', 2000);
+        // Fecha e lembra
+        banner.querySelector('button').addEventListener('click', () => {
+          localStorage.setItem('lne_ios_banner_dismissed', '1');
+        });
+      }
+    });
+  }
+})();
+</script>
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol><symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="i-school" viewBox="0 0 24 24"><path d="M14 22v-4a2 2 0 1 0-4 0v4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M18 5v17"/><path d="m4 6 8-4 8 4"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></symbol><symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol><symbol id="i-log-in" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol><symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></symbol><symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol><symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol><symbol id="i-printer" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol><symbol id="i-smartphone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol><symbol id="i-clipboard-list" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol></defs></svg>
+
+
+<!-- Loading overlay -->
+<div class="loading-over" id="loadingOver">
+  <div class="spinner"></div>
+  <p style="font-size:13px;color:var(--az);font-weight:600;" id="loadingMsg">Conectando ao Firebase…</p>
+</div>
+
+<!-- HEADER -->
+<div class="hdr no-print" role="banner">
+  <div class="hdr-logo"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-waves"/></svg></div>
+  <div>
+    <h1>Liga de Natação Escolar</h1>
+    <small>Sistema LNE · Temporada 2026</small>
+  </div>
+  <div class="hdr-right">
+    <span class="sync-pill">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncLabel">Conectando…</span>
+    </span>
+    <button class="btn b-gray hdr-btn" onclick="LNE.exportBackup()"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Backup</button>
+    <button class="btn b-out hdr-btn" onclick="document.getElementById('importBkp').click()"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Restaurar</button>
+    <input type="file" id="importBkp" accept=".json" style="display:none;" onchange="LNE.importBackup(this)">
+    <button class="btn b-out hdr-btn" id="btnLogout" onclick="LNE.fazerLogout()"><svg class="ic" aria-hidden="true"><use href="#i-log-out"/></svg>Sair</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginSection">
+  <div class="login-wrap">
+    <div class="login-shell">
+      <aside class="login-brand">
+        <div>
+          <div class="brand-mark"><svg class="ic ic-xl" aria-hidden="true"><use href="#i-waves"/></svg></div>
+          <h2 class="brand-title">Liga de Natação Escolar</h2>
+          <p class="brand-sub">Inscrições, balizamento, tempos e classificação das etapas, reunidos em um só lugar.</p>
+        </div>
+        <div class="brand-foot">Temporada 2026</div>
+      </aside>
+
+      <div class="login-box">
+        <h2 class="login-title">Acessar o sistema</h2>
+        <p class="login-sub">Escolha como você participa da liga.</p>
+
+        <div class="role-list">
+          <button class="role-btn" onclick="LNE.loginAdmin()">
+            <span class="role-ic"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-shield-check"/></svg></span>
+            <span class="role-tx"><strong>Administrador</strong><small>Etapas, provas e resultados</small></span>
+            <svg class="ic chev" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+          </button>
+          <button class="role-btn" onclick="LNE.mostrarLoginEscola()">
+            <span class="role-ic"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-school"/></svg></span>
+            <span class="role-tx"><strong>Escola / Colégio</strong><small>Inscreva atletas e acompanhe a equipe</small></span>
+            <svg class="ic chev" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+          </button>
+        </div>
+
+        <div id="loginAdminForm" class="login-form" style="display:none;">
+          <div class="frow">
+            <div class="fg grow"><label for="adminSenha">Senha do administrador</label>
+              <input type="password" id="adminSenha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')LNE.confirmarLoginAdmin()"/>
+            </div>
+          </div>
+          <button class="btn b-pri btn-lg btn-block" onclick="LNE.confirmarLoginAdmin()"><svg class="ic" aria-hidden="true"><use href="#i-log-in"/></svg>Entrar como administrador</button>
+        </div>
+
+        <div id="loginEscolaForm" class="login-form" style="display:none;">
+          <p class="login-form-hint">Entre com o código da sua escola ou faça o cadastro.</p>
+          <div class="frow">
+            <div class="fg grow">
+              <label for="loginCodigo">Código de acesso</label>
+              <input type="text" id="loginCodigo" placeholder="Ex: COL-ESCOLA-1234" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')LNE.loginEscola()"/>
+            </div>
+          </div>
+          <div class="login-form-row">
+            <button class="btn b-pri btn-lg btn-pri-grow" onclick="LNE.loginEscola()"><svg class="ic" aria-hidden="true"><use href="#i-log-in"/></svg>Entrar</button>
+            <button class="btn b-out btn-lg" onclick="LNE.abrirModal('modalCadEscola')"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Cadastrar escola</button>
+          </div>
+        </div>
+
+        <!-- Acesso público: consulta de atleta sem login -->
+        <div class="login-public">
+          <button class="public-link" onclick="LNE.abrirConsultaAtleta()">
+            <svg class="ic ic-lg" aria-hidden="true"><use href="#i-search"/></svg>
+            <span><strong>Consultar resultado de atleta</strong><small>Aberto a pais e atletas, sem login</small></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="mainApp" style="display:none;">
+  <div class="nav-main no-print" id="navMain"></div>
+
+  <!-- Sticky bar etapa -->
+    <!-- etapaSticky removido: fluxo agora é inline nas tabs -->
+  <div id="etapaSticky" style="display:none;"></div>
+
+    <!-- PÁGINA ETAPAS -->
+  <div class="page" id="page-etapas">
+    <div class="wrap">
+      <div class="page-head">
+        <div class="page-head-tx">
+          <h2>Etapas da Liga</h2>
+          <p>Gerencie os dias de competição da temporada</p>
+        </div>
+        <div class="page-head-act">
+          <button class="btn b-pri" onclick="LNE.abrirModalNovaEtapa()"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Nova etapa</button>
+        </div>
+      </div>
+      <div id="listaEtapas">
+        <div class="empty"><svg class="ic" aria-hidden="true"><use href="#i-calendar"/></svg><strong>Nenhuma etapa cadastrada</strong>Crie a primeira etapa para começar a organizar a temporada.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PÁGINA BALIZAMENTO -->
+  <div class="page" id="page-balizamento">
+    <div class="wrap">
+      <div class="page-head etapa-topbar">
+        <button class="btn b-gray btn-icon" onclick="LNE.voltarEtapas()" aria-label="Voltar para as etapas" title="Voltar para as etapas"><svg class="ic" aria-hidden="true"><use href="#i-arrow-left"/></svg></button>
+        <div class="page-head-tx">
+          <h2 id="balEtapaNome">Etapa</h2>
+          <p id="balEtapaInfo"></p>
+        </div>
+        <div class="page-head-act">
+          <button class="btn b-pri" onclick="LNE.abrirModalNovaProva()"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Nova prova</button>
+          <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="LNE.importarExcel(this)">
+          <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Importar Excel</button>
+          <div class="dropdown-wrap" id="dropMais">
+            <button class="btn b-out dropdown-trigger" onclick="LNE.toggleDropdown('dropMaisMenu')"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Mais</button>
+            <div class="dropdown-menu" id="dropMaisMenu">
+              <div class="dropdown-label">Provas</div>
+              <button class="dropdown-item" onclick="LNE.criarProvasPadraoLNE();LNE.fecharDropdowns()">Criar provas padrão LNE</button>
+              <button class="dropdown-item" onclick="LNE.abrirReordenar();LNE.fecharDropdowns()">Reordenar provas</button>
+              <button class="dropdown-item" onclick="LNE.abrirMesclar();LNE.fecharDropdowns()">Mesclar provas</button>
+              <button class="dropdown-item" onclick="LNE.abrirAuditoria();LNE.fecharDropdowns()">Auditoria de inscrições</button>
+              <div class="dropdown-sep"></div>
+              <div class="dropdown-label">Resultados</div>
+              <button class="dropdown-item" onclick="LNE.abrirRelatorio();LNE.fecharDropdowns()">Relatório de atletas</button>
+              <button class="dropdown-item" onclick="LNE.abrirPlacarEtapa();LNE.fecharDropdowns()">Placar da etapa</button>
+              <button class="dropdown-item" onclick="LNE.abrirPlacarGeral();LNE.fecharDropdowns()">Ranking geral</button>
+              <div class="dropdown-sep"></div>
+              <div class="dropdown-label">Impressão</div>
+              <button class="dropdown-item" onclick="LNE.imprimirTodosCartoes();LNE.fecharDropdowns()">Todos os cartões</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalImprimirBalizamentos();LNE.fecharDropdowns()">Balizamentos</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalImprimirClassificacoes();LNE.fecharDropdowns()">Classificações</button>
+              <div class="dropdown-sep"></div>
+              <div class="dropdown-label">Publicação</div>
+              <button class="dropdown-item" id="ddItemRanking" onclick="LNE.toggleLiberarRanking();LNE.fecharDropdowns()">Liberar ranking</button>
+              <button class="dropdown-item" id="ddItemPlacar" onclick="LNE.toggleLiberarPlacarEtapa();LNE.fecharDropdowns()">Liberar placar da etapa</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalLiberarClassificacoes();LNE.fecharDropdowns()">Liberar classificações…</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="provasContainer" style="display:none;">
+        <div class="provas-tabs" id="provasTabs"></div>
+        <div id="provasConteudo"></div>
+      </div>
+      <div id="semProvas" class="empty">
+        <svg class="ic" aria-hidden="true"><use href="#i-clipboard-list"/></svg>
+        <strong>Nenhuma prova cadastrada</strong>
+        Adicione provas manualmente, importe uma planilha ou use o padrão da liga.
+        <div class="empty-act">
+          <button class="btn b-pri" onclick="LNE.abrirModalNovaProva()"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Nova prova</button>
+          <button class="btn b-out" onclick="LNE.criarProvasPadraoLNE()">Criar provas padrão LNE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PÁGINA ESCOLAS (admin) -->
+  <div class="page" id="page-escolas">
+    <div class="wrap">
+      <div class="page-head">
+        <div class="page-head-tx">
+          <h2>Escolas</h2>
+          <p>Gerencie as escolas participantes</p>
+        </div>
+        <div class="page-head-act">
+          <button class="btn b-pri" onclick="LNE.abrirModal('modalCadEscola')"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Cadastrar escola</button>
+        </div>
+      </div>
+      <div id="listaEscolas"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA RANKING -->
+  <div class="page" id="page-ranking">
+    <div class="wrap">
+      <div class="page-head">
+        <div class="page-head-tx">
+          <h2>Ranking Geral</h2>
+          <p>Pontuação acumulada de todas as etapas · LNE 2026</p>
+        </div>
+        <div class="page-head-act">
+          <button class="btn no-print" id="btnLiberarRankingPg" onclick="LNE.toggleLiberarRanking()" style="display:none;"></button>
+          <button class="btn b-pdf" onclick="LNE.imprimirRanking()"><svg class="ic" aria-hidden="true"><use href="#i-printer"/></svg>Imprimir</button>
+        </div>
+      </div>
+      <div id="rankingGeral"></div>
+    </div>
+  </div>
+
+  <!-- PÁGINA PORTAL ESCOLA -->
+  <div class="page" id="page-portal">
+    <div class="wrap" id="portalConteudo"></div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAIS ══════════════ -->
+
+<!-- Cadastrar escola -->
+<div class="mover" id="modalCadEscola">
+  <div class="mdl" style="max-width:520px;">
+    <div class="mdl-hd"><h3>Cadastrar Nova Escola</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalCadEscola')">×</button></div>
+    <div class="frow"><div class="fg grow"><label>Nome da escola *</label><input type="text" id="cadNome" placeholder="Ex: Colégio São Paulo"/></div></div>
+    <div class="frow">
+      <div class="fg grow"><label>Responsável *</label><input type="text" id="cadResp" placeholder="Nome do professor/responsável"/></div>
+      <div class="fg grow"><label>E-mail *</label><input type="text" id="cadEmail" placeholder="email@escola.com.br"/></div>
+    </div>
+    <div class="frow"><div class="fg grow"><label>Telefone</label><input type="text" id="cadTel" placeholder="(11) 99999-9999"/></div></div>
+    <div class="note note-warn"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><div>Após o cadastro, você receberá um <strong>código de acesso único</strong>. Guarde-o para entrar no sistema.</div></div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalCadEscola')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.cadastrarEscola()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nova etapa -->
+<div class="mover" id="modalNovaEtapa">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>Nova Etapa</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalNovaEtapa')">×</button></div>
+    <div class="frow"><div class="fg grow"><label>Nome da etapa *</label><input type="text" id="etapaNome" placeholder="Ex: 1ª Etapa — 1º Semestre 2026"/></div></div>
+    <div class="frow">
+      <div class="fg"><label>Data da competição *</label><input type="date" id="etapaData"/></div>
+      <div class="fg grow"><label>Local</label><input type="text" id="etapaLocal" placeholder="Ex: Colégio Emillie de Villeneuve"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg grow"><label>Endereço</label><input type="text" id="etapaEndereco" placeholder="Ex: Rua Madre Emillie de Villeneuve, 331 — Vila Mascote"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Nº de raias *</label>
+        <input type="number" id="etapaRaias" value="8" min="4" max="12" step="1" style="width:80px;" />
+      </div>
+      <div class="fg"><label>Tamanho da piscina</label>
+        <select id="etapaTam"><option value="25m" selected>25m</option><option value="50m">50m</option></select>
+      </div>
+      <div class="fg"><label>Prazo de inscrições</label><input type="date" id="etapaPrazo"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Início aquecimento</label><input type="time" id="etapaAquec" value="13:00"/></div>
+      <div class="fg"><label>Início das provas</label><input type="time" id="etapaInicio" value="13:30"/></div>
+    </div>
+
+    <!-- Provas padrão LNE -->
+    <label class="opt-card">
+      <input type="checkbox" id="etapaCriarProvas" checked/>
+      <span><strong>Criar as 20 provas padrão da LNE</strong><small>25m, 50m e 100m · Livre, Costas e Peito · Masculino e Feminino · por faixa de categoria. Você pode ajustar depois.</small></span>
+    </label>
+
+    <div class="note note-info"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div>Após criar a etapa você também pode adicionar provas manualmente ou usar o botão "Provas padrão LNE" na tela da etapa.</div></div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalNovaEtapa')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.salvarEtapa()">Criar Etapa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nova prova -->
+<div class="mover" id="modalNovaProva">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>Nova Prova</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalNovaProva')">×</button></div>
+    <div class="frow"><div class="fg grow"><label>Nome da prova (opcional — gerado automaticamente)</label><input type="text" id="provaNome" placeholder="Ex: 50m Livre A12 Feminino"/></div></div>
+    <div class="frow">
+      <div class="fg"><label>Distância</label>
+        <select id="provaDistancia"><option value="25m">25m</option><option value="50m" selected>50m</option><option value="100m">100m</option><option value="200m">200m</option><option value="4x50m">4×50m Revezamento</option></select>
+      </div>
+      <div class="fg"><label>Estilo</label>
+        <select id="provaEstilo"><option value="Livre" selected>Livre</option><option value="Costas">Costas</option><option value="Peito">Peito</option><option value="Borboleta">Borboleta</option><option value="Medley">Medley</option></select>
+      </div>
+      <div class="fg"><label>Gênero</label>
+        <select id="provaGenero"><option value="Feminino" selected>Feminino</option><option value="Masculino">Masculino</option><option value="Misto">Misto</option></select>
+      </div>
+    </div>
+    <div class="frow"><div class="fg grow"><label>Categoria(s) — digite ou use os atalhos abaixo</label><input type="text" id="provaCategoria" placeholder="Ex: A12 — ou A9, A10, A11, A12"/></div></div>
+    <!-- Atalhos de categoria -->
+    <div style="margin-bottom:12px;">
+      <div class="lbl-sm" style="margin-bottom:8px;">Atalhos de categoria</div>
+      <div class="chip-row">
+        <button type="button" class="chip" onclick="LNE.setCat('A7')">A7</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A8')">A8</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A9')">A9</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A10')">A10</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A11')">A11</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A12')">A12</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A13')">A13</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A14')">A14</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A15')">A15</button>
+        <button type="button" class="chip" onclick="LNE.setCat('A16-17')">A16-17</button>
+      </div>
+      <div class="help">
+        Anos de nascimento: A7=2019 · A8=2018 · A9=2017 · A10=2016 · A11=2015 · A12=2014 · A13=2013 · A14=2012 · A15=2011 · A16-17=2009-2010
+      </div>
+    </div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalNovaProva')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.salvarProva()">Criar Prova</button>
+    </div>
+  </div>
+</div>
+
+<!-- Série combinada -->
+<div class="mover" id="modalSerieComb">
+  <div class="mdl" style="max-width:680px;">
+    <div class="mdl-hd"><h3>Criar Série Combinada</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalSerieComb')">×</button></div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Selecione atletas de provas diferentes para compor uma série combinada, preenchendo as raias da piscina.</p>
+    <div id="serieCombConteudo"></div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalSerieComb')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.confirmarSerieCombinada()">Criar Série</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add atleta -->
+<div class="mover" id="modalAddAtleta">
+  <div class="mdl" style="max-width:520px;">
+    <div class="mdl-hd"><h3 id="addAtletaTitulo">+ Adicionar Atleta</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalAddAtleta')">×</button></div>
+    <div id="addAtletaConteudo"></div>
+  </div>
+</div>
+
+<!-- Placar -->
+<div class="mover" id="modalPlacar">
+  <div class="mdl" style="max-width:640px;">
+    <div class="mdl-hd"><h3 id="placarTitulo">Placar</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalPlacar')">×</button></div>
+    <div id="placarConteudo"></div>
+    <div class="mdl-actions">
+      <button class="btn b-pdf" onclick="LNE.imprimirPlacar()">Imprimir</button>
+      <button class="btn b-out" onclick="LNE.fecharModal('modalPlacar')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tela cheia tempos -->
+<div class="mover" id="fsModal" style="background:rgba(0,0,0,.85);">
+  <div style="background:#1e293b;border-radius:12px;padding:20px;width:96%;max-width:700px;max-height:95vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="font-size:14px;font-weight:700;color:#fff;" id="fsTitle">Entrada de tempos</h3>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="fsSearch" placeholder="🔍 Filtrar…" oninput="LNE.fsFiltra(this.value)"
+          style="width:180px;"/>
+        <button class="btn b-suc" onclick="LNE.fsSalvar()">Salvar</button>
+        <button onclick="LNE.fecharTelaCheia()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">×</button>
+      </div>
+    </div>
+    <div id="fsBody"></div>
+  </div>
+</div>
+
+<!-- Súmula -->
+<div class="mover" id="modalSumulaForm">
+  <div class="mdl" style="max-width:460px;">
+    <div class="mdl-hd"><h3>Súmula Oficial</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalSumulaForm')">×</button></div>
+    <div class="frow">
+      <div class="fg grow"><label>Tipo</label><select id="sumTipo"><option value="classif">Classificatória</option></select></div>
+      <div class="fg"><label>Data</label><input type="date" id="sumData"/></div>
+    </div>
+    <div class="frow"><div class="fg grow"><label>Local</label><input type="text" id="sumLocal" placeholder="Nome do local"/></div></div>
+    <div class="frow"><div class="fg grow"><label>Árbitro / Juiz</label><input type="text" id="sumJuiz" placeholder="Nome do árbitro"/></div></div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalSumulaForm')">Cancelar</button>
+      <button class="btn b-pdf" onclick="LNE.imprimirSumula()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Preview -->
+<div class="mover" id="pdfModal">
+  <div class="mdl" style="max-width:900px;">
+    <div class="mdl-hd"><h3>Visualizar antes de imprimir</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('pdfModal')">×</button></div>
+    <div id="pdfContent" style="border:1px solid var(--bd);border-radius:6px;padding:16px;max-height:70vh;overflow-y:auto;background:#fafafa;"></div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('pdfModal')">Fechar</button>
+      <button class="btn b-pdf" onclick="LNE.doPrint()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- PWA: botão flutuante de instalação -->
+<button id="btnInstalarPWA" onclick="LNE.instalarPWA()">
+  <svg class="ic" aria-hidden="true"><use href="#i-smartphone"/></svg>Instalar app
+</button>
+
+
+<!-- PWA iOS: instrução manual (Safari não suporta beforeinstallprompt) -->
+<div id="iosBanner" class="ios-banner">
+  <button class="ios-x" onclick="document.getElementById('iosBanner').style.display='none'" aria-label="Fechar">×</button>
+  <div class="ios-banner-in">
+    <svg class="ic ic-lg" aria-hidden="true"><use href="#i-smartphone"/></svg>
+    <div>
+      <strong>Instalar o app LNE 2026</strong>
+      <p>Toque em <b>Compartilhar</b> e depois em <b>“Adicionar à Tela de Início”</b>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<!-- Modal Reordenar Provas -->
+<div class="mover" id="modalReordenar">
+  <div class="mdl" style="max-width:600px;">
+    <div class="mdl-hd"><h3>Reordenar Provas</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalReordenar')">×</button></div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Arraste as provas para definir a ordem, ou use as setas ▲▼.</p>
+    <div id="reordenarLista" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalReordenar')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.salvarOrdem()">Salvar Ordem</button>
+    </div>
+  </div>
+</div>
+<!-- Modal Relatório de Atletas -->
+<div class="mover" id="modalRelatorio">
+  <div class="mdl" style="max-width:820px;">
+    <div class="mdl-hd">
+      <h3>Relatório de Atletas Inscritos</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalRelatorio')">×</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-box">
+      <div class="filter-title">Filtros</div>
+      <div class="frow">
+        <div class="fg">
+          <label>Prova</label>
+          <select id="relFiltroProva" onchange="LNE.renderRelatorio()" style="min-width:220px;">
+            <option value="">Todas as provas</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Escola</label>
+          <select id="relFiltroEscola" onchange="LNE.renderRelatorio()" style="min-width:180px;">
+            <option value="">Todas as escolas</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Categoria</label>
+          <select id="relFiltroCat" onchange="LNE.renderRelatorio()" style="min-width:120px;">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Vínculo</label>
+          <select id="relFiltroFed" onchange="LNE.renderRelatorio()">
+            <option value="">Todos</option>
+            <option value="nao">Não federados</option>
+            <option value="fed">Federados/Vinculados</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Agrupar por</label>
+          <select id="relAgrupar" onchange="LNE.renderRelatorio()">
+            <option value="atleta">Por atleta</option>
+            <option value="cat_atleta">Categoria → Atleta</option>
+            <option value="escola_atleta">Escola → Atleta</option>
+            <option value="prova">Prova</option>
+            <option value="escola">Escola</option>
+            <option value="categoria">Categoria</option>
+            <option value="nenhum">Sem agrupamento (lista)</option>
+          </select>
+        </div>
+        <div id="relOrdenarWrap" class="fg">
+          <label>Ordenar por</label>
+          <select id="relOrdenar" onchange="LNE.renderRelatorio()">
+            <option value="nome">Nome</option>
+            <option value="escola">Escola</option>
+            <option value="categoria">Categoria</option>
+          </select>
+        </div>
+        <button class="btn b-out" onclick="LNE.limparFiltrosRel()">Limpar</button>
+      </div>
+    </div>
+
+    <!-- Resumo rápido -->
+    <div id="relResumo" class="srow" style="margin-bottom:12px;"></div>
+
+    <!-- Resultado -->
+    <div id="relConteudo" style="max-height:52vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px;"></div>
+
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalRelatorio')">Fechar</button>
+      <button class="btn b-pdf" onclick="LNE.imprimirRelatorio()">Imprimir / PDF</button>
+      <button class="btn b-suc" onclick="LNE.exportarRelatorioXlsx()">Exportar Excel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Conflitos de Import -->
+<div class="mover" id="modalConflitos">
+  <div class="mdl" style="max-width:720px;padding:0;overflow:hidden;">
+    <div class="mdl-hd mdl-bar">
+      <h3 id="conflitosTitulo" style="color:#b45309;">Conflitos encontrados</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalConflitos');_importPendente=null;">×</button>
+    </div>
+    <div id="conflitosCorpo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalConflitos');_importPendente=null;">Cancelar import</button>
+      <button class="btn b-pri" onclick="LNE.confirmarImport()">Confirmar e importar</button>
+    </div>
+  </div>
+</div>
+<!-- Modal Auditoria -->
+<div class="mover" id="modalAuditoria">
+  <div class="mdl" style="max-width:780px;padding:0;overflow:hidden;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Auditoria de Inscrições</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalAuditoria')">×</button>
+    </div>
+    <div id="auditoriaResumo" class="srow" style="padding:12px 14px;border-bottom:1px solid var(--bd);margin:0;"></div>
+    <div id="auditoriaCorpo" style="max-height:62vh;overflow-y:auto;"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalAuditoria')">Fechar</button>
+      <button class="btn b-pdf" onclick="LNE.imprimirAuditoria()">Imprimir relatório</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Mesclar Provas -->
+<div class="mover" id="modalMesclar">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Mesclar Provas</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalMesclar')">×</button>
+    </div>
+    <div class="note note-warn" style="margin:16px 22px 0;"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><div>A prova <strong>destino</strong> absorve todos os atletas da prova <strong>origem</strong>. A origem é excluída. Atletas já existentes no destino não são duplicados.</div></div>
+    <div style="padding:14px 18px;">
+      <!-- Detecção automática de duplicatas -->
+      <div id="mesclarSugestoes" style="margin-bottom:14px;"></div>
+      <!-- Seleção manual -->
+      <div class="swap-grid">
+        <div>
+          <label class="lbl-sm" style="margin-bottom:6px;">Origem (será excluída)</label>
+          <select id="mesclarOrigem" style="width:100%;" onchange="LNE.previewMesclar()">
+            <option value="">Selecione…</option>
+          </select>
+          <div id="mesclarOrigemInfo" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
+        </div>
+        <div class="swap-arrow"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-arrow-right"/></svg></div>
+        <div>
+          <label class="lbl-sm" style="margin-bottom:6px;">Destino (será mantida)</label>
+          <select id="mesclarDestino" style="width:100%;" onchange="LNE.previewMesclar()">
+            <option value="">Selecione…</option>
+          </select>
+          <div id="mesclarDestinoInfo" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
+        </div>
+      </div>
+      <div id="mesclarPreview" style="margin-top:14px;"></div>
+    </div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalMesclar')">Cancelar</button>
+      <button class="btn b-pri" id="btnConfirmarMesclar" onclick="LNE.confirmarMesclar()" disabled style="opacity:.4;">Confirmar Mesclagem</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal Imprimir Balizamentos Selecionados -->
+<div class="mover" id="modalImpBaliz">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88vh;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Imprimir Balizamentos</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalImpBaliz')">×</button>
+    </div>
+    <div style="padding:14px 18px;overflow-y:auto;flex:1;" id="modalImpBalizConteudo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalImpBaliz')">Cancelar</button>
+      <button class="btn b-pdf" onclick="LNE.confirmarImprimirBalizamentos()">Imprimir selecionadas</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal Cartões em Branco -->
+<div class="mover" id="modalCartoesEmBranco">
+  <div class="mdl" style="max-width:420px;">
+    <div class="mdl-hd">
+      <h3>Cartões em Branco</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalCartoesEmBranco')">×</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Imprime cartões com todos os campos em branco para preenchimento manual.</p>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Quantidade de cartões</label>
+        <input type="number" id="embrancoQtd" value="16" min="1" max="200"
+         
+          onkeydown="if(event.key==='Enter') LNE.imprimirCartoesEmBranco()"/>
+      </div>
+    </div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalCartoesEmBranco')">Cancelar</button>
+      <button class="btn b-pdf" onclick="LNE.imprimirCartoesEmBranco()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cartão Manual -->
+<div class="mover" id="modalCartaoManual">
+  <div class="mdl" style="max-width:520px;">
+    <div class="mdl-hd">
+      <h3>Cartão Manual</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalCartaoManual')">×</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Preencha os dados para imprimir um cartão avulso.</p>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Nome do atleta *</label>
+        <input type="text" id="manNome" placeholder="Nome completo"
+          onkeydown="if(event.key==='Enter') document.getElementById('manProva').focus()"/>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg grow">
+        <label>Prova</label>
+        <input type="text" id="manProva" placeholder="Ex: 1ª Prova — 25m Livre A7 Feminino"/>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg" style="max-width:100px;">
+        <label>Série</label>
+        <input type="number" id="manSerie" placeholder="1" min="1"
+         />
+      </div>
+      <div class="fg" style="max-width:100px;">
+        <label>Raia</label>
+        <input type="number" id="manRaia" placeholder="1" min="1"
+         />
+      </div>
+      <div class="fg" style="max-width:100px;">
+        <label>Qtd. cópias</label>
+        <input type="number" id="manQtd" value="1" min="1" max="32"
+         />
+      </div>
+      <div class="fg grow">
+        <label>Vínculo</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--bd);border-radius:6px;background:#fff;" id="manFedLabel">
+          <input type="checkbox" id="manFederado" style="width:15px;height:15px;accent-color:#7c3aed;"
+            onchange="this.closest('label').style.borderColor=this.checked?'#7c3aed':'var(--bd)';this.closest('label').style.background=this.checked?'#f3e8ff':'#fff';document.getElementById('manFedTexto').textContent=this.checked?'Federado':'Não fed.';"/>
+          <span id="manFedTexto" style="font-size:12px;font-weight:600;">Não fed.</span>
+        </label>
+      </div>
+    </div>
+    <div class="mdl-actions">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalCartaoManual')">Cancelar</button>
+      <button class="btn b-pdf" onclick="LNE.imprimirCartaoManual()">Imprimir cartão</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Série Manual -->
+<div class="mover" id="modalSerieManual">
+  <div class="mdl" style="max-width:700px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh;">
+    <div class="mdl-hd mdl-bar">
+      <h3>+ Série Manual</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalSerieManual')">×</button>
+    </div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">
+        Preencha as raias abaixo. Atletas já inscritos na prova aparecem no seletor — ou digite um nome livre.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label>Inserir na posição:</label>
+        <select id="smPosicao">
+          <option value="fim">Última série (no final)</option>
+          <option value="inicio">Primeira série (no início)</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:14px 18px;" id="smCorpo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalSerieManual')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.confirmarSerieManual()">Adicionar série</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Imprimir Cartões -->
+<div class="mover" id="modalCartoes">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Imprimir Cartões de Inscrição</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalCartoes')">×</button>
+    </div>
+    <p style="font-size:12px;color:#64748b;padding:10px 18px 0;">Selecione as provas cujos cartões deseja imprimir. Apenas provas com balizamento gerado estão disponíveis.</p>
+    <div style="padding:10px 18px;" id="modalCartoesConteudo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalCartoes')">Cancelar</button>
+      <button class="btn b-pdf" onclick="LNE.confirmarImprimirCartoes()">Imprimir cartões</button>
+    </div>
+  </div>
+</div>
+<!-- Modal Balizamento em lote -->
+<div class="mover" id="modalBalizamento">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Gerar Balizamento</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalBalizamento')">×</button>
+    </div>
+    <div style="padding:14px 18px;" id="modalBalConteudo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalBalizamento')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.confirmarBalizamento()">Gerar selecionadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Busca de Atletas -->
+<div class="mover" id="modalBuscaAtleta">
+  <div class="mdl" style="max-width:860px;padding:0;overflow:hidden;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Buscar e editar atletas</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalBuscaAtleta')">×</button>
+    </div>
+    <div class="mdl-sub" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;background:#fff;">
+      <div class="fg grow" style="min-width:200px;">
+        <label for="buscaAtletaQ">Buscar</label>
+        <input type="text" id="buscaAtletaQ" placeholder="Nome ou escola…" oninput="LNE.renderBuscaAtleta()"/>
+      </div>
+      <div class="fg">
+        <label for="buscaAtletaProva">Prova</label>
+        <select id="buscaAtletaProva" onchange="LNE.renderBuscaAtleta()" style="min-width:220px;">
+          <option value="">Todas as provas</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label for="buscaAtletaEscola">Escola</label>
+        <select id="buscaAtletaEscola" onchange="LNE.renderBuscaAtleta()" style="min-width:160px;">
+          <option value="">Todas</option>
+        </select>
+      </div>
+    </div>
+    <div id="buscaAtletaResumo" class="mdl-sub" style="padding:8px 22px;font-size:12px;"></div>
+    <div id="buscaAtletaResultados" style="max-height:58vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- Modal Editar Atleta (inline) -->
+<div class="mover" id="modalEditarAtleta">
+  <div class="mdl" style="max-width:560px;">
+    <div class="mdl-hd"><h3 id="editarAtletaTitulo">Editar Atleta</h3><button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalEditarAtleta')">×</button></div>
+    <div id="editarAtletaConteudo"></div>
+  </div>
+</div>
+
+
+
+
+
+<!-- Modal Imprimir Classificações em Lote -->
+<div class="mover" id="modalImpClass">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88vh;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Imprimir Classificações</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalImpClass')">×</button>
+    </div>
+    <div style="padding:10px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label>Modo de impressão:</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;">
+          <input type="radio" name="impClassModo" value="corrido" checked style="accent-color:var(--azm);"/> Corrido (uma após a outra)
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;">
+          <input type="radio" name="impClassModo" value="folha" style="accent-color:var(--azm);"/> Uma por folha
+        </label>
+      </div>
+    </div>
+    <div style="padding:14px 18px;overflow-y:auto;flex:1;" id="modalImpClassConteudo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalImpClass')">Cancelar</button>
+      <button class="btn b-suc" onclick="LNE.confirmarImprimirClassificacoes()">Imprimir selecionadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Liberar Classificações em Lote -->
+<div class="mover" id="modalLiberarClass">
+  <div class="mdl" style="max-width:680px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88vh;">
+    <div class="mdl-hd mdl-bar">
+      <h3>Liberar / Bloquear Classificações</h3>
+      <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalLiberarClass')">×</button>
+    </div>
+    <div style="padding:14px 18px;overflow-y:auto;flex:1;" id="modalLiberarClassConteudo"></div>
+    <div class="mdl-ft">
+      <button class="btn b-out" onclick="LNE.fecharModal('modalLiberarClass')">Cancelar</button>
+      <button class="btn b-pri" onclick="LNE.confirmarLiberarClassificacoes()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+
+</body>
+</html>   
