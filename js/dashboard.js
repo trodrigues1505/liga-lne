@@ -212,6 +212,10 @@ function _statsAtletas(nomeEscola) {
 }
 
 
+// ── Helpers de apresentação ──────────────────────────────
+const ic = (name, cls = 'ic') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const posBadge = (i) => `<span class="pb ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : 'pn'}">${i + 1}</span>`;
+
 // ── Panorama geral de todas as escolas ───────────────────
 export function renderPanoramaGeral(containerId) {
   const el = document.getElementById(containerId);
@@ -237,19 +241,19 @@ export function renderPanoramaGeral(containerId) {
 
   const maxPts = lista[0]?.total || 1;
   const totalEscolas = lista.length;
-  const totalEtapas = db.etapas.length;
+  const totalEtapas = (db.etapas || []).length;
 
   // ── Stats globais ──
-  let totalAtletas = 0, totalInscricoes = 0;
+  let totalInscricoes = 0;
   const atletasUnicos = new Set();
-  db.etapas.forEach(e => Object.values(e.provas||{}).forEach(p => {
-    p.atletas.forEach(a => { atletasUnicos.add(a.nome.toLowerCase().trim()); totalInscricoes++; });
+  (db.etapas || []).forEach(e => Object.values(e.provas||{}).forEach(p => {
+    (p.atletas || []).forEach(a => { atletasUnicos.add(a.nome.toLowerCase().trim()); totalInscricoes++; });
   }));
-  totalAtletas = atletasUnicos.size;
+  const totalAtletas = atletasUnicos.size;
 
   // ── Maior pontuador individual ──
   const ptsPorAtleta = {};
-  db.etapas.forEach(e => Object.values(e.provas||{}).forEach(p => {
+  (db.etapas || []).forEach(e => Object.values(e.provas||{}).forEach(p => {
     ['classificacaoNFed','classificacaoFed','classificacao'].some(key => {
       const arr = p[key]||[];
       if (!arr.length) return false;
@@ -263,96 +267,77 @@ export function renderPanoramaGeral(containerId) {
   }));
   const topAtl = Object.values(ptsPorAtleta).sort((a,b)=>b.pts-a.pts)[0];
 
-  // ── Evolução acumulada por escola por etapa ──
-  const evolEscolas = {};
-  db.etapas.forEach(e => {
-    const { nfed: en, fed: ef } = LNE.calcPlacarEtapa(e.id);
-    [...en,...ef].forEach(r => {
-      if (!evolEscolas[r.nome]) evolEscolas[r.nome] = [];
-      const last = evolEscolas[r.nome].slice(-1)[0]?.total || 0;
-      evolEscolas[r.nome].push({ etapa: e.nome, pts: r.pts, total: last + r.pts });
-    });
-  });
-
   // ── Diferença entre 1º e 2º ──
   const gap12nfed = nfed.length >= 2 ? nfed[0].pts - nfed[1].pts : null;
   const gap12fed  = fed.length  >= 2 ? fed[0].pts  - fed[1].pts  : null;
 
+  const linhaBarra = (rotulo, pts, pos, pct, cls) => `
+    <div class="bar-row">
+      <span>${rotulo}</span>
+      <div class="bar ${cls}"><i style="width:${Math.max(pct, 2)}%"></i></div>
+      <span>${pts} pts${pos ? ` · ${pos}°` : ''}</span>
+    </div>`;
+
+  const linhas = lista.map((e, i) => {
+    const ptsN = e.nfed?.pts || 0, ptsF = e.fed?.pts || 0;
+    const pctN = Math.round((ptsN / maxPts) * 100);
+    const pctF = Math.round((ptsF / maxPts) * 100);
+    return `<div class="rk" role="button" tabindex="0" data-escola="${esc(e.nome)}"
+         onclick="LNE.selecionarEscolaDashboard(this.dataset.escola)"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();LNE.selecionarEscolaDashboard(this.dataset.escola);}"
+         title="Ver detalhes de ${esc(e.nome)}">
+      ${posBadge(i)}
+      <span class="rk-name">${esc(e.nome)}</span>
+      <span class="rk-total">${e.total} <small>pts</small></span>
+      <div class="rk-bars">
+        ${ptsN > 0 ? linhaBarra('NF', ptsN, e.nfed?.pos, pctN, '') : ''}
+        ${ptsF > 0 ? linhaBarra('FD', ptsF, e.fed?.pos, pctF, 'fd') : ''}
+      </div>
+    </div>`;
+  }).join('');
+
   el.innerHTML = `
-    <!-- ── Stats globais ── -->
-    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px;">
+    <div class="stat-grid">
       <div class="sc"><div class="lbl">Escolas</div><div class="val">${totalEscolas}</div></div>
       <div class="sc"><div class="lbl">Etapas</div><div class="val">${totalEtapas}</div></div>
       <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${totalAtletas}</div></div>
-      <div class="sc"><div class="lbl">Inscrições totais</div><div class="val">${totalInscricoes}</div></div>
-      ${topAtl ? `<div class="sc" style="min-width:160px;"><div class="lbl">Top atleta</div><div class="val" style="font-size:13px;font-weight:700;">${esc(topAtl.nome)}</div><div style="font-size:11px;color:#64748b;">${esc(topAtl.escola)} · ${topAtl.pts}pts</div></div>` : ''}
+      <div class="sc"><div class="lbl">Inscrições</div><div class="val">${totalInscricoes}</div></div>
+      ${topAtl ? `<div class="sc sc-wide">
+        <div class="lbl">Maior pontuador</div>
+        <div class="val" style="font-size:16px;">${esc(topAtl.nome)}</div>
+        <div style="font-size:12px;color:var(--muted);">${esc(topAtl.escola)} · ${topAtl.pts} pts</div>
+      </div>` : ''}
     </div>
 
-    <!-- ── Ranking visual comparativo ── -->
-    <div style="background:#fff;border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:14px;">
-      <div style="padding:12px 16px;background:var(--czc);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-        <span style="font-size:12px;font-weight:700;color:var(--cz);">🏆 Ranking Comparativo — Pontuação Total</span>
-        <div style="display:flex;gap:12px;font-size:11px;color:#64748b;">
-          <span><span style="display:inline-block;width:10px;height:10px;background:#0056b8;border-radius:2px;vertical-align:middle;"></span> Não fed.</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#7c3aed;border-radius:2px;vertical-align:middle;"></span> Fed.</span>
+    <div class="dcard">
+      <div class="dcard-hd">
+        <div>
+          <h4>Ranking comparativo</h4>
+          <small>Pontuação total por escola. Selecione uma escola para ver o detalhe.</small>
+        </div>
+        <div class="legend">
+          <span><i class="dot dot-nf"></i>Não federados</span>
+          <span><i class="dot dot-fd"></i>Federados</span>
         </div>
       </div>
-      <div style="padding:12px 16px;">
-        ${lista.map((e, i) => {
-          const pctNFed = Math.round(((e.nfed?.pts||0) / maxPts) * 100);
-          const pctFed  = Math.round(((e.fed?.pts||0)  / maxPts) * 100);
-          const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-          const posLabel = i === 0 ? '1°' : i === 1 ? '2°' : i === 2 ? '3°' : `${i+1}°`;
-          return `<div style="margin-bottom:12px;" class="dash-escola-row" data-escola="${esc(e.nome)}">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;cursor:pointer;"
-                 onclick="LNE.selecionarEscolaDashboard('${esc(e.nome).replace(/'/g,"\'")}')"
-                 title="Ver detalhes de ${esc(e.nome)}">
-              <span style="font-size:13px;font-weight:800;width:28px;color:#94a3b8;">${posLabel}</span>
-              <span style="font-size:14px;">${medal}</span>
-              <span style="font-size:12px;font-weight:600;flex:1;color:var(--cz);">${esc(e.nome)}</span>
-              <span style="font-size:13px;font-weight:800;color:var(--az);">${e.total} <span style="font-size:10px;font-weight:500;color:#64748b;">pts</span></span>
-              <span style="font-size:10px;color:#0056b8;opacity:.6;">ver →</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:2px;">
-              ${pctNFed > 0 ? `<div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:9px;color:#64748b;width:50px;text-align:right;">NF ${e.nfed?.pts||0}pts</span>
-                <div style="flex:1;background:#f1f5f9;border-radius:3px;height:10px;overflow:hidden;">
-                  <div style="height:100%;width:${pctNFed}%;background:#0056b8;border-radius:3px;transition:width .6s ease;"></div>
-                </div>
-                ${e.nfed ? `<span style="font-size:9px;color:#64748b;width:20px;">${e.nfed.pos}°</span>` : ''}
-              </div>` : ''}
-              ${pctFed > 0 ? `<div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:9px;color:#64748b;width:50px;text-align:right;">FD ${e.fed?.pts||0}pts</span>
-                <div style="flex:1;background:#f3e8ff;border-radius:3px;height:10px;overflow:hidden;">
-                  <div style="height:100%;width:${pctFed}%;background:#7c3aed;border-radius:3px;transition:width .6s ease;"></div>
-                </div>
-                ${e.fed ? `<span style="font-size:9px;color:#64748b;width:20px;">${e.fed.pos}°</span>` : ''}
-              </div>` : ''}
-            </div>
-          </div>`;
-        }).join('')}
+      <div class="dcard-bd" style="padding:0 8px 10px;">
+        ${linhas || '<div class="empty" style="padding:32px 16px;">Nenhuma pontuação registrada ainda.</div>'}
       </div>
     </div>
 
-    <!-- ── Gap entre líderes ── -->
     ${(gap12nfed !== null || gap12fed !== null) ? `
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-      ${gap12nfed !== null ? `<div style="flex:1;min-width:180px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px;">🏅 Disputa Não Federados</div>
-        <div style="font-size:12px;"><strong>${esc(nfed[0]?.nome||'')}</strong> lidera com <strong style="color:#0056b8;">${gap12nfed} pts</strong> de vantagem sobre <strong>${esc(nfed[1]?.nome||'')}</strong></div>
+    <div class="callouts">
+      ${gap12nfed !== null ? `<div class="callout callout-nf">
+        <h5>Disputa entre não federados</h5>
+        <strong>${esc(nfed[0]?.nome||'')}</strong> lidera com <b>${gap12nfed} pts</b> de vantagem sobre <strong>${esc(nfed[1]?.nome||'')}</strong>.
       </div>` : ''}
-      ${gap12fed !== null ? `<div style="flex:1;min-width:180px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:11px;font-weight:700;color:#6d28d9;margin-bottom:4px;">⭐ Disputa Federados</div>
-        <div style="font-size:12px;"><strong>${esc(fed[0]?.nome||'')}</strong> lidera com <strong style="color:#7c3aed;">${gap12fed} pts</strong> de vantagem sobre <strong>${esc(fed[1]?.nome||'')}</strong></div>
+      ${gap12fed !== null ? `<div class="callout callout-fd">
+        <h5>Disputa entre federados</h5>
+        <strong>${esc(fed[0]?.nome||'')}</strong> lidera com <b>${gap12fed} pts</b> de vantagem sobre <strong>${esc(fed[1]?.nome||'')}</strong>.
       </div>` : ''}
     </div>` : ''}
 
-    <!-- ── Divisor ── -->
-    <div style="display:flex;align-items:center;gap:10px;margin:16px 0 12px;">
-      <div style="flex:1;height:1px;background:var(--bd);"></div>
-      <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">Análise individual por escola</span>
-      <div style="flex:1;height:1px;background:var(--bd);"></div>
-    </div>
+    <div class="dash-sec"><h4>Análise por escola</h4></div>
   `;
 }
 
@@ -363,30 +348,26 @@ export function renderDashboardEscola(nomeEscola, containerId) {
 
   const d = calcDashboardEscola(nomeEscola);
   const esc = LNE.esc;
-  const fmtData = LNE.fmtData;
 
-  // ── Card de posição no ranking ──
-  function cardRanking(rank, frente, label, cor, bg) {
-    if (!rank) return `<div style="background:${bg};border-radius:10px;padding:14px;flex:1;min-width:200px;border:1px solid ${cor}20;">
-      <div style="font-size:11px;font-weight:700;color:${cor};text-transform:uppercase;margin-bottom:8px;">${label}</div>
-      <div style="font-size:12px;color:#94a3b8;">Sem dados ainda</div>
+  // ── Posição no ranking ──
+  function cardRanking(rank, frente, label, variant) {
+    if (!rank) return `<div class="rcard ${variant}">
+      <div class="rcard-label">${label}</div>
+      <div class="rcard-empty">Sem dados ainda.</div>
     </div>`;
 
-    const medal = rank.pos === 1 ? '🥇' : rank.pos === 2 ? '🥈' : rank.pos === 3 ? '🥉' : '';
-    return `<div style="background:${bg};border-radius:10px;padding:14px;flex:1;min-width:200px;border:1px solid ${cor}40;">
-      <div style="font-size:11px;font-weight:700;color:${cor};text-transform:uppercase;margin-bottom:8px;">${label}</div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="font-size:32px;font-weight:900;color:${cor};">${rank.pos}°</div>
+    return `<div class="rcard ${variant}">
+      <div class="rcard-label">${label}</div>
+      <div class="rcard-main">
+        <div class="rcard-pos">${rank.pos}°</div>
         <div>
-          <div style="font-size:18px;font-weight:800;color:${cor};">${rank.pts} <span style="font-size:12px;font-weight:500;">pts</span></div>
-          <div style="font-size:11px;color:#64748b;">🥇${rank.ouros} 🥈${rank.pratas} 🥉${rank.bronzes}</div>
+          <div class="rcard-pts">${rank.pts} <small>pts</small></div>
+          <div class="rcard-med">🥇 ${rank.ouros} · 🥈 ${rank.pratas} · 🥉 ${rank.bronzes}</div>
         </div>
-        ${medal ? `<div style="font-size:28px;margin-left:auto;">${medal}</div>` : ''}
       </div>
-      ${frente ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(0,0,0,.04);border-radius:7px;font-size:11px;">
-        <span style="color:#64748b;">Para alcançar <strong>${esc(frente.nome)}</strong> (${frente.pos}°):</span>
-        <span style="font-weight:700;color:#dc2626;margin-left:6px;">+${frente.diff} pts</span>
-      </div>` : `<div style="margin-top:8px;font-size:11px;color:#15803d;font-weight:600;">🏆 Líder do ranking!</div>`}
+      ${frente
+        ? `<div class="rcard-gap">Para alcançar <strong>${esc(frente.nome)}</strong> (${frente.pos}°): <b>+${frente.diff} pts</b></div>`
+        : `<div class="rcard-lead">Líder do ranking</div>`}
     </div>`;
   }
 
@@ -394,58 +375,62 @@ export function renderDashboardEscola(nomeEscola, containerId) {
   function cardEvolucao() {
     if (!d.evolucao.length) return '';
     const maxPts = Math.max(...d.evolucao.map(e => Math.max(e.ptNFed, e.ptFed)), 1);
-    const bars = d.evolucao.map((e, i) => {
-      const hNFed = Math.round((e.ptNFed / maxPts) * 80);
-      const hFed  = Math.round((e.ptFed  / maxPts) * 80);
+    const cols = d.evolucao.map(e => {
+      const hNFed = Math.round((e.ptNFed / maxPts) * 84);
+      const hFed  = Math.round((e.ptFed  / maxPts) * 84);
       const etapaLabel = e.etapa.replace(/^(\d+)[ªº]\s*Etapa/i, '$1ª').slice(0, 12);
-      return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
-        <div style="display:flex;align-items:flex-end;gap:2px;height:84px;">
-          ${e.ptNFed ? `<div title="Não fed: ${e.ptNFed}pts" style="width:16px;background:#0056b8;border-radius:3px 3px 0 0;height:${hNFed}px;min-height:4px;"></div>` : '<div style="width:16px;"></div>'}
-          ${e.ptFed  ? `<div title="Fed: ${e.ptFed}pts"   style="width:16px;background:#7c3aed;border-radius:3px 3px 0 0;height:${hFed}px;min-height:4px;"></div>`  : '<div style="width:16px;"></div>'}
+      return `<div class="evo-col">
+        <div class="evo-bars">
+          ${e.ptNFed ? `<div class="evo-bar" title="Não federados: ${e.ptNFed} pts" style="height:${hNFed}px;"></div>` : '<div class="evo-bar ph"></div>'}
+          ${e.ptFed  ? `<div class="evo-bar fd" title="Federados: ${e.ptFed} pts" style="height:${hFed}px;"></div>` : '<div class="evo-bar ph"></div>'}
         </div>
-        <div style="font-size:10px;color:#64748b;text-align:center;white-space:nowrap;">${esc(etapaLabel)}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--az);">${e.ptNFed + e.ptFed} pts</div>
+        <div class="evo-lbl">${esc(etapaLabel)}</div>
+        <div class="evo-pts">${e.ptNFed + e.ptFed} pts</div>
       </div>`;
     }).join('');
-    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:12px;">📈 Evolução por etapa
-        <span style="font-size:10px;font-weight:400;color:#64748b;margin-left:8px;">
-          <span style="display:inline-block;width:10px;height:10px;background:#0056b8;border-radius:2px;vertical-align:middle;"></span> Não fed.
-          <span style="display:inline-block;width:10px;height:10px;background:#7c3aed;border-radius:2px;vertical-align:middle;margin-left:6px;"></span> Fed.
-        </span>
+    return `<div class="dcard">
+      <div class="dcard-hd">
+        <h4>Evolução por etapa</h4>
+        <div class="legend">
+          <span><i class="dot dot-nf"></i>Não federados</span>
+          <span><i class="dot dot-fd"></i>Federados</span>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:flex-end;">${bars}</div>
+      <div class="dcard-bd"><div class="evo">${cols}</div></div>
     </div>`;
   }
 
   // ── Atletas próximos de subir ──
   function cardOportunidades() {
-    if (!d.atletasProximos.length) return `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:4px;">✅ Posições consolidadas</div>
-      <div style="font-size:12px;color:#64748b;">Nenhum atleta próximo de subir de posição (ótimo sinal!).</div>
-    </div>`;
+    if (!d.atletasProximos.length) return `<div class="note note-ok"><div><strong>Posições consolidadas.</strong> Nenhum atleta está próximo de subir de posição.</div></div>`;
 
-    const rows = d.atletasProximos.map(a => `<tr>
-      <td style="font-weight:600;">${esc(a.nome)}</td>
-      <td style="text-align:center;font-size:11px;">${esc(a.categoria)}</td>
-      <td style="font-size:11px;color:#64748b;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.prova)}">${esc(a.prova.replace(/^\d+[ªº]\s*Prova\s*[—-]\s*/i,'').slice(0,30))}</td>
-      <td style="text-align:center;font-weight:700;color:#d97706;">${a.pos}°</td>
-      <td style="text-align:center;font-family:monospace;font-size:11px;">${esc(a.tempoAtual)}</td>
-      <td style="text-align:center;font-size:11px;color:#dc2626;font-weight:600;">${esc(a.diffTempo)}</td>
-      <td style="text-align:center;"><span style="background:#fef9c3;color:#92400e;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;">+${a.diffPts}pts p/ subir</span></td>
-    </tr>`).join('');
+    const rows = d.atletasProximos.map(a => {
+      const provaCurta = a.prova.replace(/^\d+[ªº]\s*Prova\s*[—-]\s*/i, '').slice(0, 30);
+      return `<tr>
+        <td style="font-weight:600;">${esc(a.nome)}</td>
+        <td class="t-c">${esc(a.categoria)}</td>
+        <td class="td-prova" title="${esc(a.prova)}">${esc(provaCurta)}</td>
+        <td class="t-c mono" style="color:#b45309;">${a.pos}°</td>
+        <td class="t-c mono">${esc(a.tempoAtual)}</td>
+        <td class="t-c mono" style="color:var(--red);">${esc(a.diffTempo)}</td>
+        <td class="t-c"><span class="goal">+${a.diffPts} pts para subir</span></td>
+      </tr>`;
+    }).join('');
 
-    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:10px;margin-bottom:12px;overflow:hidden;">
-      <div style="padding:12px 14px;background:#fffbeb;border-bottom:1px solid #fde68a;font-size:12px;font-weight:700;color:#92400e;">
-        ⚡ Atletas próximos de subir de posição <span style="font-weight:400;font-size:11px;">(foco para próxima etapa)</span>
+    return `<div class="dcard">
+      <div class="dcard-hd">
+        <div>
+          <h4>Atletas próximos de subir de posição</h4>
+          <small>Foco para a próxima etapa</small>
+        </div>
       </div>
-      <div style="overflow-x:auto;"><table class="tbl">
+      <div class="tbl-wrap"><table class="tbl">
         <thead><tr>
-          <th>Atleta</th><th style="width:50px;text-align:center;">Cat.</th>
-          <th>Prova</th><th style="width:40px;text-align:center;">Pos</th>
-          <th style="width:80px;text-align:center;">Tempo</th>
-          <th style="width:60px;text-align:center;">Dif.</th>
-          <th style="width:110px;text-align:center;">Meta</th>
+          <th>Atleta</th><th class="t-c" style="width:56px;">Cat.</th>
+          <th>Prova</th><th class="t-c" style="width:48px;">Pos.</th>
+          <th class="t-c" style="width:88px;">Tempo</th>
+          <th class="t-c" style="width:72px;">Dif.</th>
+          <th class="t-c" style="width:150px;">Meta</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
@@ -454,55 +439,58 @@ export function renderDashboardEscola(nomeEscola, containerId) {
 
   // ── Categorias sem atleta ──
   function cardCatsSemAtleta() {
-    if (!d.catsSemAtleta.length) return `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:#15803d;">✅ Todas as categorias cobertas</div>
-    </div>`;
-    return `<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px;">⚠️ Categorias sem atleta inscrito — pontos na mesa!</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${d.catsSemAtleta.map(c => `<span style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;">${esc(c)}</span>`).join('')}
+    if (!d.catsSemAtleta.length) return `<div class="note note-ok"><div><strong>Todas as categorias cobertas.</strong></div></div>`;
+    return `<div class="dcard">
+      <div class="dcard-hd">
+        <div>
+          <h4>Categorias sem atleta inscrito</h4>
+          <small>Cada categoria vazia é uma prova sem pontuação para a escola.</small>
+        </div>
       </div>
-      <div style="font-size:11px;color:#64748b;margin-top:8px;">Cada categoria representa uma prova sem pontuação para sua escola.</div>
+      <div class="dcard-bd">
+        <div class="chip-row">${d.catsSemAtleta.map(c => `<span class="chip chip-danger">${esc(c)}</span>`).join('')}</div>
+      </div>
     </div>`;
   }
 
   // ── Top atletas ──
   function cardTopAtletas() {
     if (!d.topAtletas.length) return '';
-    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:10px;">🏅 Maiores pontuadores da escola</div>
-      ${d.topAtletas.map((a, i) => `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < d.topAtletas.length-1 ? 'border-bottom:1px solid #f1f5f9;' : ''}">
-          <span style="font-size:16px;">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'  '}</span>
-          <div style="flex:1;font-size:13px;font-weight:600;">${esc(a.nome)}</div>
-          <div style="font-size:13px;font-weight:800;color:var(--az);">${a.pts} pts</div>
-          ${a.medalhas ? `<span style="font-size:11px;color:#64748b;">${a.medalhas} medalha(s)</span>` : ''}
-        </div>`).join('')}
+    return `<div class="dcard">
+      <div class="dcard-hd"><h4>Maiores pontuadores da escola</h4></div>
+      <div class="dcard-bd">
+        ${d.topAtletas.map((a, i) => `
+          <div class="list-row">
+            ${posBadge(i)}
+            <div class="grow">${esc(a.nome)}${a.medalhas ? `<div class="sub" style="font-weight:400;">${a.medalhas} medalha${a.medalhas > 1 ? 's' : ''}</div>` : ''}</div>
+            <div class="val">${a.pts} pts</div>
+          </div>`).join('')}
+      </div>
     </div>`;
   }
 
-  // ── Medalhas por categoria ──
+  // ── Desempenho por categoria ──
   function cardMedalhas() {
     const cats = Object.entries(d.medalhasPorCat).filter(([,v]) => v.pts > 0);
     if (!cats.length) return '';
     const sorted = cats.sort((a,b) => b[1].pts - a[1].pts);
-    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:var(--cz);margin-bottom:10px;">📊 Desempenho por categoria</div>
-      <div style="overflow-x:auto;"><table class="tbl">
+    return `<div class="dcard">
+      <div class="dcard-hd"><h4>Desempenho por categoria</h4></div>
+      <div class="tbl-wrap"><table class="tbl">
         <thead><tr>
           <th>Categoria</th>
-          <th style="width:40px;text-align:center;">🥇</th>
-          <th style="width:40px;text-align:center;">🥈</th>
-          <th style="width:40px;text-align:center;">🥉</th>
-          <th style="width:60px;text-align:center;">Pts</th>
+          <th class="t-c" style="width:56px;" title="Ouro">🥇</th>
+          <th class="t-c" style="width:56px;" title="Prata">🥈</th>
+          <th class="t-c" style="width:56px;" title="Bronze">🥉</th>
+          <th class="t-c" style="width:64px;">Pts</th>
         </tr></thead>
         <tbody>
           ${sorted.map(([cat, v]) => `<tr>
             <td style="font-weight:600;">${esc(cat)}</td>
-            <td style="text-align:center;font-weight:700;">${v.ouros||'—'}</td>
-            <td style="text-align:center;font-weight:700;">${v.pratas||'—'}</td>
-            <td style="text-align:center;font-weight:700;">${v.bronzes||'—'}</td>
-            <td style="text-align:center;font-weight:700;color:var(--az);">${v.pts}</td>
+            <td class="t-c">${v.ouros || '—'}</td>
+            <td class="t-c">${v.pratas || '—'}</td>
+            <td class="t-c">${v.bronzes || '—'}</td>
+            <td class="t-c" style="font-weight:700;color:var(--az);">${v.pts}</td>
           </tr>`).join('')}
         </tbody>
       </table></div>
@@ -510,31 +498,24 @@ export function renderDashboardEscola(nomeEscola, containerId) {
   }
 
   // ── Monta o HTML final ──
+  const semCats = d.catsSemAtleta.length;
   el.innerHTML = `
-    <!-- Estatísticas rápidas -->
-    <div class="srow" style="margin-bottom:14px;">
+    <div class="stat-grid">
       <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${d.atletasUnicos}</div></div>
       <div class="sc"><div class="lbl">Inscrições</div><div class="val">${d.totalInscricoes}</div></div>
       <div class="sc"><div class="lbl">Etapas</div><div class="val">${d.evolucao.length}</div></div>
-      <div class="sc"><div class="lbl">Cats s/ atleta</div><div class="val" style="color:${d.catsSemAtleta.length ? '#dc2626' : '#15803d'};">${d.catsSemAtleta.length || '✓'}</div></div>
+      <div class="sc"><div class="lbl">Categorias sem atleta</div><div class="val" style="color:${semCats ? 'var(--red)' : 'var(--vd)'};">${semCats || '0'}</div></div>
     </div>
 
-    <!-- Posição no ranking -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-      ${cardRanking(d.rankNFed, d.frente.nfed, '🏅 Ranking Não Federados', '#0056b8', '#eff6ff')}
-      ${cardRanking(d.rankFed,  d.frente.fed,  '⭐ Ranking Federados',     '#6d28d9', '#f5f3ff')}
+    <div class="rank-cards">
+      ${cardRanking(d.rankNFed, d.frente.nfed, 'Ranking não federados', '')}
+      ${cardRanking(d.rankFed,  d.frente.fed,  'Ranking federados',     'fd')}
     </div>
 
-    <!-- Evolução -->
     ${cardEvolucao()}
-
-    <!-- Oportunidades -->
     ${cardOportunidades()}
-
-    <!-- Categorias sem atleta -->
     ${cardCatsSemAtleta()}
 
-    <!-- Dois blocos lado a lado -->
     <div class="grid-2">
       <div>${cardTopAtletas()}</div>
       <div>${cardMedalhas()}</div>
@@ -547,43 +528,37 @@ export function abrirDashboardAdmin() {
   const db = LNE.state.db;
   if (!db.escolas.length) { LNE.showToast('Nenhuma escola cadastrada.'); return; }
 
+  const opcoes = '<option value="">Selecione uma escola…</option>' +
+    db.escolas.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('');
+
   let modal = document.getElementById('modalDashboard');
   if (!modal) {
     modal = document.createElement('div');
     modal.className = 'mover';
     modal.id = 'modalDashboard';
     modal.innerHTML = `
-      <div class="mdl" style="max-width:920px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:93vh;">
-        <div class="mdl-hd" style="padding:16px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;">
-          <h3>📊 Dashboard — LNE 2026</h3>
-          <button class="mdl-x" onclick="LNE.fecharModal('modalDashboard')">×</button>
+      <div class="mdl mdl-panel" style="max-width:960px;max-height:93vh;">
+        <div class="mdl-hd mdl-bar">
+          <h3>Dashboard · LNE 2026</h3>
+          <button class="mdl-x" aria-label="Fechar" onclick="LNE.fecharModal('modalDashboard')">×</button>
         </div>
-        <div style="overflow-y:auto;flex:1;">
+        <div class="mdl-scroll">
           <!-- Panorama geral -->
-          <div id="dashboardPanorama" style="padding:14px;"></div>
+          <div id="dashboardPanorama" style="padding:22px 22px 4px;"></div>
           <!-- Seletor de escola -->
-          <div style="padding:10px 18px 14px;background:#f8fafc;border-top:1px solid var(--bd);">
-            <label style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;">
-              🔍 Análise individual por escola:
-            </label>
-            <select id="dashEscolaSelect" onchange="LNE.trocarEscolaDashboard()"
-              style="width:100%;border:1.5px solid var(--azm);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;">
-              <option value="">— Selecione uma escola —</option>
-              ${db.escolas.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('')}
-            </select>
+          <div class="dash-picker">
+            <label for="dashEscolaSelect">Analisar uma escola</label>
+            <select id="dashEscolaSelect" onchange="LNE.trocarEscolaDashboard()">${opcoes}</select>
           </div>
           <!-- Análise individual -->
-          <div id="dashboardConteudo" style="padding:14px;display:none;"></div>
+          <div id="dashboardConteudo" style="padding:22px;display:none;"></div>
         </div>
       </div>`;
     document.body.appendChild(modal);
   } else {
-    // Recria select com escolas atualizadas
+    // Recria o select com as escolas atualizadas
     const sel = document.getElementById('dashEscolaSelect');
-    if (sel) {
-      sel.innerHTML = '<option value="">— Selecione uma escola —</option>' +
-        db.escolas.map(e => '<option value="' + LNE.esc(e.nome) + '">' + LNE.esc(e.nome) + '</option>').join('');
-    }
+    if (sel) sel.innerHTML = opcoes;
   }
 
   modal.classList.add('open');
@@ -602,4 +577,4 @@ export function trocarEscolaDashboard() {
 export function selecionarEscolaDashboard(nome) {
   const sel = document.getElementById('dashEscolaSelect');
   if (sel) { sel.value = nome; trocarEscolaDashboard(); }
-}    
+}
