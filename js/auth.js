@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 // auth.js — Autenticação e navegação LNE 2026
 // ═══════════════════════════════════════════════════════════
-import { state, ADMIN_SENHA_HASH } from './state.js';
+import { state, ADMIN_SENHA_HASH, USAR_FIREBASE_AUTH } from './state.js';
 import { esc, uid, toTitle, gerarCodigo, getProvasOrdenadas } from './utils.js';
 import { showToast, abrirModal, fecharModal } from './ui.js';
 import { markDirty, salvarFirebase } from './firebase.js';
@@ -9,7 +9,10 @@ import { markDirty, salvarFirebase } from './firebase.js';
 // ── Login Admin ───────────────────────────────────────────
 export function loginAdmin() {
   document.getElementById('loginAdminForm').style.display = 'block';
-  setTimeout(() => document.getElementById('adminSenha').focus(), 100);
+  // Com Firebase Authentication o admin informa e-mail + senha
+  const wrap = document.getElementById('adminEmailWrap');
+  if (wrap) wrap.style.display = USAR_FIREBASE_AUTH ? '' : 'none';
+  setTimeout(() => document.getElementById(USAR_FIREBASE_AUTH ? 'adminEmail' : 'adminSenha')?.focus(), 100);
 }
 
 async function _sha256(txt) {
@@ -20,6 +23,25 @@ async function _sha256(txt) {
 export async function confirmarLoginAdmin() {
   const s = document.getElementById('adminSenha').value;
   if (!s) { alert('Digite a senha.'); return; }
+
+  // ── Firebase Authentication (quando ligado em state.js) ──
+  if (USAR_FIREBASE_AUTH) {
+    const email = (document.getElementById('adminEmail')?.value || '').trim();
+    if (!email) { alert('Digite o e-mail do administrador.'); return; }
+    if (!window._fb?.loginAdmin) { alert('Serviço de autenticação indisponível. Recarregue a página.'); return; }
+    try {
+      await window._fb.loginAdmin(email, s);
+    } catch (e) {
+      console.warn('Login admin falhou:', e?.code);
+      alert('E-mail ou senha incorretos.');
+      return;
+    }
+    state.perfil = 'admin';
+    iniciarApp();
+    return;
+  }
+
+  // ── Login antigo (hash no navegador) ──
   if (!window.crypto?.subtle) { alert('Este navegador/conexão não permite validar a senha (use HTTPS).'); return; }
   if (await _sha256(s) !== ADMIN_SENHA_HASH) { alert('Senha incorreta.'); return; }
   state.perfil = 'admin';
@@ -72,6 +94,7 @@ export async function cadastrarEscola() {
 
 // ── Logout ────────────────────────────────────────────────
 export function fazerLogout() {
+  if (USAR_FIREBASE_AUTH) window._fb?.logout?.().catch(() => {});
   state.perfil     = null;
   state.curEtapaId = null;
   state.curProva   = null;
@@ -80,6 +103,7 @@ export function fazerLogout() {
   document.getElementById('loginAdminForm').style.display = 'none';
   document.getElementById('loginEscolaForm').style.display = 'none';
   document.getElementById('adminSenha').value  = '';
+  const em = document.getElementById('adminEmail'); if (em) em.value = '';
   document.getElementById('loginCodigo').value = '';
   document.getElementById('etapaSticky').classList.remove('visible');
 }

@@ -34,8 +34,12 @@ const firebaseConfig = {
   appId: "1:631393516368:web:471f45e346ad11a9f58a55"
 };
 
+import { getAuth, signInWithEmailAndPassword, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
 const app = initializeApp(firebaseConfig);
 const fsdb = getFirestore(app);
+const auth = getAuth(app);
 
 // ── Expõe helpers globais para o código não-module ──
 window._fb = {
@@ -69,6 +73,10 @@ window._fb = {
       return { escolas, etapas };
     } catch(err) { console.error("Firebase load error:", err); return null; }
   },
+
+  // Login do administrador (Firebase Authentication)
+  loginAdmin(email, senha) { return signInWithEmailAndPassword(auth, email, senha); },
+  logout() { return signOut(auth); },
 
   async deleteEtapa(id) {
     try { await deleteDoc(doc(fsdb, "lne2026", "etapa_" + id)); return true; }
@@ -786,6 +794,11 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
         </div>
 
         <div id="loginAdminForm" class="login-form" style="display:none;">
+          <div class="frow" id="adminEmailWrap" style="display:none;">
+            <div class="fg grow"><label for="adminEmail">E-mail do administrador</label>
+              <input type="email" id="adminEmail" placeholder="voce@exemplo.com" autocomplete="username"/>
+            </div>
+          </div>
           <div class="frow">
             <div class="fg grow"><label for="adminSenha">Senha do administrador</label>
               <input type="password" id="adminSenha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')LNE.confirmarLoginAdmin()"/>
