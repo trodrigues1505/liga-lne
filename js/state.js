@@ -3,7 +3,10 @@
 // Todos os módulos leem/escrevem aqui. Nunca em variáveis locais.
 // ═══════════════════════════════════════════════════════════
 
-export const ADMIN_SENHA = 'cassiano2026';
+// Senha do admin: apenas o hash SHA-256 fica no código (nunca a senha em texto).
+export const ADMIN_SENHA_HASH = '684f501ab82f8258166796ed3e1ea64ac6de2d9e6a99c033ffb2150e67843696';
+// Legado: mantido só para não quebrar imports antigos (ex.: main.js). Não contém mais a senha.
+export const ADMIN_SENHA = null;
 export const PONTOS_LNE  = [13,9,7,5,4,3,2,1,1,1,1,1,1,1,1,1,1,1,1,1];
 
 export const state = {

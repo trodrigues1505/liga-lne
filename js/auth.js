@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 // auth.js — Autenticação e navegação LNE 2026
 // ═══════════════════════════════════════════════════════════
-import { state, ADMIN_SENHA } from './state.js';
+import { state, ADMIN_SENHA_HASH } from './state.js';
 import { esc, uid, toTitle, gerarCodigo, getProvasOrdenadas } from './utils.js';
 import { showToast, abrirModal, fecharModal } from './ui.js';
 import { markDirty, salvarFirebase } from './firebase.js';
@@ -12,9 +12,16 @@ export function loginAdmin() {
   setTimeout(() => document.getElementById('adminSenha').focus(), 100);
 }
 
-export function confirmarLoginAdmin() {
+async function _sha256(txt) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function confirmarLoginAdmin() {
   const s = document.getElementById('adminSenha').value;
-  if (s !== ADMIN_SENHA) { alert('Senha incorreta.'); return; }
+  if (!s) { alert('Digite a senha.'); return; }
+  if (!window.crypto?.subtle) { alert('Este navegador/conexão não permite validar a senha (use HTTPS).'); return; }
+  if (await _sha256(s) !== ADMIN_SENHA_HASH) { alert('Senha incorreta.'); return; }
   state.perfil = 'admin';
   iniciarApp();
 }
