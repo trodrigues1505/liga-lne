@@ -34,10 +34,21 @@ const firebaseConfig = {
   appId: "1:631393516368:web:471f45e346ad11a9f58a55"
 };
 
+import { initializeAppCheck, ReCaptchaV3Provider }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
 import { getAuth, signInWithEmailAndPassword, signOut }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+// App Check: só aceita chamadas que vieram de páginas verificadas do site.
+// Em localhost gera um "token de depuração" no console (registre-o em Firebase → App Check → Gerenciar tokens de depuração).
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') { self.FIREBASE_APPCHECK_DEBUG_TOKEN = true; }
 const app = initializeApp(firebaseConfig);
+try {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LfOPeQtAAAAAB6_aguhT4uRIkZEqVWX4hqDGAe4'),
+    isTokenAutoRefreshEnabled: true
+  });
+} catch (e) { console.warn('App Check não iniciou:', e); }
 const fsdb = getFirestore(app);
 const auth = getAuth(app);
 
