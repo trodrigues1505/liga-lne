@@ -2,6 +2,8 @@
 
 // Estado inscrição
 let _inscEtapaId = null, _inscNomePr = null;
+// Etapas expandidas na tela (começam todas recolhidas)
+const _etapasAbertas = new Set();
 
 export function renderPortalEscola(){
   if(!LNE.state.perfil||LNE.state.perfil==='admin') return;
@@ -33,8 +35,10 @@ export function renderPortalEscola(){
     const prazoOk=!e.prazoInscricao||e.prazoInscricao>=hoje;
     const provas=e.provas||{}, nomes=LNE.getProvasOrdenadas(e);
     const temResultados=Object.values(provas).some(p=>p.classificacao&&p.classificacao.length);
+    const aberta=_etapasAbertas.has(e.id);
+    const inscEtapa=Object.values(provas).reduce((s,p)=>s+(p.atletas||[]).filter(a=>a.escola===escola.nome).length,0);
     html+=`<div class="card" style="margin-bottom:12px;">
-      <div class="card-hd">📅 ${LNE.esc(e.nome)}
+      <div class="card-hd coll-hd" role="button" tabindex="0" aria-expanded="${aberta}" data-portal-toggle="${LNE.esc(e.id)}" title="Mostrar ou ocultar as provas">📅 ${LNE.esc(e.nome)}
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           ${prazoOk?'<span class="badge badge-green">✅ Inscrições abertas</span>':'<span class="badge badge-red">🔒 Prazo encerrado</span>'}
           ${e.prazoInscricao?`<span class="badge badge-blue">até ${LNE.fmtData(e.prazoInscricao)}</span>`:''}
@@ -42,9 +46,11 @@ export function renderPortalEscola(){
           ${(e.classLiberadaPorProva&&Object.values(e.classLiberadaPorProva).some(v=>v))||e.classificacaoLiberada?'<span class="badge badge-green">🏅 Classificação disponível</span>':''}
           ${LNE.state.db.rankingLiberado?'<span class="badge badge-blue">🏆 Ranking disponível</span>':''}
           ${e.placarLiberado?'<span class="badge badge-amber">🏅 Placar disponível</span>':''}
+          <span class="badge badge-gray">${inscEtapa} inscrição(ões)</span>
+          <span class="coll-arrow ${aberta?'open':''}" aria-hidden="true">▼</span>
         </div>
       </div>
-      <div class="card-bd">
+      <div class="card-bd" style="display:${aberta?'block':'none'};">
         ${(e.data||e.local||e.horaAquecimento)?`<div style="font-size:12px;color:#64748b;margin-bottom:10px;">${e.data?'📅 '+LNE.fmtData(e.data):''}${e.local?' · 📍 '+LNE.esc(e.local):''}${e.endereco?'<br>'+LNE.esc(e.endereco):''}${e.raias?' · '+e.raias+' raias '+LNE.esc(e.tamPiscina||''):''}${e.horaAquecimento?'<br>🕐 Aquecimento: <strong>'+e.horaAquecimento+'</strong>':''}${e.horaInicio?' · Início: <strong>'+e.horaInicio+'</strong>':''}</div>`:''}`;
     if(!nomes.length){ html+='<p style="font-size:12px;color:#94a3b8;font-style:italic;">Nenhuma prova cadastrada.</p>'; }
     else {
@@ -57,7 +63,7 @@ export function renderPortalEscola(){
         const atlE=provas[n].atletas.filter(a=>a.escola===escola.nome);
         const temBal=e.balizamentoLiberado&&(provas[n].series||[]).length>0;
         // Filtra categorias disponíveis para esta prova
-        const catsDaProva=(provas[n].categoria||'').split(',').map(c=>c.trim()).filter(Boolean);
+        const catsDaProva=_catsDaProva(provas[n].categoria);
         html+=`<tr>
           <td>
             <div style="font-weight:500;font-size:12px;">${LNE.esc(n)}</div>
@@ -192,6 +198,19 @@ export function gerenciarInscricaoBtn(btn){
   gerenciarInscricao(etapaId,nomePr);
 }
 
+const _ORDEM_CATS=['A7','A8','A9','A10','A11','A12','A13','A14','A15','A16-17'];
+
+// Extrai as categorias de um texto livre: "A10", "A7,A8", "A7 A8", "A7/A8", "A7 e A8", "A7-A9" (faixa)
+function _catsDaProva(txt){
+  let s=String(txt||'').toUpperCase().replace(/\s+/g,' ');
+  const out=new Set();
+  const add=n=>{ n=+n; if(n===16||n===17) out.add('A16-17'); else if(n>=7&&n<=15) out.add('A'+n); };
+  s=s.replace(/A(\d{1,2})\s*(?:-|–|—|ATÉ|ATE|A|À)\s*A(\d{1,2})/g,(m,a,b)=>{ for(let i=+a;i<=+b;i++) add(i); return ' '; });
+  s=s.replace(/A16\s*-\s*17/g,()=>{ add(16); return ' '; });
+  (s.match(/A\d{1,2}/g)||[]).forEach(t=>add(t.slice(1)));
+  return _ORDEM_CATS.filter(c=>out.has(c));
+}
+
 export function buildCatOptions(provaCats){
   // Todas as categorias LNE
   const TODAS=[
@@ -200,8 +219,9 @@ export function buildCatOptions(provaCats){
     {v:'A13',l:'A13 — nasc. 2013'},{v:'A14',l:'A14 — nasc. 2012'},{v:'A15',l:'A15 — nasc. 2011'},
     {v:'A16-17',l:'A16-17 — nasc. 2009-10'}
   ];
-  // Se a prova tem categorias definidas, filtra; senão mostra todas
-  const filtro=provaCats?provaCats.split(',').map(c=>c.trim()).filter(Boolean):[];
+  // Se a prova tem categorias reconhecidas, filtra; se não houver nenhuma (vazio ou formato
+  // desconhecido), mostra todas — a lista nunca fica vazia.
+  const filtro=_catsDaProva(provaCats);
   const disponiveis=filtro.length?TODAS.filter(c=>filtro.includes(c.v)):TODAS;
   return '<option value="">Selecione...</option>'+disponiveis.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
 }
@@ -346,4 +366,24 @@ async function _alterarSenhaPorEmail(){
 }
 document.addEventListener('click',ev=>{
   if(ev.target.closest('[data-portal-act="senha"]')) _alterarSenhaPorEmail();
+});
+
+// Recolher/expandir cada etapa (sem depender do namespace LNE)
+function _alternarEtapa(hd){
+  const id=hd.dataset.portalToggle;
+  const abrir=!_etapasAbertas.has(id);
+  abrir?_etapasAbertas.add(id):_etapasAbertas.delete(id);
+  const bd=hd.closest('.card')?.querySelector('.card-bd');
+  if(bd) bd.style.display=abrir?'block':'none';
+  hd.setAttribute('aria-expanded',String(abrir));
+  hd.querySelector('.coll-arrow')?.classList.toggle('open',abrir);
+}
+document.addEventListener('click',ev=>{
+  const hd=ev.target.closest('[data-portal-toggle]');
+  if(hd) _alternarEtapa(hd);
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key!=='Enter'&&ev.key!==' ') return;
+  const hd=ev.target.closest&&ev.target.closest('[data-portal-toggle]');
+  if(hd){ ev.preventDefault(); _alternarEtapa(hd); }
 });
