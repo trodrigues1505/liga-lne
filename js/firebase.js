@@ -46,6 +46,7 @@ export async function salvarFirebase() {
     }
     setSyncStatus(ok ? 'ok' : 'error');
     if (!ok) showToast('⚠️ Erro ao salvar no Firebase. Verifique a conexão.');
+    else if (window._fb.espelhoOk === false) showToast('⚠️ Banco salvo, mas a cópia pública não foi atualizada. Verifique as regras do Firestore.');
     return;
   }
 
@@ -82,6 +83,7 @@ export async function carregarDB() {
       state.modoLegado = true;
       const data = await window._fb.loadDB();
       if (data) { state.db = data; _garantirDb(); }
+      else { setSyncStatus('error'); loading(false); showToast('⚠️ Não foi possível carregar os dados da liga.'); return; }
     } else if (pub === undefined) {
       setSyncStatus('error');
       loading(false);
@@ -108,6 +110,7 @@ export async function carregarComoAdmin() {
     state.modoLegado = false;
 
     const extras = await window._fb.loadAdminExtras();
+    if (extras.erro) showToast('⚠️ Não foi possível ler as inscrições das escolas. Verifique as regras do Firestore.');
     state.solicitacoesProcessadas = state.solicitacoesProcessadas || [];
 
     // Pedidos de cadastro feitos pelo site → escolas "aguardando liberação"

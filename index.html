@@ -118,15 +118,18 @@ window._fb = {
 
   // ADMIN: grava banco completo + cópia pública + visão de cada escola + documentos de acesso
   async saveAdmin(data, espelho, visoes, acessos) {
-    try {
+    this.espelhoOk = true;
+    try {   // 1) banco completo: se falhar, o salvamento falhou
       await this._put('lne2026/escolas', { escolas: data.escolas || [], rankingLiberado: !!data.rankingLiberado });
       for (const e of (data.etapas || [])) await this._put('lne2026/etapa_' + e.id, { etapa: e });
+    } catch (err) { console.error('Firebase saveAdmin error:', err); return false; }
+    try {   // 2) cópia pública, visões e acessos: se falhar, avisa (regras do Firestore ainda não liberam)
       await this._put('publico/config', espelho.config);
       for (const e of espelho.etapas) await this._put('publico/etapa_' + e.id, { etapa: e });
       for (const v of visoes) await this._put('escolaView/' + v.etapaId + '_' + v.uid, v);
       for (const a of (acessos || [])) await this._put('acessoEscola/' + a.uid, a);
-      return true;
-    } catch (err) { console.error('Firebase saveAdmin error:', err); return false; }
+    } catch (err) { console.warn('Cópia pública não atualizada:', err?.code || err); this.espelhoOk = false; }
+    return true;
   },
 
   // Cópia pública: null = ainda não publicada; undefined = erro de leitura
@@ -138,15 +141,21 @@ window._fb = {
       const docs = await Promise.all((config.etapaIds || []).map(id => getDoc(doc(fsdb, 'publico', 'etapa_' + id))));
       const etapas = docs.filter(s => s.exists() && s.data().etapa).map(s => s.data().etapa);
       return { config, etapas };
-    } catch (err) { console.error('Firebase loadPublico error:', err); return undefined; }
+    } catch (err) {
+      if (err?.code === 'permission-denied') { console.warn('Cópia pública sem permissão de leitura (regras do Firestore).'); return null; }
+      console.error('Firebase loadPublico error:', err); return undefined;
+    }
   },
 
   // ADMIN: inscrições enviadas pelas escolas e pedidos de cadastro
   async loadAdminExtras() {
     const insc = [], sol = [];
-    const a = await getDocs(collection(fsdb, 'inscricoes')); a.forEach(d => insc.push(d.data()));
-    const b = await getDocs(collection(fsdb, 'solicitacoes')); b.forEach(d => sol.push({ _id: d.id, ...d.data() }));
-    return { insc, sol };
+    let erro = false;
+    try { const a = await getDocs(collection(fsdb, 'inscricoes')); a.forEach(d => insc.push(d.data())); }
+    catch (err) { console.warn('Inscrições não lidas:', err?.code || err); erro = true; }
+    try { const s = await getDocs(collection(fsdb, 'solicitacoes')); s.forEach(d => sol.push({ _id: d.id, ...d.data() })); }
+    catch (err) { console.warn('Pedidos de cadastro não lidos:', err?.code || err); erro = true; }
+    return { insc, sol, erro };
   },
 
   // ESCOLA: seu documento de acesso, sua visão e suas inscrições (documentos "<etapa>_<uid>")
