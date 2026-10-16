@@ -169,8 +169,8 @@ export function renderEtapas(){
         </div>
       </div>
       <div style="display:flex;gap:6px;">
-        <button class="btn b-out" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();editarEtapa('${e.id}')">✏️ Editar</button>
-        <button class="btn b-red" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();excluirEtapa('${e.id}')">🗑️ Excluir</button>
+        <button class="btn b-out" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();LNE.editarEtapa('${e.id}')">✏️ Editar</button>
+        <button class="btn b-red" style="font-size:11px;padding:4px 9px;" onclick="event.stopPropagation();LNE.excluirEtapa('${e.id}')">🗑️ Excluir</button>
       </div>
     </div>`;
   }).join('');

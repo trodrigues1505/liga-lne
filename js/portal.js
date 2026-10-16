@@ -244,7 +244,7 @@ export function gerenciarInscricao(etapaId,nomePr){
             <input type="text" id="inscrTRef" placeholder="Ex: 00:32,50"
               style="border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:15px;font-family:monospace;color:var(--cz);background:#fff;outline:none;"
               onfocus="this.style.borderColor='var(--azm)'" onblur="this.style.borderColor='var(--bd)'"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarAtletaPortal();}"/>
+              onkeydown="if(event.key==='Enter'){event.preventDefault();LNE.confirmarAtletaPortal();}"/>
           </div>
         </div>
         <button class="btn b-pri" style="width:100%;padding:12px;font-size:14px;" onclick="LNE.confirmarAtletaPortal()">✅ Adicionar atleta</button>

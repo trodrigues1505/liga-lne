@@ -53,7 +53,7 @@ export function addAtleta(nome){
   const escola=LNE.state.perfil&&LNE.state.perfil!=='admin'?LNE.state.perfil.nome:'';
   document.getElementById('addAtletaTitulo').textContent=`+ Atleta em "${nome}"`;
   document.getElementById('addAtletaConteudo').innerHTML=`
-    <div class="frow"><div class="fg grow"><label>Nome *</label><input type="text" id="addNome" placeholder="Nome completo" onkeydown="if(event.key==='Enter')confirmarAddAtleta(${LNE.jstr(nome)})"/></div></div>
+    <div class="frow"><div class="fg grow"><label>Nome *</label><input type="text" id="addNome" placeholder="Nome completo" onkeydown="if(event.key==='Enter')LNE.confirmarAddAtleta(${LNE.jstr(nome)})"/></div></div>
     <div class="frow">
       <div class="fg"><label>Categoria *</label><input type="text" id="addCat" placeholder="Ex: A12"/></div>
       <div class="fg grow"><label>Escola</label><input type="text" id="addEscola" value="${LNE.esc(escola)}" placeholder="Nome da escola"/></div>

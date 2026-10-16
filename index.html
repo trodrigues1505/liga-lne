@@ -1136,10 +1136,13 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
     </div>
 
     <!-- Provas padrão LNE -->
+    <!-- O etapas.js localiza este bloco por div[style*="background"] para mostrar/ocultar: não remova o style -->
+    <div style="background:none;">
     <label class="opt-card">
       <input type="checkbox" id="etapaCriarProvas" checked/>
       <span><strong>Criar as 20 provas padrão da LNE</strong><small>25m, 50m e 100m · Livre, Costas e Peito · Masculino e Feminino · por faixa de categoria. Você pode ajustar depois.</small></span>
     </label>
+    </div>
 
     <div class="note note-info"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div>Após criar a etapa você também pode adicionar provas manualmente ou usar o botão "Provas padrão LNE" na tela da etapa.</div></div>
     <div class="mdl-actions">
