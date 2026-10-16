@@ -282,7 +282,7 @@ export function confirmarAtletaPortal(){
     LNE.showToast('⚠️ Selecione a categoria.');return;
   }
   const etapa=LNE.state.db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
-  p.atletas.push({id:LNE.uid(),nome,categoria:cat,escola:LNE.state.perfil.nome,tempoRef:tr,tempo:''});
+  p.atletas.push({id:LNE.uid(),nome,categoria:cat,escola:LNE.state.perfil.nome,tempoRef:tr,tempo:'',origem:'escola'});
   LNE.markDirty(); LNE.renderInscrAtletas(etapaId,nomePr); LNE.renderPortalEscola();
   // Limpa para próximo atleta
   const nomeEl=document.getElementById('inscrNome');
@@ -309,7 +309,9 @@ export function renderInscrAtletas(etapaId,nomePr){
         <div style="font-weight:600;font-size:13px;">${LNE.esc(a.nome)}</div>
         <div style="font-size:11px;color:#64748b;">Cat: <strong>${LNE.esc(a.categoria||'—')}</strong>${a.tempoRef?' · Ref: '+LNE.esc(a.tempoRef):''}</div>
       </div>
-      <button style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:6px;font-weight:600;" onclick="LNE.rmAtletaPortal(${idx})">✕ Remover</button>
+      ${(LNE.state.modoLegado||a.origem==='escola')
+        ? `<button style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:5px 10px;border-radius:6px;font-weight:600;" onclick="LNE.rmAtletaPortal(${idx})">✕ Remover</button>`
+        : `<span style="font-size:11px;color:#94a3b8;">Inscrito pela organização</span>`}
     </div>`;
   }).join('');
 }
@@ -319,6 +321,9 @@ export function rmAtletaPortal(idx){
   const etapaId=_inscEtapaId, nomePr=_inscNomePr;
   if(!etapaId||!nomePr) return;
   const etapa=LNE.state.db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
+  const alvo=p.atletas[idx];
+  // Só atletas inscritos pela própria escola podem ser removidos por ela
+  if(!alvo||alvo.escola!==LNE.state.perfil.nome||(!LNE.state.modoLegado&&alvo.origem!=='escola')){LNE.showToast('Este atleta foi inscrito pela organização da liga.');return;}
   p.atletas.splice(idx,1); LNE.markDirty(); LNE.renderInscrAtletas(etapaId,nomePr); LNE.renderPortalEscola();
 }
 

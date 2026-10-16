@@ -22,7 +22,7 @@
 <!-- Firebase (inicializa e expõe window._fb) -->
 <script type="module">
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc }
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc, addDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -104,9 +104,97 @@ window._fb = {
   },
   logout() { return signOut(auth); },
 
+  // ── Cache para não regravar documentos que não mudaram (economiza cota gratuita) ──
+  _cache: new Map(),
+  async _put(caminho, dados) {
+    const assinatura = JSON.stringify(dados);
+    if (this._cache.get(caminho) === assinatura) return false;
+    const [col, id] = caminho.split('/');
+    // JSON elimina valores "undefined" (o Firestore não os aceita)
+    await setDoc(doc(fsdb, col, id), { ...JSON.parse(assinatura), ts: Date.now() });
+    this._cache.set(caminho, assinatura);
+    return true;
+  },
+
+  // ADMIN: grava banco completo + cópia pública + visão de cada escola + documentos de acesso
+  async saveAdmin(data, espelho, visoes, acessos) {
+    try {
+      await this._put('lne2026/escolas', { escolas: data.escolas || [], rankingLiberado: !!data.rankingLiberado });
+      for (const e of (data.etapas || [])) await this._put('lne2026/etapa_' + e.id, { etapa: e });
+      await this._put('publico/config', espelho.config);
+      for (const e of espelho.etapas) await this._put('publico/etapa_' + e.id, { etapa: e });
+      for (const v of visoes) await this._put('escolaView/' + v.etapaId + '_' + v.uid, v);
+      for (const a of (acessos || [])) await this._put('acessoEscola/' + a.uid, a);
+      return true;
+    } catch (err) { console.error('Firebase saveAdmin error:', err); return false; }
+  },
+
+  // Cópia pública: null = ainda não publicada; undefined = erro de leitura
+  async loadPublico() {
+    try {
+      const c = await getDoc(doc(fsdb, 'publico', 'config'));
+      if (!c.exists()) return null;
+      const config = c.data();
+      const docs = await Promise.all((config.etapaIds || []).map(id => getDoc(doc(fsdb, 'publico', 'etapa_' + id))));
+      const etapas = docs.filter(s => s.exists() && s.data().etapa).map(s => s.data().etapa);
+      return { config, etapas };
+    } catch (err) { console.error('Firebase loadPublico error:', err); return undefined; }
+  },
+
+  // ADMIN: inscrições enviadas pelas escolas e pedidos de cadastro
+  async loadAdminExtras() {
+    const insc = [], sol = [];
+    const a = await getDocs(collection(fsdb, 'inscricoes')); a.forEach(d => insc.push(d.data()));
+    const b = await getDocs(collection(fsdb, 'solicitacoes')); b.forEach(d => sol.push({ _id: d.id, ...d.data() }));
+    return { insc, sol };
+  },
+
+  // ESCOLA: seu documento de acesso, sua visão e suas inscrições (documentos "<etapa>_<uid>")
+  async loadEscola(uid, etapaIds) {
+    const out = { acesso: null, view: [], insc: [], erro: false };
+    try {
+      const a = await getDoc(doc(fsdb, 'acessoEscola', uid));
+      out.acesso = a.exists() ? a.data() : null;
+    } catch (err) { console.error(err); out.erro = true; return out; }
+    if (!out.acesso) return out;   // sem acesso liberado: não há nada mais para ler
+    await Promise.all((etapaIds || []).map(async id => {
+      try { const v = await getDoc(doc(fsdb, 'escolaView', id + '_' + uid)); if (v.exists()) out.view.push(v.data()); }
+      catch (err) { console.error(err); out.erro = true; }
+      try { const i = await getDoc(doc(fsdb, 'inscricoes', id + '_' + uid)); if (i.exists()) out.insc.push(i.data()); }
+      catch (err) { console.error(err); out.erro = true; }
+    }));
+    return out;
+  },
+
+  // ESCOLA: grava somente as próprias inscrições
+  async saveEscola(docs) {
+    try {
+      for (const d of docs) await this._put('inscricoes/' + d.etapaId + '_' + d.uid, d);
+      return true;
+    } catch (err) { console.error('Firebase saveEscola error:', err); return false; }
+  },
+
+  // VISITANTE: pedido de cadastro de escola (o administrador revisa)
+  async solicitarCadastro(payload) {
+    await addDoc(collection(fsdb, 'solicitacoes'), { ...payload, em: Date.now() });
+    return true;
+  },
+  async deleteSolicitacao(id) {
+    try { await deleteDoc(doc(fsdb, 'solicitacoes', id)); return true; } catch (err) { console.error(err); return false; }
+  },
+
   async deleteEtapa(id) {
-    try { await deleteDoc(doc(fsdb, "lne2026", "etapa_" + id)); return true; }
-    catch(err) { console.error(err); return false; }
+    try {
+      await deleteDoc(doc(fsdb, 'lne2026', 'etapa_' + id));
+      await deleteDoc(doc(fsdb, 'publico', 'etapa_' + id));
+      // visões e inscrições daquela etapa (ids no formato "<etapa>_<uid>")
+      for (const col of ['escolaView', 'inscricoes']) {
+        const snap = await getDocs(collection(fsdb, col));
+        for (const d of snap.docs) if (d.id.startsWith(id + '_')) { await deleteDoc(d.ref); this._cache.delete(col + '/' + d.id); }
+      }
+      this._cache.delete('lne2026/etapa_' + id); this._cache.delete('publico/etapa_' + id);
+      return true;
+    } catch (err) { console.error(err); return false; }
   },
 
   // Listener em tempo real para escolas (útil para portal escola)

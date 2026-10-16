@@ -12,7 +12,26 @@ function _senhaTemporaria() {
   return btoa(String.fromCharCode(...b)).replace(/[+/=]/g, 'x') + 'Aa1';
 }
 
+// UID tem 28 letras/números (Console → Authentication → Usuários → "UID do usuário")
+function _pedirUid(email) {
+  const v = prompt(`Já existe uma conta com o e-mail ${email}.\n\nSe ela foi criada por você para esta escola, cole aqui o UID dela (Console → Authentication → Usuários → coluna "UID do usuário").\n\nSe você não a criou, cancele, exclua a conta lá e tente de novo.`);
+  const uid = String(v || '').trim();
+  if (!uid) return null;
+  if (!/^[A-Za-z0-9]{20,40}$/.test(uid)) { LNE.showToast('UID inválido.'); return null; }
+  return uid;
+}
+
+function _vincular(id) {
+  const e = LNE.state.db.escolas.find(x => x.id === id); if (!e) return;
+  const uid = _pedirUid(String(e.email || '').trim().toLowerCase());
+  if (!uid) return;
+  e.uid = uid; e.acessoCriado = true;
+  LNE.markDirty(); renderEscolas();
+  LNE.showToast('Conta vinculada.');
+}
+
 function _status(e) {
+  if (e.acessoCriado && !e.uid) return { txt: 'Falta vincular a conta', cls: 'badge-amber' };
   if (e.acessoCriado) return { txt: 'Acesso ativo',  cls: 'badge-green' };
   if (e.status === 'pendente') return { txt: 'Aguardando liberação', cls: 'badge-amber' };
   return { txt: 'Sem acesso', cls: 'badge-gray' };
@@ -38,7 +57,8 @@ export function renderEscolas() {
   el.innerHTML = aviso + escolas.map(e => {
     const st = _status(e);
     const botoes = e.acessoCriado
-      ? `<button class="btn b-out" data-esc-act="reenviar" data-id="${LNE.esc(e.id)}">Reenviar e-mail de acesso</button>`
+      ? `${e.uid ? '' : `<button class="btn b-pri" data-esc-act="vincular" data-id="${LNE.esc(e.id)}">Vincular conta (UID)</button>`}
+         <button class="btn b-out" data-esc-act="reenviar" data-id="${LNE.esc(e.id)}">Reenviar e-mail de acesso</button>`
       : `<button class="btn b-pri" data-esc-act="criar" data-id="${LNE.esc(e.id)}">${e.status === 'pendente' ? 'Aprovar e criar acesso' : 'Criar acesso'}</button>`;
     return `<div class="escola-card">
       <div class="etapa-num" aria-hidden="true">${ic('school', 'ic ic-lg')}</div>
@@ -66,8 +86,12 @@ async function _criarAcesso(id, { silencioso = false } = {}) {
   try {
     uid = await window._fb.criarContaEscola(email, _senhaTemporaria());
   } catch (err) {
-    // Conta já existente: segue apenas com o envio do e-mail
-    if (err?.code !== 'auth/email-already-in-use') {
+    if (err?.code === 'auth/email-already-in-use') {
+      // Já existe uma conta com este e-mail. Só vinculamos se o administrador confirmar que é a da escola.
+      if (silencioso) { LNE.showToast(`"${e.nome}": já existe conta com este e-mail. Use "Vincular conta (UID)".`); return false; }
+      uid = _pedirUid(email);
+      if (!uid) return false;
+    } else {
       console.warn('Criar conta falhou:', err?.code);
       LNE.showToast(`Não foi possível criar o acesso de "${e.nome}" (${err?.code || 'erro'}).`);
       return false;
@@ -79,7 +103,7 @@ async function _criarAcesso(id, { silencioso = false } = {}) {
   catch (err) { enviado = false; console.warn('Envio do e-mail falhou:', err?.code); }
 
   e.acessoCriado = true;
-  if (uid) e.uid = uid;
+  e.uid = uid;
   e.acessoCriadoEm = new Date().toISOString();
   delete e.status;
   delete e.codigo;            // o código antigo deixa de existir
@@ -137,6 +161,7 @@ document.addEventListener('click', (ev) => {
     case 'criar':    _criarAcesso(id); break;
     case 'todos':    _criarAcessoTodas(); break;
     case 'reenviar': _reenviar(id); break;
+    case 'vincular': _vincular(id); break;
     case 'excluir':  excluirEscola(id); break;
   }
 });

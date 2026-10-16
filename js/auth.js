@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════
 // auth.js — Autenticação e navegação LNE 2026
 // ═══════════════════════════════════════════════════════════
-import { state, ADMIN_EMAIL } from './state.js';
+import { state, ADMIN_UID } from './state.js';
 import { esc, uid, toTitle, getProvasOrdenadas } from './utils.js';
 import { showToast, abrirModal, fecharModal } from './ui.js';
-import { markDirty, salvarFirebase } from './firebase.js';
+import { markDirty, salvarFirebase, carregarDB, carregarComoAdmin, carregarComoEscola } from './firebase.js';
 
 // ── Login Admin ───────────────────────────────────────────
 export function loginAdmin() {
@@ -27,12 +27,19 @@ export async function confirmarLoginAdmin() {
     return;
   }
   // Contas de escola também existem no Firebase: só a do administrador pode entrar aqui
-  if ((cred?.user?.email || '').toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+  if (cred?.user?.uid !== ADMIN_UID) {
     try { await window._fb.logout(); } catch (e) {}
     alert('Esta conta não é de administrador. Use a opção "Escola / Colégio".');
     return;
   }
   state.perfil = 'admin';
+  // Carrega o banco completo, incorpora inscrições/cadastros novos e publica a cópia pública
+  if (!(await carregarComoAdmin())) {
+    state.perfil = null;
+    try { await window._fb.logout(); } catch (e) {}
+    alert('Não foi possível carregar os dados. Verifique a conexão e tente novamente.');
+    return;
+  }
   iniciarApp();
 }
 
@@ -43,28 +50,51 @@ export function mostrarLoginEscola() {
 }
 
 const _norm = (t) => String(t || '').trim().toLowerCase();
-const _escolaPorEmail = (email) => state.db.escolas.find(e => _norm(e.email) === _norm(email));
 
 export async function loginEscola() {
   const email = _norm(document.getElementById('loginEmail')?.value);
   const senha = document.getElementById('loginSenha')?.value || '';
   if (!email || !senha) { alert('Digite o e-mail e a senha.'); return; }
-  if (!state.fbReady || !state.db.escolas.length) { alert('Os dados ainda estão carregando. Tente novamente em instantes.'); return; }
-  if (email === _norm(ADMIN_EMAIL)) { alert('Para entrar como administrador, use o botão "Administrador".'); return; }
+  if (!state.fbReady) { alert('Os dados ainda estão carregando. Tente novamente em instantes.'); return; }
 
-  const escola = _escolaPorEmail(email);
-  if (!escola || !escola.acessoCriado) {
-    alert('O acesso desta escola ainda não foi liberado. Fale com a organização da liga.');
-    return;
+  // Modo legado (cópia pública ainda não publicada): confere o cadastro no banco antigo
+  let escolaLegado = null;
+  if (state.modoLegado) {
+    escolaLegado = state.db.escolas.find(e => _norm(e.email) === email);
+    if (!escolaLegado || !escolaLegado.acessoCriado) {
+      alert('O acesso desta escola ainda não foi liberado. Fale com a organização da liga.');
+      return;
+    }
   }
+
+  let cred;
   try {
-    await window._fb.login(email, senha);
+    cred = await window._fb.login(email, senha);
   } catch (e) {
     console.warn('Login escola falhou:', e?.code);
     alert('E-mail ou senha incorretos. No primeiro acesso, use "Primeiro acesso ou esqueci a senha" para criar a sua senha.');
     return;
   }
-  state.perfil = escola;
+  if (cred?.user?.uid === ADMIN_UID) {
+    try { await window._fb.logout(); } catch (e) {}
+    alert('Para entrar como administrador, use o botão "Administrador".');
+    return;
+  }
+
+  if (state.modoLegado) {
+    state.perfil = escolaLegado;
+    iniciarApp();
+    return;
+  }
+
+  // Modo novo: o cadastro da escola vem do documento de acesso criado pelo administrador
+  const perfil = await carregarComoEscola(cred.user.uid);
+  if (!perfil) {
+    try { await window._fb.logout(); } catch (e) {}
+    alert('O acesso desta escola ainda não foi liberado. Fale com a organização da liga.');
+    return;
+  }
+  state.perfil = perfil;
   iniciarApp();
 }
 
@@ -73,11 +103,8 @@ export async function loginEscola() {
 export async function esqueciSenhaEscola() {
   const email = _norm(document.getElementById('loginEmail')?.value);
   if (!email) { alert('Digite o e-mail da escola no campo "E-mail" e clique novamente.'); return; }
-  const escola = _escolaPorEmail(email);
-  if (escola?.acessoCriado) {
-    try { await window._fb.enviarEmailAcesso(email); }
-    catch (e) { console.warn('Envio do e-mail de acesso falhou:', e?.code); }
-  }
+  try { await window._fb.enviarEmailAcesso(email); }
+  catch (e) { console.warn('Envio do e-mail de acesso falhou:', e?.code); }
   alert('Se este e-mail estiver liberado, você receberá em instantes uma mensagem com o link para criar ou redefinir a senha. Confira também a caixa de spam.');
 }
 
@@ -105,8 +132,22 @@ export async function cadastrarEscola() {
     // registro do aceite (comprova quando e qual versão do aviso foi aceita)
     aceitePrivacidade: { versao: '2026-10', em: agora }
   };
-  state.db.escolas.push(escola);
-  await salvarFirebase();
+  if (state.perfil === 'admin' || state.modoLegado) {
+    state.db.escolas.push(escola);
+    await salvarFirebase();
+  } else {
+    // Visitante: envia um pedido de cadastro; o administrador revisa e libera o acesso
+    try {
+      await window._fb.solicitarCadastro({
+        nome: escola.nome, responsavel: escola.responsavel, email: String(email).slice(0, 120),
+        telefone: String(tel).slice(0, 30), aceitePrivacidade: escola.aceitePrivacidade,
+      });
+    } catch (e) {
+      console.warn('Solicitação de cadastro falhou:', e?.code);
+      alert('Não foi possível enviar o cadastro agora. Tente novamente em instantes.');
+      return;
+    }
+  }
   const chk = document.getElementById('cadAceite'); if (chk) chk.checked = false;
   fecharModal('modalCadEscola');
   alert('✅ Cadastro recebido!\n\nA organização da liga vai liberar o acesso da escola. Quando isso acontecer, você receberá um e-mail para criar a sua senha.');
@@ -115,6 +156,10 @@ export async function cadastrarEscola() {
 // ── Logout ────────────────────────────────────────────────
 export function fazerLogout() {
   window._fb?.logout?.().catch(() => {});
+  // Descarta os dados do usuário que saiu e volta a carregar só a cópia pública
+  state.db = { etapas: [], escolas: [] };
+  state.escolaIncompleto = false;
+  carregarDB();
   state.perfil     = null;
   state.curEtapaId = null;
   state.curProva   = null;

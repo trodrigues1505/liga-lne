@@ -4,10 +4,10 @@
 // ═══════════════════════════════════════════════════════════
 
 // O login do administrador é feito pelo Firebase Authentication (e-mail + senha); não há senha no código.
-// Conta que tem permissão de administrador (e-mail do usuário criado em Authentication).
-// Contas de escola também existem no Firebase Authentication; esta checagem impede que
-// uma escola use o formulário de administrador. Troque pelo UID depois da Etapa 3.
-export const ADMIN_EMAIL = 't.rodrigues1505@gmail.com';
+// UID da conta do administrador (Firebase → Authentication → Usuários → "UID do usuário").
+// Contas de escola também existem no Firebase; só esta conta entra como administrador.
+// O UID não é segredo (a segurança está na senha e nas regras do Firestore).
+export const ADMIN_UID = 'MoxttUzlfITuQC3mJVFEioqxcD92';
 // Legado: mantido só para não quebrar imports antigos (ex.: main.js). Não contém mais a senha.
 export const ADMIN_SENHA = null;
 export const PONTOS_LNE  = [13,9,7,5,4,3,2,1,1,1,1,1,1,1,1,1,1,1,1,1];
@@ -21,6 +21,9 @@ export const state = {
   fsProva:     null,
   fsTempos:    {},
   fbReady:     false,
+  modoLegado:  false,   // true enquanto a cópia pública ainda não foi publicada pelo administrador
+  escolaIncompleto: false, // true se a escola não conseguiu carregar todas as suas inscrições
+  solicitacoesProcessadas: [],
   saveDebounce: null,
   // import excel
   importPendente: null,
