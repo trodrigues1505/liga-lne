@@ -1,5 +1,5 @@
 // service-worker.js — LNE 2026 PWA
-const CACHE = 'lne2026-v1';
+const CACHE = 'lne2026-v2';
 const ASSETS = [
   '/liga-lne/',
   '/liga-lne/index.html',
