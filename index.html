@@ -221,6 +221,7 @@ window.dispatchEvent(new Event("firebaseReady"));
 <!-- App LNE — ponto de entrada ES Module -->
 <script type="module" src="js/main.js"></script>
 <script type="module" src="js/privacidade.js"></script>
+<script type="module" src="js/admin_inscricoes.js"></script>
 
 <style>
 /* ═══════════════════════════════════════════════════════════
@@ -1075,12 +1076,14 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
               <div class="dropdown-label">Provas</div>
               <button class="dropdown-item" onclick="document.getElementById('provasXlsxImport').click();LNE.fecharDropdowns()">Importar provas (Excel)</button>
               <button class="dropdown-item" data-prova-act="excluir-varias" onclick="LNE.fecharDropdowns()">Excluir várias provas…</button>
+              <button class="dropdown-item" data-adm-act="copiar" onclick="LNE.fecharDropdowns()">Copiar atletas de outra etapa…</button>
               <button class="dropdown-item" onclick="LNE.abrirReordenar();LNE.fecharDropdowns()">Reordenar provas</button>
               <button class="dropdown-item" onclick="LNE.abrirMesclar();LNE.fecharDropdowns()">Mesclar provas</button>
               <button class="dropdown-item" onclick="LNE.abrirAuditoria();LNE.fecharDropdowns()">Auditoria de inscrições</button>
               <div class="dropdown-sep"></div>
               <div class="dropdown-label">Resultados</div>
               <button class="dropdown-item" onclick="LNE.abrirRelatorio();LNE.fecharDropdowns()">Relatório de atletas</button>
+              <button class="dropdown-item" data-adm-act="cobranca" onclick="LNE.fecharDropdowns()">Cobrança das inscrições…</button>
               <button class="dropdown-item" onclick="LNE.abrirPlacarEtapa();LNE.fecharDropdowns()">Placar da etapa</button>
               <button class="dropdown-item" onclick="LNE.abrirPlacarGeral();LNE.fecharDropdowns()">Ranking geral</button>
               <div class="dropdown-sep"></div>
