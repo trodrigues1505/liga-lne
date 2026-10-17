@@ -54,7 +54,10 @@ export function renderEscolas() {
       <div style="margin-top:10px;"><button class="btn b-pri" data-esc-act="todos">Criar acesso para todas as escolas sem acesso</button></div>
     </div></div>` : '';
 
-  el.innerHTML = aviso + escolas.map(e => {
+  const barra = `<div class="note note-info" style="align-items:center;">${ic('info')}<div style="flex:1;">
+      <strong>Escola aparecendo com dois nomes?</strong> Se os atletas de uma etapa estão com um nome (ex.: sigla) e o cadastro da escola tem outro, a escola não enxerga os próprios atletas e o ranking se divide.
+    </div><button class="btn b-out" data-esc-act="unificar">Unificar escolas</button></div>`;
+  el.innerHTML = barra + aviso + escolas.map(e => {
     const st = _status(e);
     const botoes = e.acessoCriado
       ? `${e.uid ? '' : `<button class="btn b-pri" data-esc-act="vincular" data-id="${LNE.esc(e.id)}">Vincular conta (UID)</button>`}
@@ -152,6 +155,120 @@ export function excluirEscola(id) {
 export function copiarCodigo() { LNE.showToast('Os códigos de acesso foram substituídos pelo login com e-mail.'); }
 export function alterarCodigo() { LNE.showToast('Os códigos de acesso foram substituídos pelo login com e-mail.'); }
 
+// ═══════════════════════════════════════════════════════════
+// Unificar escolas: troca, em todas as etapas, o nome usado nos atletas
+// pelo nome do cadastro oficial (o que tem login).
+// ═══════════════════════════════════════════════════════════
+const _n = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+// Sigla do nome: "Colégio Carlos Drumond de Andrade" → "ccda"
+const _sigla = (t) => _n(t).split(/\s+/).filter(w => w && !['de', 'da', 'do', 'das', 'dos', 'e'].includes(w)).map(w => w[0]).join('');
+
+// Onde um nome de escola aparece nas etapas: atletas, classificações e raias
+function _usoDoNome(nome) {
+  const u = { atletas: 0, classif: 0, raias: 0 };
+  (LNE.state.db.etapas || []).forEach(e => Object.values(e.provas || {}).forEach(p => {
+    u.atletas += (p.atletas || []).filter(a => a.escola === nome).length;
+    ['classificacao', 'classificacaoNFed', 'classificacaoFed'].forEach(k => { u.classif += (p[k] || []).filter(a => a.escola === nome).length; });
+    (p.series || []).forEach(sr => (sr.lanes || []).forEach(l => { if (l && l.escola === nome) u.raias++; }));
+  }));
+  return u;
+}
+
+// Todos os nomes de escola que existem nos dados, com a quantidade de atletas
+function _nomesEmUso() {
+  const m = new Map();
+  (LNE.state.db.etapas || []).forEach(e => Object.values(e.provas || {}).forEach(p => (p.atletas || []).forEach(a => {
+    if (a.escola) m.set(a.escola, (m.get(a.escola) || 0) + 1);
+  })));
+  (LNE.state.db.escolas || []).forEach(e => { if (e.nome && !m.has(e.nome)) m.set(e.nome, 0); });
+  return [...m.entries()].map(([nome, atletas]) => ({ nome, atletas })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+export function unificarEscolas(origem, destino) {
+  const db = LNE.state.db;
+  const r = { atletas: 0, classif: 0, raias: 0 };
+  (db.etapas || []).forEach(e => Object.values(e.provas || {}).forEach(p => {
+    (p.atletas || []).forEach(a => { if (a.escola === origem) { a.escola = destino; r.atletas++; } });
+    ['classificacao', 'classificacaoNFed', 'classificacaoFed'].forEach(k => (p[k] || []).forEach(a => { if (a.escola === origem) { a.escola = destino; r.classif++; } }));
+    (p.series || []).forEach(sr => (sr.lanes || []).forEach(l => { if (l && l.escola === origem) { l.escola = destino; r.raias++; } }));
+  }));
+  return r;
+}
+
+function _abrirUnificar() {
+  const escolas = LNE.state.db.escolas || [];
+  if (!escolas.length) { LNE.showToast('Nenhuma escola cadastrada.'); return; }
+  document.getElementById('modalUnificar')?.remove();
+  const nomes = _nomesEmUso();
+  const m = document.createElement('div');
+  m.className = 'mover open'; m.id = 'modalUnificar';
+  const optDestino = escolas.map(e => `<option value="${LNE.esc(e.nome)}">${LNE.esc(e.nome)}${e.acessoCriado ? ' (com acesso)' : ''}</option>`).join('');
+  m.innerHTML = `<div class="mdl" style="max-width:600px;" role="dialog" aria-modal="true">
+    <div class="mdl-hd"><h3>Unificar escolas</h3><button class="mdl-x" data-esc-act="fechar-unificar" aria-label="Fechar">×</button></div>
+    <p class="mdl-lead">Todos os atletas, classificações e raias do <strong>nome antigo</strong> passam a usar o <strong>nome oficial</strong>. Faça um backup antes.</p>
+    <div class="frow"><div class="fg grow"><label for="unifDestino">Nome oficial (cadastro que fica)</label>
+      <select id="unifDestino" data-esc-act="unif-mudou">${optDestino}</select></div></div>
+    <div class="frow"><div class="fg grow"><label for="unifOrigem">Nome antigo ou duplicado (será substituído)</label>
+      <select id="unifOrigem" data-esc-act="unif-mudou"></select></div></div>
+    <div id="unifResumo" class="note note-info" style="margin-bottom:12px;"></div>
+    <label class="opt-card" id="unifRemoverWrap" style="display:none;">
+      <input type="checkbox" id="unifRemover" checked/>
+      <span><strong>Remover da lista o cadastro duplicado</strong><small>Existe um cadastro de escola com o nome antigo. Ele será apagado da lista (o usuário dele no Firebase, se houver, precisa ser removido em Authentication).</small></span>
+    </label>
+    <div class="mdl-actions"><button class="btn b-out" data-esc-act="fechar-unificar">Cancelar</button>
+      <button class="btn b-pri" data-esc-act="confirmar-unificar">Unificar</button></div></div>`;
+  document.body.appendChild(m);
+  // pré-seleciona: destino = escola com acesso; origem = nome que bate com a sigla do destino
+  const dest = document.getElementById('unifDestino');
+  const comAcesso = escolas.find(e => e.acessoCriado);
+  if (comAcesso) dest.value = comAcesso.nome;
+  _unifPreencherOrigem(true);
+}
+
+function _unifPreencherOrigem(sugerir) {
+  const destino = document.getElementById('unifDestino').value;
+  const sel = document.getElementById('unifOrigem');
+  const lista = _nomesEmUso().filter(x => x.nome !== destino);
+  sel.innerHTML = lista.map(x => `<option value="${LNE.esc(x.nome)}">${LNE.esc(x.nome)} — ${x.atletas} atleta(s)</option>`).join('');
+  if (sugerir) {
+    const sg = _sigla(destino);
+    const achado = lista.find(x => _n(x.nome) === sg);
+    if (achado) sel.value = achado.nome;
+  }
+  _unifResumo();
+}
+
+function _unifResumo() {
+  const destino = document.getElementById('unifDestino')?.value;
+  const origem = document.getElementById('unifOrigem')?.value;
+  const el = document.getElementById('unifResumo'); if (!el) return;
+  if (!origem) { el.textContent = 'Não há outro nome de escola para unificar.'; return; }
+  const u = _usoDoNome(origem);
+  el.innerHTML = `<div>“<strong>${LNE.esc(origem)}</strong>” → “<strong>${LNE.esc(destino)}</strong>”<br>
+    ${u.atletas} atleta(s), ${u.classif} linha(s) de classificação e ${u.raias} raia(s) serão atualizados.</div>`;
+  const dup = (LNE.state.db.escolas || []).find(e => e.nome === origem && e.nome !== destino);
+  const w = document.getElementById('unifRemoverWrap'); if (w) w.style.display = dup ? '' : 'none';
+}
+
+function _unifConfirmar() {
+  const destino = document.getElementById('unifDestino')?.value;
+  const origem = document.getElementById('unifOrigem')?.value;
+  if (!destino || !origem || destino === origem) { LNE.showToast('Escolha dois nomes diferentes.'); return; }
+  const u = _usoDoNome(origem);
+  if (!confirm(`Unificar “${origem}” em “${destino}”?\n\n${u.atletas} atleta(s) e ${u.classif} linha(s) de classificação serão atualizados.`)) return;
+  const r = unificarEscolas(origem, destino);
+  let removida = false;
+  const dup = (LNE.state.db.escolas || []).find(e => e.nome === origem && e.nome !== destino);
+  if (dup && document.getElementById('unifRemover')?.checked) {
+    LNE.state.db.escolas = LNE.state.db.escolas.filter(e => e.id !== dup.id);
+    removida = true;
+  }
+  document.getElementById('modalUnificar')?.remove();
+  LNE.markDirty();
+  renderEscolas();
+  LNE.showToast(`Unificado: ${r.atletas} atleta(s), ${r.classif} classificação(ões)${removida ? ' · cadastro duplicado removido' : ''}.`);
+}
+
 // Botões da lista (sem depender do namespace LNE)
 document.addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-esc-act]');
@@ -162,6 +279,14 @@ document.addEventListener('click', (ev) => {
     case 'todos':    _criarAcessoTodas(); break;
     case 'reenviar': _reenviar(id); break;
     case 'vincular': _vincular(id); break;
+    case 'unificar': _abrirUnificar(); break;
+    case 'fechar-unificar': document.getElementById('modalUnificar')?.remove(); break;
+    case 'confirmar-unificar': _unifConfirmar(); break;
     case 'excluir':  excluirEscola(id); break;
   }
+});
+
+document.addEventListener('change', (ev) => {
+  if (ev.target.id === 'unifDestino') _unifPreencherOrigem(true);
+  else if (ev.target.id === 'unifOrigem') _unifResumo();
 });
