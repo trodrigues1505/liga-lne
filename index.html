@@ -778,6 +778,71 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
 .priv-doc p,.priv-doc li{font-size:13px;line-height:1.6;color:#334155;}
 .priv-doc ul{padding-left:20px;margin:4px 0;}
 .priv-doc .priv-ver{font-size:12px;color:var(--muted);margin-top:18px;}
+
+/* ── Provas: barra superior e lista de seleção ───────────── */
+.prova-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 18px;margin:-18px -18px 14px;border-bottom:1px solid var(--line);background:#fafbfd;}
+.prova-toolbar-t{display:flex;flex-direction:column;min-width:0;}
+.prova-toolbar-t strong{font-size:14px;font-weight:650;letter-spacing:-.01em;}
+.prova-toolbar-t span{font-size:12px;color:var(--muted);}
+.opt-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #f0f3f8;cursor:pointer;}
+.opt-row:hover{background:#f7faff;}
+.opt-row input{width:17px;height:17px;flex-shrink:0;}
+.opt-row-t{flex:1;font-size:13px;min-width:0;}
+
+/* ═══ Dashboard: indicadores, pódio e gráficos ═══════════════ */
+.dx-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+.dx-kpi{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;min-width:0;}
+.dx-kpi .l{font-size:12px;color:var(--muted);font-weight:500;}
+.dx-kpi .v{font-size:28px;font-weight:700;color:var(--az);letter-spacing:-.03em;line-height:1.15;margin-top:4px;font-variant-numeric:tabular-nums;}
+.dx-kpi .v.sm{font-size:15px;letter-spacing:-.01em;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dx-kpi .s{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dx-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.dx-grid-2>.dcard{margin-bottom:0;}
+
+/* Pódio */
+.podio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:10px;height:216px;max-width:480px;margin:0 auto;padding:0 8px 6px;}
+.podio-col{min-width:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;}
+.podio-nome{font-size:12px;font-weight:600;text-align:center;line-height:1.25;max-height:30px;overflow:hidden;}
+.podio-bar{width:100%;border-radius:12px 12px 4px 4px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding-top:10px;}
+.podio-bar.p1{background:#f5c542;color:#4a3500;}
+.podio-bar.p2{background:#cfd8e3;color:#1e293b;}
+.podio-bar.p3{background:#e8b284;color:#4a2a0e;}
+.podio-pos{font-size:12px;font-weight:700;opacity:.8;}
+.podio-pts{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;}
+.podio-med{font-size:11px;opacity:.8;}
+
+/* Rosca e gráficos */
+.dx-donut{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;padding:4px 0 10px;}
+.dx-donut svg{width:170px;height:170px;flex-shrink:0;}
+.dx-donut .dx-legend{flex-direction:column;gap:8px;}
+.dx-chart{width:100%;max-width:560px;margin:0 auto;}
+.dx-chart svg{display:block;width:100%;height:auto;overflow:visible;}
+.dx-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:#475569;}
+.dx-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px;}
+.dx-legend b{color:var(--cz);font-variant-numeric:tabular-nums;}
+.dcard-bd>.dx-legend{justify-content:center;margin-top:12px;}
+
+/* Barras horizontais */
+.dx-hbar{display:grid;grid-template-columns:64px 1fr 56px;gap:10px;align-items:center;font-size:12px;margin:8px 0;}
+.dx-hbar-l{font-weight:600;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dx-hbar .tr{height:10px;border-radius:999px;background:#edf1f7;overflow:hidden;}
+.dx-hbar .tr i{display:block;height:100%;border-radius:999px;transform-origin:left;animation:dxgrow .6s ease both;}
+.dx-hbar-v{text-align:right;font-weight:600;color:var(--az);font-variant-numeric:tabular-nums;}
+@keyframes dxgrow{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+
+/* Barra empilhada do ranking */
+.dx-stack{display:flex;height:8px;border-radius:999px;background:#edf1f7;overflow:hidden;}
+.dx-stack i{display:block;height:100%;transition:width .6s ease;}
+.dx-stack i.nf{background:var(--azm);} .dx-stack i.fd{background:#7c3aed;}
+.dx-stack-l{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums;}
+.rk-bars{display:block;}
+
+@media(max-width:768px){
+  .dx-grid-2{grid-template-columns:1fr;}
+  .dx-kpi .v{font-size:23px;}
+  .podio{height:200px;gap:6px;padding:0;}
+  .dx-donut{gap:12px;}
+}
 </style>
 
 <!-- Guard: garante que LNE.fn() funciona mesmo antes do módulo carregar -->
@@ -1002,12 +1067,14 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
         <div class="page-head-act">
           <button class="btn b-pri" onclick="LNE.abrirModalNovaProva()"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Nova prova</button>
           <input type="file" id="xlsxImport" accept=".xlsx,.xls" style="display:none;" onchange="LNE.importarExcel(this)">
+          <input type="file" id="provasXlsxImport" accept=".xlsx,.xls" style="display:none;">
           <button class="btn b-out" onclick="document.getElementById('xlsxImport').click()"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Importar Excel</button>
           <div class="dropdown-wrap" id="dropMais">
             <button class="btn b-out dropdown-trigger" onclick="LNE.toggleDropdown('dropMaisMenu')"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Mais</button>
             <div class="dropdown-menu" id="dropMaisMenu">
               <div class="dropdown-label">Provas</div>
-              <button class="dropdown-item" onclick="LNE.criarProvasPadraoLNE();LNE.fecharDropdowns()">Criar provas padrão LNE</button>
+              <button class="dropdown-item" onclick="document.getElementById('provasXlsxImport').click();LNE.fecharDropdowns()">Importar provas (Excel)</button>
+              <button class="dropdown-item" data-prova-act="excluir-varias" onclick="LNE.fecharDropdowns()">Excluir várias provas…</button>
               <button class="dropdown-item" onclick="LNE.abrirReordenar();LNE.fecharDropdowns()">Reordenar provas</button>
               <button class="dropdown-item" onclick="LNE.abrirMesclar();LNE.fecharDropdowns()">Mesclar provas</button>
               <button class="dropdown-item" onclick="LNE.abrirAuditoria();LNE.fecharDropdowns()">Auditoria de inscrições</button>
@@ -1037,10 +1104,10 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
       <div id="semProvas" class="empty">
         <svg class="ic" aria-hidden="true"><use href="#i-clipboard-list"/></svg>
         <strong>Nenhuma prova cadastrada</strong>
-        Adicione provas manualmente, importe uma planilha ou use o padrão da liga.
+        Importe as provas da etapa por uma planilha Excel ou adicione uma a uma.
         <div class="empty-act">
           <button class="btn b-pri" onclick="LNE.abrirModalNovaProva()"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Nova prova</button>
-          <button class="btn b-out" onclick="LNE.criarProvasPadraoLNE()">Criar provas padrão LNE</button>
+          <button class="btn b-out" onclick="document.getElementById('provasXlsxImport').click()">Importar provas (Excel)</button>
         </div>
       </div>
     </div>
@@ -1137,10 +1204,10 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
 
     <!-- Provas padrão LNE -->
     <!-- O etapas.js localiza este bloco por div[style*="background"] para mostrar/ocultar: não remova o style -->
-    <div style="background:none;">
+    <div style="background:none;display:none;">
     <label class="opt-card">
-      <input type="checkbox" id="etapaCriarProvas" checked/>
-      <span><strong>Criar as 20 provas padrão da LNE</strong><small>25m, 50m e 100m · Livre, Costas e Peito · Masculino e Feminino · por faixa de categoria. Você pode ajustar depois.</small></span>
+      <input type="checkbox" id="etapaCriarProvas"/>
+      <span><strong>Provas padrão LNE (desativado)</strong><small>As provas de cada etapa são importadas de uma planilha.</small></span>
     </label>
     </div>
 

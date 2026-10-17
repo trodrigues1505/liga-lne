@@ -1,3 +1,4 @@
+import { CORES, donut, linhas, colunas, legenda, barrasH } from './graficos.js';
 // dashboard.js — Dashboard estatístico por escola LNE 2026
 
 // ── Todas as categorias e provas da liga ──────────────────
@@ -456,30 +457,74 @@ export function imprimirRelatorioEscola(nomeEscola) {
   _imprimirHtml(`Relatório — ${nomeEscola}`, _htmlRelatorioEscola(nomeEscola, calcDashboardEscola(nomeEscola)));
 }
 
+// ── Helpers dos gráficos ──────────────────────────────────
+const _rotuloCurto = (nome) => { const m = String(nome || '').match(/^\s*(\d+)\s*[ªº]?/); return m ? m[1] + 'ª' : String(nome || 'Etapa').slice(0, 8); };
+const kpi = (rotulo, valor, sub = '', pequeno = false) =>
+  `<div class="dx-kpi"><div class="l">${rotulo}</div><div class="v${pequeno ? ' sm' : ''}">${valor}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`;
+
+// Evolução acumulada das 5 primeiras escolas, etapa a etapa
+function _evolucaoLiga(lista) {
+  const etapas = [...(LNE.state.db.etapas || [])].sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+  if (!etapas.length || !lista.length) return null;
+  const porEtapa = etapas.map(e => {
+    const pl = LNE.calcPlacarEtapa(e.id), m = {};
+    [...pl.nfed, ...pl.fed].forEach(r => { m[r.nome] = (m[r.nome] || 0) + r.pts; });
+    return m;
+  });
+  const series = lista.slice(0, 5).map((e, i) => {
+    let acc = 0;
+    return { nome: e.nome, cor: CORES.linhas[i % CORES.linhas.length], valores: porEtapa.map(m => (acc += (m[e.nome] || 0))) };
+  });
+  return { rotulos: etapas.map(x => _rotuloCurto(x.nome)), series };
+}
+
+// Atletas únicos por categoria (somente administrador: os demais perfis têm dados parciais)
+function _atletasPorCategoria() {
+  const vistos = new Set(), cont = {};
+  (LNE.state.db.etapas || []).forEach(e => Object.values(e.provas || {}).forEach(p => (p.atletas || []).forEach(a => {
+    const k = String(a.nome || '').toLowerCase().trim() + '|' + (a.escola || '');
+    if (vistos.has(k)) return;
+    vistos.add(k);
+    const c = a.categoria || '?';
+    cont[c] = (cont[c] || 0) + 1;
+  })));
+  const ordem = [...TODAS_CATS, ...Object.keys(cont).filter(c => !TODAS_CATS.includes(c))];
+  return ordem.filter(c => cont[c]).map(c => ({ rotulo: c, valor: cont[c] }));
+}
+
+function _podio(top3) {
+  if (!top3.length) return '<div class="empty" style="padding:32px 16px;">Nenhuma pontuação registrada ainda.</div>';
+  const alturas = [132, 100, 76];
+  // Sempre 3 vagas, na ordem 2º · 1º · 3º (vaga vazia quando há menos de 3 escolas)
+  return `<div class="podio">${[1, 0, 2].map(i => {
+    const e = top3[i];
+    if (!e) return '<div class="podio-col"></div>';
+    const med = (e.nfed?.ouros || 0) + (e.fed?.ouros || 0) + (e.nfed?.pratas || 0) + (e.fed?.pratas || 0) + (e.nfed?.bronzes || 0) + (e.fed?.bronzes || 0);
+    return `<div class="podio-col">
+      <div class="podio-nome" title="${LNE.esc(e.nome)}">${LNE.esc(e.nome)}</div>
+      <div class="podio-bar p${i + 1}" style="height:${alturas[i]}px;"><span class="podio-pos">${i + 1}º</span><span class="podio-pts">${e.total} pts</span><span class="podio-med">${med} medalha(s)</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 // ── Panorama geral de todas as escolas (tela) ─────────────
 export function renderPanoramaGeral(containerId) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
   const esc = LNE.esc;
-  const { lista, totalEscolas, totalEtapas, totalAtletas, totalInscricoes,
-          topAtl, nfed, fed, gap12nfed, gap12fed } = _dadosPanorama();
-  const maxPts = lista[0]?.total || 1;
   const admin = _ehAdmin();
   const minhaEscola = admin ? null : (LNE.state.perfil?.nome || null);
+  const d = _dadosPanorama();
+  const { lista, totalEscolas, totalEtapas, totalAtletas, totalInscricoes, topAtl, nfed, fed, gap12nfed, gap12fed } = d;
+  const maxPts = lista[0]?.total || 1;
 
-  const linhaBarra = (rotulo, pts, pos, pct, cls) => `
-    <div class="bar-row">
-      <span>${rotulo}</span>
-      <div class="bar ${cls}"><i style="width:${Math.max(pct, 2)}%"></i></div>
-      <span>${pts} pts${pos ? ` · ${pos}°` : ''}</span>
-    </div>`;
+  const med = { ouro: 0, prata: 0, bronze: 0 };
+  [...nfed, ...fed].forEach(r => { med.ouro += r.ouros || 0; med.prata += r.pratas || 0; med.bronze += r.bronzes || 0; });
+  const totalMed = med.ouro + med.prata + med.bronze;
 
-  const linhas = lista.map((e, i) => {
-    const ptsN = e.nfed?.pts || 0, ptsF = e.fed?.pts || 0;
-    const pctN = Math.round((ptsN / maxPts) * 100);
-    const pctF = Math.round((ptsF / maxPts) * 100);
-    // Escola logada só abre o detalhe da própria escola; admin abre qualquer uma
+  const linhasRank = lista.map((e, i) => {
+    const pn = e.nfed?.pts || 0, pf = e.fed?.pts || 0;
     const abre = admin || e.nome === minhaEscola;
     const acao = abre ? `role="button" tabindex="0" data-escola="${esc(e.nome)}"
          onclick="LNE.selecionarEscolaDashboard(this.dataset.escola)"
@@ -490,53 +535,79 @@ export function renderPanoramaGeral(containerId) {
       <span class="rk-name">${esc(e.nome)}</span>
       <span class="rk-total">${e.total} <small>pts</small></span>
       <div class="rk-bars">
-        ${ptsN > 0 ? linhaBarra('NF', ptsN, e.nfed?.pos, pctN, '') : ''}
-        ${ptsF > 0 ? linhaBarra('FD', ptsF, e.fed?.pos, pctF, 'fd') : ''}
+        <div class="dx-stack" role="img" aria-label="${esc(e.nome)}: ${pn} pts não federados, ${pf} pts federados">
+          <i class="nf" style="width:${(pn / maxPts) * 100}%"></i><i class="fd" style="width:${(pf / maxPts) * 100}%"></i>
+        </div>
+        <div class="dx-stack-l"><span>${pn ? `Não fed. ${pn} pts${e.nfed?.pos ? ` · ${e.nfed.pos}°` : ''}` : ''}</span><span>${pf ? `Fed. ${pf} pts${e.fed?.pos ? ` · ${e.fed.pos}°` : ''}` : ''}</span></div>
       </div>
     </div>`;
   }).join('');
 
+  const evo = _evolucaoLiga(lista);
+  const cats = admin ? _atletasPorCategoria() : [];
+
   el.innerHTML = `
-    <div class="stat-grid">
-      <div class="sc"><div class="lbl">Escolas</div><div class="val">${totalEscolas}</div></div>
-      <div class="sc"><div class="lbl">Etapas</div><div class="val">${totalEtapas}</div></div>
-      <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${totalAtletas}</div></div>
-      <div class="sc"><div class="lbl">Inscrições</div><div class="val">${totalInscricoes}</div></div>
-      ${(admin && topAtl) ? `<div class="sc sc-wide">
-        <div class="lbl">Maior pontuador</div>
-        <div class="val" style="font-size:16px;">${esc(topAtl.nome)}</div>
-        <div style="font-size:12px;color:var(--muted);">${esc(topAtl.escola)} · ${topAtl.pts} pts</div>
-      </div>` : ''}
+    <div class="dx-kpis">
+      ${kpi('Escolas', totalEscolas)}
+      ${kpi('Etapas', totalEtapas)}
+      ${admin ? kpi('Atletas únicos', totalAtletas) : ''}
+      ${admin ? kpi('Inscrições', totalInscricoes) : ''}
+      ${kpi('Medalhas', totalMed, `${med.ouro} ouro · ${med.prata} prata · ${med.bronze} bronze`)}
+      ${(admin && topAtl) ? kpi('Maior pontuador', esc(topAtl.nome), `${esc(topAtl.escola)} · ${topAtl.pts} pts`, true) : ''}
     </div>
 
-    <div class="dcard">
+    <div class="dx-grid-2">
+      <section class="dcard">
+        <div class="dcard-hd"><div><h4>Pódio da temporada</h4><small>Pontos de federados e não federados somados</small></div></div>
+        <div class="dcard-bd">${_podio(lista.slice(0, 3))}</div>
+      </section>
+      <section class="dcard">
+        <div class="dcard-hd"><div><h4>Medalhas da liga</h4><small>Ouro, prata e bronze de todas as escolas</small></div></div>
+        <div class="dcard-bd"><div class="dx-donut">
+          ${donut({ itens: [{ rotulo: 'Ouro', valor: med.ouro, cor: CORES.ouro }, { rotulo: 'Prata', valor: med.prata, cor: CORES.prata }, { rotulo: 'Bronze', valor: med.bronze, cor: CORES.bronze }], centro: { valor: totalMed, rotulo: 'medalhas' }, titulo: 'Medalhas da liga' })}
+          ${legenda([{ rotulo: 'Ouro', valor: med.ouro, cor: CORES.ouro }, { rotulo: 'Prata', valor: med.prata, cor: CORES.prata }, { rotulo: 'Bronze', valor: med.bronze, cor: CORES.bronze }])}
+        </div></div>
+      </section>
+    </div>
+
+    <section class="dcard">
       <div class="dcard-hd">
         <div>
           <h4>Ranking comparativo</h4>
           <small>${admin ? 'Pontuação total por escola. Selecione uma escola para ver o detalhe.' : 'Pontuação total por escola.'}</small>
         </div>
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-          <div class="legend">
-            <span><i class="dot dot-nf"></i>Não federados</span>
-            <span><i class="dot dot-fd"></i>Federados</span>
-          </div>
+          ${legenda([{ rotulo: 'Não federados', cor: CORES.nf }, { rotulo: 'Federados', cor: CORES.fd }])}
           <button class="btn b-out" data-dash-act="print-geral">${ic('printer')}Imprimir quadro geral</button>
         </div>
       </div>
       <div class="dcard-bd" style="padding:0 8px 10px;">
-        ${linhas || '<div class="empty" style="padding:32px 16px;">Nenhuma pontuação registrada ainda.</div>'}
+        ${linhasRank || '<div class="empty" style="padding:32px 16px;">Nenhuma pontuação registrada ainda.</div>'}
       </div>
-    </div>
+    </section>
+
+    ${evo ? `<section class="dcard">
+      <div class="dcard-hd"><div><h4>Disputa ao longo da temporada</h4><small>Pontos acumulados das 5 primeiras escolas, etapa a etapa</small></div></div>
+      <div class="dcard-bd">
+        <div class="dx-chart">${linhas({ rotulosX: evo.rotulos, series: evo.series, titulo: 'Pontos acumulados por etapa' })}</div>
+        ${legenda(evo.series.map(s => ({ rotulo: s.nome, valor: s.valores[s.valores.length - 1] + ' pts', cor: s.cor })))}
+      </div>
+    </section>` : ''}
+
+    ${cats.length ? `<section class="dcard">
+      <div class="dcard-hd"><div><h4>Atletas por categoria</h4><small>Atletas únicos inscritos na temporada</small></div></div>
+      <div class="dcard-bd">${barrasH(cats)}</div>
+    </section>` : ''}
 
     ${(gap12nfed !== null || gap12fed !== null) ? `
     <div class="callouts">
       ${gap12nfed !== null ? `<div class="callout callout-nf">
         <h5>Disputa entre não federados</h5>
-        <strong>${esc(nfed[0]?.nome||'')}</strong> lidera com <b>${gap12nfed} pts</b> de vantagem sobre <strong>${esc(nfed[1]?.nome||'')}</strong>.
+        <strong>${esc(nfed[0]?.nome || '')}</strong> lidera com <b>${gap12nfed} pts</b> de vantagem sobre <strong>${esc(nfed[1]?.nome || '')}</strong>.
       </div>` : ''}
       ${gap12fed !== null ? `<div class="callout callout-fd">
         <h5>Disputa entre federados</h5>
-        <strong>${esc(fed[0]?.nome||'')}</strong> lidera com <b>${gap12fed} pts</b> de vantagem sobre <strong>${esc(fed[1]?.nome||'')}</strong>.
+        <strong>${esc(fed[0]?.nome || '')}</strong> lidera com <b>${gap12fed} pts</b> de vantagem sobre <strong>${esc(fed[1]?.nome || '')}</strong>.
       </div>` : ''}
     </div>` : ''}
 
@@ -578,30 +649,44 @@ export function renderDashboardEscola(nomeEscola, containerId) {
   // ── Evolução por etapa ──
   function cardEvolucao() {
     if (!d.evolucao.length) return '';
-    const maxPts = Math.max(...d.evolucao.map(e => Math.max(e.ptNFed, e.ptFed)), 1);
-    const cols = d.evolucao.map(e => {
-      const hNFed = Math.round((e.ptNFed / maxPts) * 84);
-      const hFed  = Math.round((e.ptFed  / maxPts) * 84);
-      const etapaLabel = e.etapa.replace(/^(\d+)[ªº]\s*Etapa/i, '$1ª').slice(0, 12);
-      return `<div class="evo-col">
-        <div class="evo-bars">
-          ${e.ptNFed ? `<div class="evo-bar" title="Não federados: ${e.ptNFed} pts" style="height:${hNFed}px;"></div>` : '<div class="evo-bar ph"></div>'}
-          ${e.ptFed  ? `<div class="evo-bar fd" title="Federados: ${e.ptFed} pts" style="height:${hFed}px;"></div>` : '<div class="evo-bar ph"></div>'}
-        </div>
-        <div class="evo-lbl">${esc(etapaLabel)}</div>
-        <div class="evo-pts">${e.ptNFed + e.ptFed} pts</div>
-      </div>`;
-    }).join('');
-    return `<div class="dcard">
+    const algum = d.evolucao.some(e => e.ptNFed || e.ptFed);
+    return `<section class="dcard">
       <div class="dcard-hd">
-        <h4>Evolução por etapa</h4>
-        <div class="legend">
-          <span><i class="dot dot-nf"></i>Não federados</span>
-          <span><i class="dot dot-fd"></i>Federados</span>
-        </div>
+        <div><h4>Evolução por etapa</h4><small>Pontos conquistados em cada etapa</small></div>
+        ${legenda([{ rotulo: 'Não federados', cor: CORES.nf }, { rotulo: 'Federados', cor: CORES.fd }])}
       </div>
-      <div class="dcard-bd"><div class="evo">${cols}</div></div>
-    </div>`;
+      <div class="dcard-bd">${algum
+        ? `<div class="dx-chart">${colunas({ rotulosX: d.evolucao.map(e => _rotuloCurto(e.etapa)),
+            series: [{ nome: 'Não federados', cor: CORES.nf, valores: d.evolucao.map(e => e.ptNFed) }, { nome: 'Federados', cor: CORES.fd, valores: d.evolucao.map(e => e.ptFed) }],
+            titulo: 'Pontos da escola por etapa' })}</div>`
+        : '<p class="help" style="margin:0 0 16px;">Sem pontos registrados ainda.</p>'}</div>
+    </section>`;
+  }
+
+  // ── Medalhas (rosca) ──
+  function cardMedalhasDonut() {
+    const o = (d.rankNFed?.ouros || 0) + (d.rankFed?.ouros || 0);
+    const p = (d.rankNFed?.pratas || 0) + (d.rankFed?.pratas || 0);
+    const b = (d.rankNFed?.bronzes || 0) + (d.rankFed?.bronzes || 0);
+    const itens = [{ rotulo: 'Ouro', valor: o, cor: CORES.ouro }, { rotulo: 'Prata', valor: p, cor: CORES.prata }, { rotulo: 'Bronze', valor: b, cor: CORES.bronze }];
+    return `<section class="dcard">
+      <div class="dcard-hd"><div><h4>Medalhas</h4><small>Federados e não federados</small></div></div>
+      <div class="dcard-bd"><div class="dx-donut">
+        ${donut({ itens, centro: { valor: o + p + b, rotulo: 'medalhas' }, titulo: 'Medalhas da escola' })}
+        ${legenda(itens)}
+      </div></div>
+    </section>`;
+  }
+
+  // ── Pontos por categoria (barras) ──
+  function cardPontosCategoria() {
+    const cats = Object.entries(d.medalhasPorCat).filter(([, v]) => v.pts > 0).sort((a, b) => b[1].pts - a[1].pts).slice(0, 8);
+    return `<section class="dcard">
+      <div class="dcard-hd"><div><h4>Pontos por categoria</h4><small>As categorias que mais pontuam</small></div></div>
+      <div class="dcard-bd">${cats.length
+        ? barrasH(cats.map(([c, v]) => ({ rotulo: c, valor: v.pts })), { sufixo: ' pts' })
+        : '<p class="help" style="margin:0 0 16px;">Sem pontos registrados ainda.</p>'}</div>
+    </section>`;
   }
 
   // ── Atletas próximos de subir ──
@@ -718,16 +803,22 @@ export function renderDashboardEscola(nomeEscola, containerId) {
       </div>
     </div>
 
-    <div class="stat-grid">
-      <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${d.atletasUnicos}</div></div>
-      <div class="sc"><div class="lbl">Inscrições</div><div class="val">${d.totalInscricoes}</div></div>
-      <div class="sc"><div class="lbl">Etapas</div><div class="val">${d.evolucao.length}</div></div>
-      <div class="sc"><div class="lbl">Categorias sem atleta</div><div class="val" style="color:${semCats ? 'var(--red)' : 'var(--vd)'};">${semCats || '0'}</div></div>
+    <div class="dx-kpis">
+      ${kpi('Pontos totais', (d.rankNFed?.pts || 0) + (d.rankFed?.pts || 0))}
+      ${kpi('Atletas únicos', d.atletasUnicos)}
+      ${kpi('Inscrições', d.totalInscricoes)}
+      ${kpi('Etapas', d.evolucao.length)}
+      ${kpi('Categorias sem atleta', `<span style="color:${semCats ? 'var(--red)' : 'var(--vd)'};">${semCats || '0'}</span>`)}
     </div>
 
     <div class="rank-cards">
       ${cardRanking(d.rankNFed, d.frente.nfed, 'Ranking não federados', '')}
       ${cardRanking(d.rankFed,  d.frente.fed,  'Ranking federados',     'fd')}
+    </div>
+
+    <div class="dx-grid-2">
+      ${cardMedalhasDonut()}
+      ${cardPontosCategoria()}
     </div>
 
     ${cardEvolucao()}

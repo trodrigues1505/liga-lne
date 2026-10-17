@@ -91,10 +91,10 @@ export function abrirModalNovaEtapa(){
   document.getElementById('etapaTam').value='25m';
   document.getElementById('etapaAquec').value='13:00';
   document.getElementById('etapaInicio').value='13:30';
-  document.getElementById('etapaCriarProvas').checked=true;
+  document.getElementById('etapaCriarProvas').checked=false;   // padrão LNE desativado: provas vêm de planilha
   // Garante modo criação
   document.querySelector('#modalNovaEtapa .mdl-hd h3').textContent='📅 Nova Etapa';
-  document.getElementById('etapaCriarProvas').closest('div[style*="background"]').style.display='';
+  document.getElementById('etapaCriarProvas').closest('div[style*="background"]').style.display='none';
   const btnSalvar=document.querySelector('#modalNovaEtapa button.b-pri');
   btnSalvar.textContent='✅ Criar Etapa';
   btnSalvar.onclick=salvarEtapa;
@@ -132,6 +132,11 @@ export function salvarEtapa(){
 }
 
 export function criarProvasPadraoLNE(){
+  // Desativado: as provas de cada etapa agora vêm de uma planilha (Mais ▸ Importar provas)
+  LNE.showToast('A criação de provas no padrão LNE foi desativada. Use Mais ▸ Importar provas (Excel).');
+  return;
+}
+export function _criarProvasPadraoLNE_desativada(){
   const etapa=LNE.getEtapa(LNE.state.curEtapaId); if(!etapa) return;
   const existentes=Object.keys(etapa.provas||{});
   const novas=LNE.PROVAS_PADRAO_LNE.filter(p=>!etapa.provas[p.nome]);

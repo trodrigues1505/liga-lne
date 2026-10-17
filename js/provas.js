@@ -30,7 +30,8 @@ export function salvarProva(){
 export function excluirProva(nome){
   if(!nome) return;
   const etapa=LNE.getEtapa(LNE.state.curEtapaId); if(!etapa) return;
-  if(!confirm(`Excluir a prova "${nome}"?`)) return;
+  const nAtl=((etapa.provas[nome]||{}).atletas||[]).length;
+  if(!confirm(`Excluir a prova "${nome}"?`+(nAtl?`\n\nELA TEM ${nAtl} ATLETA(S) INSCRITO(S), que também serão removidos junto com o balizamento e a classificação.`:''))) return;
   delete etapa.provas[nome];
   if(etapa.provasOrdem) etapa.provasOrdem=etapa.provasOrdem.filter(n=>n!==nome);
   LNE.state.curProva=null;
@@ -47,6 +48,11 @@ export function renderProvasEtapa(){
   document.getElementById('provasContainer').style.display='block'; document.getElementById('semProvas').style.display='none';
   tabsEl.innerHTML=nomes.map(n=>`<button class="prova-tab ${n===LNE.state.curProva?'active':''}" data-prova="${LNE.esc(n)}" data-tid="${LNE.tid(n)}" onclick="LNE.switchProvaTab(${LNE.jstr(n)})">${LNE.esc(n)}<span class="bc">${provas[n].atletas.length}</span></button>`).join('');
   contEl.innerHTML=nomes.map(n=>`<div class="prova-tab-content ${n===LNE.state.curProva?'active':''}" id="prova-tab-${LNE.tid(n)}">
+    <!-- Barra da prova: excluir sempre à vista -->
+    <div class="prova-toolbar">
+      <div class="prova-toolbar-t"><strong>${LNE.esc(n)}</strong><span>${provas[n].atletas.length} atleta(s)</span></div>
+      <button class="btn b-red" onclick="LNE.excluirProva(${LNE.jstr(n)})">Excluir prova</button>
+    </div>
     <!-- Fluxo da prova -->
     <div class="fluxo-bar" id="fluxo-${LNE.tid(n)}"></div>
     <!-- Stats rápidos -->
@@ -170,7 +176,6 @@ export function renderPaineis(nome){
         <button class="btn b-out" onclick="LNE.abrirBuscaAtleta()">🔎 Buscar atleta</button>
         <button class="btn b-out" onclick="LNE.printBal(LNE.state.curProva)">🖨️ Imprimir</button>
         <button class="btn b-gray" onclick="LNE.apagarTempos(LNE.state.curProva)">⏱️ Apagar tempos</button>
-        <button class="btn b-red" style="font-size:11px;" onclick="LNE.excluirProva(LNE.state.curProva)">🗑️ Excluir prova</button>
       </div>
       <div class="painel-liberacao">
         <div>
@@ -258,3 +263,139 @@ export function renderStats(nome){
     <div class="sc"><div class="lbl">Gênero</div><div class="val" style="font-size:13px;font-weight:600;">${LNE.esc(p.genero||'—')}</div></div>`;
 }
 
+
+
+// ═══════════════════════════════════════════════════════════
+// Excluir várias provas
+// ═══════════════════════════════════════════════════════════
+function _abrirExcluirVarias(){
+  const etapa=LNE.getEtapa(LNE.state.curEtapaId);
+  if(!etapa){ LNE.showToast('Abra uma etapa primeiro.'); return; }
+  const nomes=LNE.getProvasOrdenadas(etapa);
+  if(!nomes.length){ LNE.showToast('Nenhuma prova cadastrada.'); return; }
+  document.getElementById('modalExcluirProvas')?.remove();
+  const m=document.createElement('div');
+  m.className='mover open'; m.id='modalExcluirProvas';
+  const linhas=nomes.map(n=>{
+    const q=((etapa.provas[n]||{}).atletas||[]).length;
+    return `<label class="opt-row"><input type="checkbox" class="ep-chk" data-nome="${LNE.esc(n)}" data-q="${q}"/>
+      <span class="opt-row-t">${LNE.esc(n)}</span>
+      <span class="badge ${q?'badge-amber':'badge-gray'}">${q} atleta(s)</span></label>`;
+  }).join('');
+  m.innerHTML=`<div class="mdl mdl-panel" style="max-width:660px;max-height:90vh;" role="dialog" aria-modal="true">
+    <div class="mdl-hd mdl-bar"><h3>Excluir várias provas</h3><button class="mdl-x" data-prova-act="fechar-excluir" aria-label="Fechar">×</button></div>
+    <div class="mdl-sub" style="background:#fff;"><div class="chip-row">
+      <button class="chip" data-prova-act="sel-vazias">Selecionar provas sem atletas</button>
+      <button class="chip" data-prova-act="sel-todas">Selecionar todas</button>
+      <button class="chip" data-prova-act="sel-nenhuma">Limpar seleção</button></div></div>
+    <div class="mdl-scroll" style="padding:6px 18px;">${linhas}</div>
+    <div class="mdl-ft"><span id="epResumo" class="help" style="margin:0 auto 0 0;">Nenhuma selecionada</span>
+      <button class="btn b-out" data-prova-act="fechar-excluir">Cancelar</button>
+      <button class="btn b-red" data-prova-act="confirmar-excluir">Excluir selecionadas</button></div></div>`;
+  document.body.appendChild(m);
+}
+function _epAtualizar(){
+  const sel=[...document.querySelectorAll('#modalExcluirProvas .ep-chk:checked')];
+  const atl=sel.reduce((a,c)=>a+(+c.dataset.q||0),0);
+  const el=document.getElementById('epResumo');
+  if(el) el.textContent=sel.length?`${sel.length} selecionada(s)${atl?` · ${atl} atleta(s) serão removidos`:''}`:'Nenhuma selecionada';
+}
+function _epMarcar(fn){
+  document.querySelectorAll('#modalExcluirProvas .ep-chk').forEach(c=>{ c.checked=fn(c); });
+  _epAtualizar();
+}
+function _epConfirmar(){
+  const etapa=LNE.getEtapa(LNE.state.curEtapaId); if(!etapa) return;
+  const sel=[...document.querySelectorAll('#modalExcluirProvas .ep-chk:checked')];
+  if(!sel.length){ LNE.showToast('Selecione ao menos uma prova.'); return; }
+  const atl=sel.reduce((a,c)=>a+(+c.dataset.q||0),0);
+  if(!confirm(`Excluir ${sel.length} prova(s)?`+(atl?`\n\n${atl} ATLETA(S) INSCRITO(S) serão removidos junto.`:'')+`\n\nFaça um backup antes se tiver dúvida.`)) return;
+  const nomes=new Set(sel.map(c=>c.dataset.nome));
+  nomes.forEach(n=>{ delete etapa.provas[n]; });
+  if(etapa.provasOrdem) etapa.provasOrdem=etapa.provasOrdem.filter(n=>!nomes.has(n));
+  if(nomes.has(LNE.state.curProva)) LNE.state.curProva=null;
+  document.getElementById('modalExcluirProvas')?.remove();
+  LNE.markDirty(); LNE.renderProvasEtapa();
+  LNE.showToast(`${nomes.size} prova(s) excluída(s).`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Importar provas de uma planilha Excel
+// Colunas: Ordem | Bloco | Distância | Estilo | Categoria | Gênero
+// ═══════════════════════════════════════════════════════════
+const _CATS_OK=['A7','A8','A9','A10','A11','A12','A13','A14','A15','A16-17'];
+const _ESTILOS_OK={livre:'Livre',costas:'Costas',peito:'Peito',borboleta:'Borboleta',medley:'Medley'};
+const _nrm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+
+export function lerLinhasProvas(rows){
+  const validas=[], erros=[];
+  rows.forEach((r,i)=>{
+    const lin=i+2;                       // linha na planilha (1 = cabeçalho)
+    const k={}; Object.keys(r).forEach(h=>{ k[_nrm(h)]=r[h]; });
+    if(Object.values(r).every(v=>String(v).trim()==='')) return;   // linha vazia
+    const dm=String(k['distancia']??'').replace(/\s+/g,'').toLowerCase().match(/^(\d{2,3})m$/);
+    const dist=dm?dm[1]+'m':null;
+    const estilo=_ESTILOS_OK[_nrm(k['estilo'])];
+    let cat=String(k['categoria']??'').replace(/\s+/g,'').toUpperCase().replace('A16/17','A16-17');
+    const g=_nrm(k['genero']); const gen=g.startsWith('f')?'Feminino':g.startsWith('m')?'Masculino':g==='misto'?'Misto':null;
+    const prob=[];
+    if(!dist||![25,50,100,200,400].includes(parseInt(dist))) prob.push('distância (use 25m, 50m, 100m…)');
+    if(!estilo) prob.push('estilo (Livre, Costas, Peito, Borboleta ou Medley)');
+    if(!_CATS_OK.includes(cat)) prob.push('categoria (A7 a A15 ou A16-17)');
+    if(!gen) prob.push('gênero (Feminino ou Masculino)');
+    if(prob.length){ erros.push(`Linha ${lin}: ${prob.join(', ')}`); return; }
+    const ordem=parseInt(k['ordem'])||(validas.length+1);
+    validas.push({ordem,dist,estilo,cat,gen,nome:`${ordem}ª Prova — ${dist} ${estilo} ${cat} ${gen}`});
+  });
+  return {validas,erros};
+}
+
+function _importarProvasXlsx(file){
+  if(!file) return;
+  const etapa=LNE.getEtapa(LNE.state.curEtapaId);
+  if(!etapa){ LNE.showToast('Abra uma etapa primeiro.'); return; }
+  if(typeof XLSX==='undefined'){ alert('A biblioteca de Excel não carregou. Recarregue a página.'); return; }
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets['Provas']||wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      const {validas,erros}=lerLinhasProvas(rows);
+      if(erros.length){ alert(`Não foi possível importar. Corrija a planilha e tente de novo:\n\n${erros.slice(0,8).join('\n')}${erros.length>8?`\n… e mais ${erros.length-8}`:''}`); return; }
+      if(!validas.length){ alert('Nenhuma prova encontrada. Use a aba "Provas" com as colunas Ordem, Bloco, Distância, Estilo, Categoria e Gênero.'); return; }
+      const vistos=new Set(), novas=[], ignoradas=[];
+      validas.forEach(p=>{
+        if(etapa.provas[p.nome]||vistos.has(p.nome)) ignoradas.push(p.nome); else { vistos.add(p.nome); novas.push(p); }
+      });
+      if(!novas.length){ alert('Todas as provas da planilha já existem nesta etapa. Nada foi importado.'); return; }
+      if(!confirm(`Importar ${novas.length} prova(s) na etapa "${etapa.nome}"?`+(ignoradas.length?`\n\n${ignoradas.length} já existe(m) e será(ão) ignorada(s).`:''))) return;
+      if(!etapa.provasOrdem) etapa.provasOrdem=LNE.getProvasOrdenadas(etapa);
+      const agora=new Date().toISOString();
+      novas.forEach(p=>{
+        etapa.provas[p.nome]={atletas:[],series:[],classificacao:[],genero:p.gen,distancia:p.dist,estilo:p.estilo,categoria:p.cat,criadoEm:agora};
+        etapa.provasOrdem.push(p.nome);
+      });
+      LNE.markDirty(); LNE.renderProvasEtapa();
+      LNE.showToast(`${novas.length} prova(s) importada(s).`);
+    }catch(e){ console.error(e); alert('Não foi possível ler a planilha. Use o modelo .xlsx fornecido.'); }
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+// Botões e arquivo (delegação: não dependem do namespace LNE)
+document.addEventListener('change',ev=>{
+  if(ev.target.id==='provasXlsxImport'){ _importarProvasXlsx(ev.target.files[0]); ev.target.value=''; }
+  else if(ev.target.classList&&ev.target.classList.contains('ep-chk')) _epAtualizar();
+});
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-prova-act]'); if(!b) return;
+  switch(b.dataset.provaAct){
+    case 'excluir-varias':   _abrirExcluirVarias(); break;
+    case 'fechar-excluir':   document.getElementById('modalExcluirProvas')?.remove(); break;
+    case 'sel-vazias':       _epMarcar(c=>(+c.dataset.q||0)===0); break;
+    case 'sel-todas':        _epMarcar(()=>true); break;
+    case 'sel-nenhuma':      _epMarcar(()=>false); break;
+    case 'confirmar-excluir':_epConfirmar(); break;
+  }
+});
