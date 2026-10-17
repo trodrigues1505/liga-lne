@@ -9,7 +9,7 @@ export const PRIVACIDADE = {
   versao:      '2026-10',
   atualizadoEm:'07/10/2026',
   controlador: 'Liga de Natação Escolar (LNE)',   // nome da entidade responsável pela liga
-  contato:     '',                                // e-mail do encarregado / canal para pedidos de titulares
+  contato:     't.rodrigues1505@gmail.com',                                // e-mail do encarregado / canal para pedidos de titulares
 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
