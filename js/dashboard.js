@@ -223,6 +223,7 @@ function _statsAtletas(nomeEscola) {
 
 // ── Helpers de apresentação ──────────────────────────────
 const ic = (name, cls = 'ic') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const icPdf = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>';
 const posBadge = (i) => `<span class="pb ${i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : 'pn'}">${i + 1}</span>`;
 
 // ── Dados do panorama (usados na tela e na impressão) ─────
@@ -295,6 +296,8 @@ function _bindDash(root) {
       const act = b.dataset.dashAct;
       if (act === 'print-geral')        imprimirPanoramaGeral();
       else if (act === 'print-escola')  imprimirRelatorioEscola(b.dataset.escola);
+      else if (act === 'pdf-geral')     exportarPdfPanorama();
+      else if (act === 'pdf-escola')    exportarPdfEscola(b.dataset.escola);
       else if (act === 'fechar-escola') fecharAnaliseEscola();
     });
   });
@@ -457,6 +460,107 @@ export function imprimirRelatorioEscola(nomeEscola) {
   _imprimirHtml(`Relatório — ${nomeEscola}`, _htmlRelatorioEscola(nomeEscola, calcDashboardEscola(nomeEscola)));
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// PDF COLORIDO — mesmo visual do dashboard
+// Renderiza o HTML do dashboard fora da tela, leva junto o CSS do
+// app (links + <style>) e o sprite de ícones para um iframe, e abre
+// a caixa de impressão com cores exatas (escolher "Salvar como PDF").
+// A versão P&B (imprimirPanoramaGeral / imprimirRelatorioEscola)
+// continua intacta.
+// ═══════════════════════════════════════════════════════════
+const PDF_CSS_DASH = `
+  :root { color-scheme: light; }
+  @page { size: A4 landscape; margin: 10mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      animation: none !important; transition: none !important; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  /* 960px = largura do modal do dashboard; zoom 1.08 preenche os 277mm úteis da folha paisagem.
+     Paisagem mantém o layout de desktop (grids de 2 colunas) em vez de cair no layout de celular. */
+  body { margin: 0 !important; padding: 0 !important; width: 960px; zoom: 1.08; }
+  .pdf-pagina { display: flex; flex-direction: column; gap: 16px; }
+  .pdf-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+             padding-bottom: 12px; border-bottom: 2px solid var(--az, #0f2f6b); }
+  .pdf-cab h1 { margin: 0; font-size: 24px; line-height: 1.15; font-weight: 700; color: var(--az, #0f2f6b); }
+  .pdf-cab p  { margin: 4px 0 0; font-size: 13px; color: #64748b; }
+  .pdf-cab .pdf-meta { font-size: 11px; color: #64748b; text-align: right; white-space: nowrap; }
+  .dcard-hd, h4 { break-after: avoid; page-break-after: avoid; }
+  .rk, .rcard, .dx-kpi, .callout, .note, .list-row, .podio, .dx-chart, .dx-donut, .chip-row, tr,
+  .dx-grid-2 > .dcard, .rank-cards { break-inside: avoid; page-break-inside: avoid; }
+`;
+
+function _estilosDoApp() {
+  const links = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map(l => `<link rel="stylesheet" href="${l.href}">`).join('');
+  const styles = [...document.querySelectorAll('style')]
+    .map(s => `<style>${s.textContent}</style>`).join('');
+  return links + styles;
+}
+
+// Os ícones do app vêm de um sprite <symbol> no documento principal; o iframe não o enxerga
+function _spriteDoApp() {
+  return [...document.querySelectorAll('svg')].filter(s => s.querySelector('symbol')).map(s => s.outerHTML).join('');
+}
+
+function _limparParaPdf(box) {
+  box.querySelectorAll('[data-dash-act], .dash-sec, .dash-picker').forEach(n => n.remove());
+  box.querySelectorAll('.page-head-act').forEach(n => { if (!n.children.length) n.remove(); });
+  box.querySelectorAll('[onclick], [onkeydown], [role="button"]').forEach(n => {
+    ['onclick', 'onkeydown', 'role', 'tabindex', 'title'].forEach(a => n.removeAttribute(a));
+    n.style.cursor = 'default';
+  });
+}
+
+async function _pdfColorido(titulo, tituloPagina, subtitulo, corpoHtml) {
+  const esc = LNE.esc;
+  const agora = new Date().toLocaleString('pt-BR');
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:297mm;height:210mm;border:0;';
+  document.body.appendChild(iframe);
+  const w = iframe.contentWindow;
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${esc(titulo)}</title>${_estilosDoApp()}<style>${PDF_CSS_DASH}</style></head><body>
+    <div style="position:absolute;width:0;height:0;overflow:hidden;">${_spriteDoApp()}</div>
+    <main class="pdf-pagina">
+      <header class="pdf-cab">
+        <div><h1>${esc(tituloPagina)}</h1><p>${esc(subtitulo)}</p></div>
+        <div class="pdf-meta">Liga de Natação Escolar · LNE 2026<br>Gerado em ${agora}</div>
+      </header>
+      ${corpoHtml}
+    </main></body></html>`);
+  w.document.close();
+
+  // espera CSS externo e fontes antes de imprimir (senão sai sem estilo/fonte)
+  await new Promise(res => {
+    if (w.document.readyState === 'complete') return res();
+    w.addEventListener('load', () => res(), { once: true });
+    setTimeout(res, 5000);
+  });
+  try { await w.document.fonts?.ready; } catch (_) { /* segue sem aguardar fontes */ }
+
+  w.onafterprint = () => setTimeout(() => iframe.remove(), 500);
+  setTimeout(() => { if (iframe.isConnected) iframe.remove(); }, 120000);
+  LNE.showToast('Na janela de impressão, escolha "Salvar como PDF".');
+  setTimeout(() => { w.focus(); w.print(); }, 250);
+}
+
+export function exportarPdfPanorama() {
+  const box = document.createElement('div');
+  renderPanoramaGeral(box);
+  _limparParaPdf(box);
+  _pdfColorido('Quadro geral — LNE 2026', 'Quadro geral', 'Pontuação acumulada de todas as etapas', box.innerHTML);
+}
+
+export function exportarPdfEscola(nomeEscola) {
+  if (!nomeEscola) { LNE.showToast('Selecione uma escola.'); return; }
+  if (!_ehAdmin() && nomeEscola !== LNE.state.perfil?.nome) { LNE.showToast('Você só pode exportar o relatório da sua escola.'); return; }
+  const box = document.createElement('div');
+  renderDashboardEscola(nomeEscola, box);
+  _limparParaPdf(box);
+  _pdfColorido(`Relatório — ${nomeEscola}`, nomeEscola, 'Relatório de desempenho da escola', box.innerHTML);
+}
+
 // ── Helpers dos gráficos ──────────────────────────────────
 const _rotuloCurto = (nome) => { const m = String(nome || '').match(/^\s*(\d+)\s*[ªº]?/); return m ? m[1] + 'ª' : String(nome || 'Etapa').slice(0, 8); };
 const kpi = (rotulo, valor, sub = '', pequeno = false) =>
@@ -509,7 +613,7 @@ function _podio(top3) {
 
 // ── Panorama geral de todas as escolas (tela) ─────────────
 export function renderPanoramaGeral(containerId) {
-  const el = document.getElementById(containerId);
+  const el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
   if (!el) return;
 
   const esc = LNE.esc;
@@ -578,7 +682,8 @@ export function renderPanoramaGeral(containerId) {
         </div>
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           ${legenda([{ rotulo: 'Não federados', cor: CORES.nf }, { rotulo: 'Federados', cor: CORES.fd }])}
-          <button class="btn b-out" data-dash-act="print-geral">${ic('printer')}Imprimir quadro geral</button>
+          <button class="btn b-out" data-dash-act="print-geral" title="Versão preto e branco, otimizada para impressora">${ic('printer')}Imprimir P&B</button>
+          <button class="btn b-out" data-dash-act="pdf-geral" title="Mesmo visual do dashboard, em cores">${icPdf}PDF colorido</button>
         </div>
       </div>
       <div class="dcard-bd" style="padding:0 8px 10px;">
@@ -618,7 +723,7 @@ export function renderPanoramaGeral(containerId) {
 
 // ── Render do dashboard ───────────────────────────────────
 export function renderDashboardEscola(nomeEscola, containerId) {
-  const el = document.getElementById(containerId);
+  const el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
   if (!el) return;
 
   const d = calcDashboardEscola(nomeEscola);
@@ -797,7 +902,8 @@ export function renderDashboardEscola(nomeEscola, containerId) {
           <small>Análise individual da escola</small>
         </div>
         <div class="page-head-act">
-          <button class="btn b-out" data-dash-act="print-escola" data-escola="${esc(nomeEscola)}">${ic('printer')}Imprimir relatório</button>
+          <button class="btn b-out" data-dash-act="print-escola" data-escola="${esc(nomeEscola)}" title="Versão preto e branco, otimizada para impressora">${ic('printer')}Imprimir P&B</button>
+          <button class="btn b-out" data-dash-act="pdf-escola" data-escola="${esc(nomeEscola)}" title="Mesmo visual do dashboard, em cores">${icPdf}PDF colorido</button>
           ${podeFechar ? `<button class="btn b-gray" data-dash-act="fechar-escola">Fechar análise</button>` : ''}
         </div>
       </div>
