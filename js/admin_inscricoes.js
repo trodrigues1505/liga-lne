@@ -142,6 +142,16 @@ export function precosDaEtapa(etapa) {
   return p;
 }
 
+// Escola anfitriã: tabela própria (mensagem do administrador: 1 prova R$ 40 · 2 provas R$ 70 · 3 provas R$ 100 · 4 provas R$ 150).
+// Como o 4º valor é "3 provas + prova adicional", R$ 150 = R$ 100 + R$ 50 de prova adicional.
+export const PRECOS_ANFITRIA_PADRAO = { p1: 40, p2: 70, p3: 100, extra: 50 };
+
+export function precosAnfitriaDaEtapa(etapa) {
+  const p = Object.assign({}, PRECOS_ANFITRIA_PADRAO, (etapa && etapa.precosAnfitria) || {});
+  Object.keys(PRECOS_ANFITRIA_PADRAO).forEach(k => { p[k] = Number.isFinite(+p[k]) && +p[k] >= 0 ? +p[k] : PRECOS_ANFITRIA_PADRAO[k]; });
+  return p;
+}
+
 export function precoAtleta(n, p) {
   if (n <= 0) return 0;
   if (n === 1) return p.p1;
@@ -155,8 +165,9 @@ export function totalizar(linhas) {
     { nAtletas: 0, n1: 0, n2: 0, n3: 0, n4: 0, nInscricoes: 0, total: 0 });
 }
 
-// Agrupa por escola → atleta único (nome + escola) → provas em que está inscrito
-export function calcCobranca(etapa, precos) {
+// Agrupa por escola → atleta único (nome + escola) → provas em que está inscrito.
+// anf = { escola, precos } (opcional): a escola anfitriã é cobrada pela tabela dela.
+export function calcCobranca(etapa, precos, anf = null) {
   const escolas = new Map();
   Object.entries(etapa.provas || {}).forEach(([nomeProva, prova]) => {
     (prova.atletas || []).forEach(a => {
@@ -169,11 +180,13 @@ export function calcCobranca(etapa, precos) {
     });
   });
   const linhas = [...escolas.entries()].map(([escola, m]) => {
-    const atletas = [...m.values()].map(a => ({ nome: a.nome, categoria: a.categoria, nProvas: a.provas.size, provas: [...a.provas], valor: precoAtleta(a.provas.size, precos) }))
+    const anfitria = !!(anf && anf.escola && anf.escola === escola);
+    const tabela = anfitria ? anf.precos : precos;
+    const atletas = [...m.values()].map(a => ({ nome: a.nome, categoria: a.categoria, nProvas: a.provas.size, provas: [...a.provas], valor: precoAtleta(a.provas.size, tabela) }))
       .sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
     const cont = { n1: 0, n2: 0, n3: 0, n4: 0 };
     atletas.forEach(a => { if (a.nProvas === 1) cont.n1++; else if (a.nProvas === 2) cont.n2++; else if (a.nProvas === 3) cont.n3++; else cont.n4++; });
-    return { escola, atletas, nAtletas: atletas.length, ...cont, nInscricoes: atletas.reduce((s, a) => s + a.nProvas, 0), total: atletas.reduce((s, a) => s + a.valor, 0) };
+    return { escola, anfitria, atletas, nAtletas: atletas.length, ...cont, nInscricoes: atletas.reduce((s, a) => s + a.nProvas, 0), total: atletas.reduce((s, a) => s + a.valor, 0) };
   }).sort((a, b) => a.escola.localeCompare(b.escola, 'pt-BR'));
   return { linhas, tot: totalizar(linhas) };
 }
@@ -186,10 +199,12 @@ export function filtrarCobranca(c, escola) {
 }
 
 // Linhas para a planilha (aba Resumo e aba Detalhe)
-export function montarPlanilhaCobranca(etapa, c, precos, escola = '') {
-  const resumo = [[`Cobrança das inscrições — ${etapa.nome}${escola ? ' — ' + escola : ''}`], [`Tabela: 1 prova ${brl(precos.p1)} · 2 provas ${brl(precos.p2)} · 3 provas ${brl(precos.p3)} · prova adicional (4ª em diante) ${brl(precos.extra)}`], [],
+export function montarPlanilhaCobranca(etapa, c, precos, escola = '', anf = null) {
+  const linhaAnf = anf && c.linhas.some(l => l.anfitria)
+    ? [[`Escola anfitriã (${anf.escola}): 1 prova ${brl(anf.precos.p1)} · 2 provas ${brl(anf.precos.p2)} · 3 provas ${brl(anf.precos.p3)} · prova adicional (4ª em diante) ${brl(anf.precos.extra)}`]] : [];
+  const resumo = [[`Cobrança das inscrições — ${etapa.nome}${escola ? ' — ' + escola : ''}`], [`Tabela: 1 prova ${brl(precos.p1)} · 2 provas ${brl(precos.p2)} · 3 provas ${brl(precos.p3)} · prova adicional (4ª em diante) ${brl(precos.extra)}`], ...linhaAnf, [],
     ['Escola', 'Atletas', '1 prova', '2 provas', '3 provas', '4+ provas', 'Inscrições (provas)', 'Valor total (R$)']];
-  c.linhas.forEach(l => resumo.push([l.escola, l.nAtletas, l.n1, l.n2, l.n3, l.n4, l.nInscricoes, l.total]));
+  c.linhas.forEach(l => resumo.push([l.escola + (l.anfitria ? ' (anfitriã)' : ''), l.nAtletas, l.n1, l.n2, l.n3, l.n4, l.nInscricoes, l.total]));
   resumo.push(['TOTAL', c.tot.nAtletas, c.tot.n1, c.tot.n2, c.tot.n3, c.tot.n4, c.tot.nInscricoes, c.tot.total]);
   const detalhe = [['Escola', 'Atleta', 'Categoria', 'Nº de provas', 'Valor (R$)', 'Provas']];
   c.linhas.forEach(l => l.atletas.forEach(a => detalhe.push([l.escola, a.nome, a.categoria, a.nProvas, a.valor, a.provas.join(' | ')])));
@@ -208,6 +223,9 @@ function abrirCobranca() {
   const p = precosDaEtapa(etapa);
   const escolas = calcCobranca(etapa, p).linhas;
   const campo = (id, rot, v) => `<div class="fg"><label for="${id}">${rot}</label><input type="number" min="0" step="0.01" id="${id}" value="${v}" style="width:110px;"/></div>`;
+  const pa = precosAnfitriaDaEtapa(etapa);
+  const anfAtiva = !!etapa.anfitriaAtiva;
+  const nomesEscolas = [...new Set([...(lne.state.db.escolas || []).map(e => e && e.nome), ...escolas.map(l => l.escola), etapa.escolaAnfitria].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   m.innerHTML = `<div class="mdl mdl-panel" style="max-width:920px;max-height:92vh;" role="dialog" aria-modal="true">
     <div class="mdl-hd mdl-bar"><h3>Cobrança das inscrições — ${esc(etapa.nome)}</h3><button class="mdl-x" data-adm-act="fechar-cobranca" aria-label="Fechar">×</button></div>
     <div class="mdl-sub" style="background:#fff;">
@@ -217,6 +235,18 @@ function abrirCobranca() {
       </div>
       <div class="frow" style="margin-bottom:6px;">${campo('cobP1', '1 prova (R$)', p.p1)}${campo('cobP2', '2 provas (R$)', p.p2)}${campo('cobP3', '3 provas (R$)', p.p3)}${campo('cobPX', 'Prova adicional (R$)', p.extra)}</div>
       <p class="help" style="margin:0;">Valores do regulamento da 2ª etapa. A prova adicional (4ª em diante) <strong>não consta no regulamento</strong>: ajuste conforme combinado. Os valores ficam salvos nesta etapa.</p>
+      <label class="opt-card" style="margin:14px 0 0;">
+        <input type="checkbox" id="cobAnfAtiva" ${anfAtiva ? 'checked' : ''}/>
+        <span><strong>Valores diferentes para a escola anfitriã</strong><small>Libera uma segunda tabela, aplicada só à escola escolhida abaixo. As demais escolas seguem a tabela acima.</small></span>
+      </label>
+      <div id="cobAnfBox" style="display:${anfAtiva ? 'block' : 'none'};margin-top:12px;">
+        <div class="frow" style="margin-bottom:10px;">
+          <div class="fg grow"><label for="cobAnfEscola">Escola anfitriã</label>
+            <select id="cobAnfEscola"><option value="">Selecione a escola…</option>${nomesEscolas.map(n => `<option value="${esc(n)}"${n === etapa.escolaAnfitria ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
+        </div>
+        <div class="frow" style="margin-bottom:6px;">${campo('cobA1', '1 prova (R$)', pa.p1)}${campo('cobA2', '2 provas (R$)', pa.p2)}${campo('cobA3', '3 provas (R$)', pa.p3)}${campo('cobAX', 'Prova adicional (R$)', pa.extra)}</div>
+        <p class="help" style="margin:0;">Com 3 provas a R$ 100 e adicional de R$ 50, a anfitriã paga R$ 150 por quem faz 4 provas.</p>
+      </div>
     </div>
     <div class="mdl-scroll" id="cobCorpo" style="padding:16px 22px;"></div>
     <div class="mdl-ft"><button class="btn b-out" data-adm-act="cob-xlsx">Exportar Excel</button><button class="btn b-out" data-adm-act="cob-imprimir">Imprimir</button><button class="btn b-pri" data-adm-act="fechar-cobranca">Fechar</button></div>
@@ -230,6 +260,16 @@ function precosDaTela() {
   return { p1: v('cobP1'), p2: v('cobP2'), p3: v('cobP3'), extra: v('cobPX') };
 }
 
+const numTela = (id) => parseFloat(String(document.getElementById(id)?.value || '').replace(',', '.'));
+
+// Escola anfitriã conforme a tela: só vale com a caixa marcada E uma escola escolhida
+function anfitriaDaTela() {
+  if (!document.getElementById('cobAnfAtiva')?.checked) return null;
+  const escola = document.getElementById('cobAnfEscola')?.value || '';
+  if (!escola) return null;
+  return { escola, precos: precosAnfitriaDaEtapa({ precosAnfitria: { p1: numTela('cobA1'), p2: numTela('cobA2'), p3: numTela('cobA3'), extra: numTela('cobAX') } }) };
+}
+
 // Escola escolhida no seletor da tela ('' = todas)
 function escolaSelecionada() { return document.getElementById('cobEscola')?.value || ''; }
 
@@ -240,7 +280,7 @@ function htmlCobrancaEscola(l) {
       <td style="font-size:12px;color:#64748b;">${a.provas.map(p => esc(p)).join(' · ')}</td><td class="t-c"><strong>${brl(a.valor)}</strong></td></tr>`).join('');
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-      <strong style="font-size:16px;">${esc(l.escola)}</strong>
+      <strong style="font-size:16px;">${esc(l.escola)}${l.anfitria ? ' <span class="badge badge-purple" style="margin-left:6px;">Anfitriã</span>' : ''}</strong>
       <button class="btn b-out" style="height:28px;font-size:12px;" data-adm-act="cob-todas">Ver todas as escolas</button>
     </div>
     <div class="stat-grid" style="margin-bottom:10px;">
@@ -260,7 +300,7 @@ function htmlCobrancaEscola(l) {
 function renderCobranca() {
   const lne = L(); const etapa = lne.getEtapa(lne.state.curEtapaId); if (!etapa) return;
   const precos = precosDaEtapa({ precos: precosDaTela() });
-  const todas = calcCobranca(etapa, precos);
+  const todas = calcCobranca(etapa, precos, anfitriaDaTela());
   const el = document.getElementById('cobCorpo'); if (!el) return;
   if (!todas.linhas.length) { el.innerHTML = '<div class="empty">Nenhum atleta inscrito nesta etapa ainda.</div>'; return; }
   const escolaSel = escolaSelecionada();
@@ -271,7 +311,7 @@ function renderCobranca() {
   }
   const aviso = c.tot.n4 ? AVISO_4MAIS(c.tot.n4) : '';
   const linhas = c.linhas.map((l, i) => `
-    <tr><td><strong>${esc(l.escola)}</strong></td><td class="t-c">${l.nAtletas}</td><td class="t-c">${l.n1}</td><td class="t-c">${l.n2}</td><td class="t-c">${l.n3}</td><td class="t-c">${l.n4 || '—'}</td><td class="t-c">${l.nInscricoes}</td><td class="t-c"><strong>${brl(l.total)}</strong></td>
+    <tr><td><strong>${esc(l.escola)}</strong>${l.anfitria ? ' <span class="badge badge-purple" style="margin-left:6px;">Anfitriã</span>' : ''}</td><td class="t-c">${l.nAtletas}</td><td class="t-c">${l.n1}</td><td class="t-c">${l.n2}</td><td class="t-c">${l.n3}</td><td class="t-c">${l.n4 || '—'}</td><td class="t-c">${l.nInscricoes}</td><td class="t-c"><strong>${brl(l.total)}</strong></td>
       <td class="t-c"><button class="btn b-out" style="height:28px;font-size:12px;" data-adm-act="cob-detalhe" data-i="${i}">Ver atletas</button></td></tr>
     <tr id="cobDet${i}" style="display:none;"><td colspan="9" style="background:#fafbfd;padding:10px 16px;">
       ${l.atletas.map(a => `<div class="list-row" style="padding:5px 0;"><div class="grow" style="font-weight:500;">${esc(a.nome)} <span class="sub">${esc(a.categoria)}</span></div><div class="sub">${a.nProvas} prova(s)</div><div class="val">${brl(a.valor)}</div></div>`).join('')}
@@ -293,6 +333,10 @@ function renderCobranca() {
 function salvarPrecos() {
   const lne = L(); const etapa = lne.getEtapa(lne.state.curEtapaId); if (!etapa) return;
   etapa.precos = precosDaEtapa({ precos: precosDaTela() });
+  // Escola anfitriã: guarda mesmo desmarcada, para não perder a escola e os valores já digitados
+  etapa.anfitriaAtiva = !!document.getElementById('cobAnfAtiva')?.checked;
+  etapa.escolaAnfitria = document.getElementById('cobAnfEscola')?.value || '';
+  etapa.precosAnfitria = precosAnfitriaDaEtapa({ precosAnfitria: { p1: numTela('cobA1'), p2: numTela('cobA2'), p3: numTela('cobA3'), extra: numTela('cobAX') } });
   lne.markDirty();
 }
 
@@ -303,9 +347,10 @@ function exportarXlsx() {
   if (typeof XLSX === 'undefined') { alert('A biblioteca de Excel não carregou. Recarregue a página.'); return; }
   const precos = precosDaEtapa({ precos: precosDaTela() });
   const escola = escolaSelecionada();
-  const c = filtrarCobranca(calcCobranca(etapa, precos), escola);
+  const anf = anfitriaDaTela();
+  const c = filtrarCobranca(calcCobranca(etapa, precos, anf), escola);
   if (!c.linhas.length) { lne.showToast('Nada para exportar.'); return; }
-  const { resumo, detalhe } = montarPlanilhaCobranca(etapa, c, precos, escola);
+  const { resumo, detalhe } = montarPlanilhaCobranca(etapa, c, precos, escola, anf);
   const wb = XLSX.utils.book_new();
   const w1 = XLSX.utils.aoa_to_sheet(resumo); w1['!cols'] = [{ wch: 38 }, { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 18 }, { wch: 16 }];
   const w2 = XLSX.utils.aoa_to_sheet(detalhe); w2['!cols'] = [{ wch: 34 }, { wch: 34 }, { wch: 10 }, { wch: 12 }, { wch: 11 }, { wch: 80 }];
@@ -319,23 +364,26 @@ table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 4pt;} th
 tr{break-inside:avoid;} .c{text-align:center;} .r{text-align:right;} thead{display:table-header-group;} .sm{font-size:8.5pt;}`;
 
 // Monta o corpo da folha impressa: todas as escolas (resumo + detalhe) ou uma escola só
-export function htmlImpressaoCobranca(etapa, c, precos, escola = '', agora = new Date().toLocaleString('pt-BR')) {
+export function htmlImpressaoCobranca(etapa, c, precos, escola = '', agora = new Date().toLocaleString('pt-BR'), anf = null) {
   const cab = `<h1>Cobrança das inscrições</h1><p class="meta">${esc(etapa.nome)} · Liga de Natação Escolar · LNE 2026 · Gerado em ${agora}</p>`;
-  const tabela = `<p class="nota">Tabela: 1 prova ${brl(precos.p1)} · 2 provas ${brl(precos.p2)} · 3 provas ${brl(precos.p3)} · prova adicional ${brl(precos.extra)}.</p>`;
+  const txtTabela = (p, rot) => `<p class="nota">${rot}: 1 prova ${brl(p.p1)} · 2 provas ${brl(p.p2)} · 3 provas ${brl(p.p3)} · prova adicional ${brl(p.extra)}.</p>`;
+  const tabela = txtTabela(precos, 'Tabela');
   if (escola && c.linhas.length) {
     const l = c.linhas[0];
     const linhas = l.atletas.map(a => `<tr><td>${esc(a.nome)}</td><td class="c">${esc(a.categoria)}</td><td class="c">${a.nProvas}</td><td class="sm">${a.provas.map(p => esc(p)).join('; ')}</td><td class="r">${brl(a.valor)}</td></tr>`).join('');
-    return `${cab}<h2 style="margin-top:0;">${esc(l.escola)}</h2>${tabela}
+    const tabelaEscola = l.anfitria && anf ? txtTabela(anf.precos, 'Tabela da escola anfitriã') : tabela;
+    return `${cab}<h2 style="margin-top:0;">${esc(l.escola)}${l.anfitria ? ' (anfitriã)' : ''}</h2>${tabelaEscola}
     <p class="nota">${l.nAtletas} atleta(s) · ${l.nInscricoes} inscrição(ões) em provas · 1 prova: ${l.n1} · 2 provas: ${l.n2} · 3 provas: ${l.n3} · 4 ou mais: ${l.n4}</p>
     <table><colgroup><col style="width:27%"><col style="width:8%"><col style="width:9%"><col style="width:42%"><col style="width:14%"></colgroup>
     <thead><tr><th>Atleta</th><th class="c">Cat.</th><th class="c">Nº provas</th><th>Provas</th><th class="r">Valor</th></tr></thead><tbody>${linhas}
     <tr><td colspan="4"><b>TOTAL</b></td><td class="r"><b>${brl(l.total)}</b></td></tr></tbody></table>`;
   }
-  const resumo = c.linhas.map(l => `<tr><td>${esc(l.escola)}</td><td class="c">${l.nAtletas}</td><td class="c">${l.n1}</td><td class="c">${l.n2}</td><td class="c">${l.n3}</td><td class="c">${l.n4 || '—'}</td><td class="r">${brl(l.total)}</td></tr>`).join('');
+  const tabelaAnf = anf && c.linhas.some(l => l.anfitria) ? txtTabela(anf.precos, `Escola anfitriã (${esc(anf.escola)})`) : '';
+  const resumo = c.linhas.map(l => `<tr><td>${esc(l.escola)}${l.anfitria ? ' (anfitriã)' : ''}</td><td class="c">${l.nAtletas}</td><td class="c">${l.n1}</td><td class="c">${l.n2}</td><td class="c">${l.n3}</td><td class="c">${l.n4 || '—'}</td><td class="r">${brl(l.total)}</td></tr>`).join('');
   const detalhe = c.linhas.map(l => `<h2>${esc(l.escola)} — ${l.nAtletas} atleta(s) — ${brl(l.total)}</h2>
     <table><colgroup><col style="width:56%"><col style="width:12%"><col style="width:14%"><col style="width:18%"></colgroup><thead><tr><th>Atleta</th><th class="c">Cat.</th><th class="c">Provas</th><th class="r">Valor</th></tr></thead><tbody>
     ${l.atletas.map(a => `<tr><td>${esc(a.nome)}</td><td class="c">${esc(a.categoria)}</td><td class="c">${a.nProvas}</td><td class="r">${brl(a.valor)}</td></tr>`).join('')}</tbody></table>`).join('');
-  return `${cab}${tabela}
+  return `${cab}${tabela}${tabelaAnf}
     <table><colgroup><col style="width:36%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:8%"><col style="width:16%"></colgroup>
     <thead><tr><th>Escola</th><th class="c">Atletas</th><th class="c">1 prova</th><th class="c">2 provas</th><th class="c">3 provas</th><th class="c">4+</th><th class="r">Valor</th></tr></thead><tbody>${resumo}
     <tr><td><b>TOTAL</b></td><td class="c"><b>${c.tot.nAtletas}</b></td><td class="c"><b>${c.tot.n1}</b></td><td class="c"><b>${c.tot.n2}</b></td><td class="c"><b>${c.tot.n3}</b></td><td class="c"><b>${c.tot.n4 || '—'}</b></td><td class="r"><b>${brl(c.tot.total)}</b></td></tr></tbody></table>${detalhe}`;
@@ -345,9 +393,10 @@ function imprimir() {
   const lne = L(); const etapa = lne.getEtapa(lne.state.curEtapaId); if (!etapa) return;
   const precos = precosDaEtapa({ precos: precosDaTela() });
   const escola = escolaSelecionada();
-  const c = filtrarCobranca(calcCobranca(etapa, precos), escola);
+  const anf = anfitriaDaTela();
+  const c = filtrarCobranca(calcCobranca(etapa, precos, anf), escola);
   if (!c.linhas.length) { lne.showToast('Nada para imprimir.'); return; }
-  const corpo = htmlImpressaoCobranca(etapa, c, precos, escola);
+  const corpo = htmlImpressaoCobranca(etapa, c, precos, escola, undefined, anf);
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true'); f.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
   document.body.appendChild(f);
@@ -377,5 +426,8 @@ document.addEventListener('change', (ev) => {
   if (id === 'cpOrigem') { cpAtualizarEscolas(); cpResumo(); }
   else if (id === 'cpEscola' || id === 'cpTempo') cpResumo();
   else if (id === 'cobEscola') renderCobranca();
-  else if (['cobP1', 'cobP2', 'cobP3', 'cobPX'].includes(id)) { salvarPrecos(); renderCobranca(); }
+  else if (['cobP1', 'cobP2', 'cobP3', 'cobPX', 'cobAnfAtiva', 'cobAnfEscola', 'cobA1', 'cobA2', 'cobA3', 'cobAX'].includes(id)) {
+    if (id === 'cobAnfAtiva') { const box = document.getElementById('cobAnfBox'); if (box) box.style.display = ev.target.checked ? 'block' : 'none'; }
+    salvarPrecos(); renderCobranca();
+  }
 });
