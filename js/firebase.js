@@ -130,9 +130,15 @@ export async function carregarComoAdmin() {
     }
 
     // Inscrições feitas pelas escolas → banco do administrador
+    // (marcações de federado que contrastam com o histórico viram avisos em state.db.avisosFed)
     mesclarInscricoes(state.db, extras.insc || []);
 
-    await salvarFirebase();   // publica a cópia pública e as visões
+    await salvarFirebase();   // publica a cópia pública e as visões (e grava os avisos novos)
+
+    // Atalho e tela de confirmação de federado. Falha aqui não pode derrubar o carregamento.
+    try { (await import('./avisos_fed.js')).iniciarAvisosFed(); }
+    catch (e) { console.warn('avisos_fed:', e); }
+
     loading(false);
     return true;
   } catch (e) {
