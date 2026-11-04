@@ -230,6 +230,22 @@ export function buildCatOptions(provaCats){
   return '<option value="">Selecione...</option>'+disponiveis.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
 }
 
+// Campo "Federado / vinculado": o mesmo visual nas duas telas de inscrição
+function _fedCampoHtml(id){
+  return `<label for="${id}" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:#fff;">
+    <input type="checkbox" id="${id}" style="width:18px;height:18px;margin-top:1px;accent-color:#7c3aed;flex:none;"/>
+    <span style="font-size:13px;line-height:1.4;"><strong>Federado / vinculado</strong><br><span style="font-size:11px;color:#64748b;">Vale para esta inscrição. Se divergir do cadastro anterior do atleta, a organização confirma antes de alterar.</span></span>
+  </label>`;
+}
+
+// Selo de federado na lista da escola. Enquanto a organização confirma uma divergência,
+// mostra o que a escola marcou com o aviso "em análise".
+function _fedChipHtml(a){
+  if(a.fedPendente) return `<span class="badge badge-amber" style="font-size:9px;margin-left:4px;" title="A organização confirma esta marcação">${a.fedDeclarado?'FED':'Não fed.'} · em análise</span>`;
+  if(a.federado) return '<span class="badge badge-purple" style="font-size:9px;margin-left:4px;">FED</span>';
+  return '';
+}
+
 export function gerenciarInscricao(etapaId,nomePr){
   const etapa=LNE.state.db.etapas.find(x=>x.id===etapaId);if(!etapa) return;
   const p=etapa.provas[nomePr];if(!p) return;
@@ -271,6 +287,7 @@ export function gerenciarInscricao(etapaId,nomePr){
               onkeydown="if(event.key==='Enter'){event.preventDefault();LNE.confirmarAtletaPortal();}"/>
           </div>
         </div>
+        ${_fedCampoHtml('inscrFed')}
         <button class="btn b-pri" style="width:100%;padding:12px;font-size:14px;" onclick="LNE.confirmarAtletaPortal()">✅ Adicionar atleta</button>
       </div>
     </div>
@@ -295,6 +312,7 @@ export function confirmarAtletaPortal(){
   const nome=LNE.toTitle((document.getElementById('inscrNome')?.value||'').trim());
   const cat=(document.getElementById('inscrCat')?.value||'').trim();
   const tr=(document.getElementById('inscrTRef')?.value||'').trim();
+  const fed=!!document.getElementById('inscrFed')?.checked;
   if(!nome){
     document.getElementById('inscrNome').style.borderColor='#f87171';
     document.getElementById('inscrNome').focus();
@@ -306,15 +324,17 @@ export function confirmarAtletaPortal(){
     LNE.showToast('⚠️ Selecione a categoria.');return;
   }
   const etapa=LNE.state.db.etapas.find(x=>x.id===etapaId);const p=etapa?.provas[nomePr];if(!p) return;
-  p.atletas.push({id:LNE.uid(),nome,categoria:cat,escola:LNE.state.perfil.nome,tempoRef:tr,tempo:'',origem:'escola'});
+  p.atletas.push({id:LNE.uid(),nome,categoria:cat,escola:LNE.state.perfil.nome,tempoRef:tr,tempo:'',origem:'escola',federado:fed,fedEm:new Date().toISOString()});
   LNE.markDirty(); LNE.renderInscrAtletas(etapaId,nomePr); LNE.renderPortalEscola();
   // Limpa para próximo atleta
   const nomeEl=document.getElementById('inscrNome');
   const catEl=document.getElementById('inscrCat');
   const trEl=document.getElementById('inscrTRef');
+  const fedEl=document.getElementById('inscrFed');
   if(nomeEl){nomeEl.value='';nomeEl.style.borderColor='var(--bd)';nomeEl.focus();}
   if(catEl){catEl.value='';catEl.style.borderColor='var(--bd)';}
   if(trEl) trEl.value='';
+  if(fedEl) fedEl.checked=false;
   LNE.showToast(`${nome} adicionado(a)!`);
 }
 
@@ -330,7 +350,7 @@ export function renderInscrAtletas(etapaId,nomePr){
     const idx=p.atletas.indexOf(a);
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0f4f8;">
       <div style="flex:1;">
-        <div style="font-weight:600;font-size:13px;">${LNE.esc(a.nome)}</div>
+        <div style="font-weight:600;font-size:13px;">${LNE.esc(a.nome)}${_fedChipHtml(a)}</div>
         <div style="font-size:11px;color:#64748b;">Cat: <strong>${LNE.esc(a.categoria||'—')}</strong>${a.tempoRef?' · Ref: '+LNE.esc(a.tempoRef):''}</div>
       </div>
       ${(LNE.state.modoLegado||a.origem==='escola')
@@ -525,6 +545,7 @@ function _mpAbrir(etapaId) {
       <div><label for="mpCat" style="${lab}">Categoria *</label>
         <select id="mpCat" style="${inp}">${buildCatOptions('')}</select></div>
     </div>
+    <div style="margin-bottom:14px;">${_fedCampoHtml('mpFed')}</div>
     <div style="margin-bottom:14px;">
       <span style="${lab}">Mostrar provas</span>
       <div id="mpGen" style="display:flex;gap:6px;"></div>
@@ -605,12 +626,15 @@ function _mpMarcarEquivalentes() {
   return marcadas;
 }
 
-// Escolheu um atleta já cadastrado: preenche nome/categoria e marca as provas equivalentes às que ela já disputou.
+// Escolheu um atleta já cadastrado: preenche nome/categoria, o status de federado que consta
+// no cadastro e marca as provas equivalentes às que ela já disputou.
 function _mpEscolherConhecido(idx) {
   const r = idx === '' ? null : _mp.conhecidos[+idx];   // '' = "nova atleta" (+'' viraria 0)
+  const fedEl = document.getElementById('mpFed');
   _mp.sel = new Map(); _mp.reuse = r || null;
-  if (!r) { _mp.gen = ''; _mpNota(''); _mpAtualizar(); return; }
+  if (!r) { _mp.gen = ''; if (fedEl) fedEl.checked = false; _mpNota(''); _mpAtualizar(); return; }
   document.getElementById('mpNome').value = r.nome;
+  if (fedEl) fedEl.checked = !!r.federado;
   const cats = _catsDaProva(r.categoria);
   document.getElementById('mpCat').value = cats[0] || '';
   if (r.generos.size === 1) _mp.gen = [...r.generos][0];
@@ -626,21 +650,21 @@ function _mpSalvar() {
   if (!_mp) return;
   const etapa = _mpEtapa(); const escola = LNE.state.perfil; if (!etapa) return;
   if (!_mpPrazoOk(etapa)) { LNE.showToast('O prazo de inscrição desta etapa terminou.'); return; }
-  const nomeEl = document.getElementById('mpNome'), catEl = document.getElementById('mpCat');
+  const nomeEl = document.getElementById('mpNome'), catEl = document.getElementById('mpCat'), fedEl = document.getElementById('mpFed');
   const nome = LNE.toTitle((nomeEl.value || '').trim());
   const cat = (catEl.value || '').trim();
   if (!nome) { nomeEl.style.borderColor = '#f87171'; nomeEl.focus(); LNE.showToast('Digite o nome da atleta.'); return; }
   if (!cat) { catEl.style.borderColor = '#f87171'; catEl.focus(); LNE.showToast('Selecione a categoria.'); return; }
   if (!_mp.sel.size) { LNE.showToast('Marque ao menos uma prova.'); return; }
   const nomeN = _mpN(nome);
-  // O vínculo (federado) só é repetido quando o nome continua sendo o do atleta escolhido na lista
-  const fed = !!(_mp.reuse && _mp.reuse.chave === nomeN && _mp.reuse.federado);
+  // O que a escola marcou vale para esta inscrição. A organização confere contra o cadastro anterior.
+  const fed = !!(fedEl && fedEl.checked);
+  const fedEm = new Date().toISOString();
   let novas = 0, jaExistiam = 0;
   _mp.sel.forEach((tempo, n) => {
     const p = etapa.provas[n]; if (!p) return;
     if (_mpJaInscrita(etapa, n, nomeN, escola.nome)) { jaExistiam++; return; }
-    const at = { id: LNE.uid(), nome, categoria: cat, escola: escola.nome, tempoRef: String(tempo || '').trim(), tempo: '', origem: 'escola' };
-    if (fed) at.federado = true;
+    const at = { id: LNE.uid(), nome, categoria: cat, escola: escola.nome, tempoRef: String(tempo || '').trim(), tempo: '', origem: 'escola', federado: fed, fedEm };
     (p.atletas = p.atletas || []).push(at);
     novas++;
   });
@@ -655,6 +679,7 @@ function _mpSalvar() {
   _mp.sel = new Map(); _mp.reuse = null; _mp.gen = '';
   nomeEl.value = ''; nomeEl.style.borderColor = 'var(--bd)';
   catEl.value = ''; catEl.style.borderColor = 'var(--bd)';
+  if (fedEl) fedEl.checked = false;
   _mpNota('');
   _mpAtualizar();
   nomeEl.focus();
@@ -687,6 +712,10 @@ document.addEventListener('change', ev => {
   else if (t.id === 'mpNome') {
     t.style.borderColor = 'var(--bd)';
     if (_mp.reuse && _mp.reuse.chave !== _mpN(t.value)) { _mp.reuse = null; const s = document.getElementById('mpReuse'); if (s) s.value = ''; _mpNota(''); }
+    // Nome de atleta que a escola já tem no cadastro: o campo federado acompanha o que consta lá
+    const conhecida = _mp.conhecidos.find(r => r.chave === _mpN(t.value));
+    const fedEl = document.getElementById('mpFed');
+    if (conhecida && fedEl) fedEl.checked = !!conhecida.federado;
     _mpAtualizar();
   } else if (t.matches && t.matches('[data-mp-prova]')) {
     const n = t.dataset.mpProva;
@@ -705,4 +734,15 @@ document.addEventListener('keydown', ev => {
   if (!_mp) return;
   if (ev.key === 'Escape') { _mpFechar(); return; }
   if (ev.key === 'Enter' && ev.target.id === 'mpNome') { ev.preventDefault(); document.getElementById('mpCat')?.focus(); }
+});
+
+// Tela de uma prova só: o campo federado acompanha o cadastro quando o nome já é conhecido
+document.addEventListener('change', ev => {
+  if (!_inscEtapaId || ev.target.id !== 'inscrNome') return;
+  const escola = LNE.state.perfil;
+  if (!escola || escola === 'admin') return;
+  const k = _mpN(ev.target.value);
+  const conhecida = _mpConhecidos(escola.nome, LNE.state.db.etapas).find(r => r.chave === k);
+  const fedEl = document.getElementById('inscrFed');
+  if (conhecida && fedEl) fedEl.checked = !!conhecida.federado;
 });
