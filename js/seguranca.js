@@ -17,7 +17,7 @@
 // Campos que podem aparecer na cópia pública (lista de permissão: o que não está aqui NÃO é publicado)
 const ETAPA_PUB = ['id', 'nome', 'data', 'local', 'endereco', 'raias', 'tamPiscina',
   'horaAquecimento', 'horaInicio', 'prazoInscricao', 'provasOrdem',
-  'balizamentoLiberado', 'classLiberadaPorProva', 'classificacaoLiberada', 'placarLiberado', 'criadoEm'];
+    'balizamentoLiberado', 'classLiberadaPorProva', 'classificacaoLiberada', 'placarLiberado', 'criadoEm', 'avisos'];
 const PROVA_PUB = ['genero', 'distancia', 'estilo', 'categoria', 'criadoEm'];
 
 const clone = (x) => JSON.parse(JSON.stringify(x ?? null));
@@ -52,6 +52,8 @@ const anonimizar = (arr) => (arr || []).map(a => ({
 function espelhoEtapa(e, rankingLiberado) {
   const out = {};
   ETAPA_PUB.forEach(k => { if (e[k] !== undefined) out[k] = clone(e[k]); });
+    // Aviso desmarcado em "Exibir para as escolas" não sai do banco do administrador
+  if (out.avisos && out.avisos.visivel === false) delete out.avisos;
   // Placar/ranking liberados → incluir a versão sem nomes das provas ainda não liberadas
   const agregado = !!rankingLiberado || !!e.placarLiberado;
   out.provas = {};
