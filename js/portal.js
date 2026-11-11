@@ -1,5 +1,5 @@
 // portal.js — Portal da escola LNE 2026
-
+import { htmlAvisosEtapa } from './avisos.js';
 // Estado inscrição
 let _inscEtapaId = null, _inscNomePr = null;
 // Etapas expandidas na tela (começam todas recolhidas)
@@ -12,6 +12,7 @@ export function renderPortalEscola(){
   let totalAtl=0,totalInscr=0;
   LNE.state.db.etapas.forEach(e=>{ Object.values(e.provas||{}).forEach(p=>{ const at=p.atletas.filter(a=>a.escola===escola.nome); totalInscr+=at.length; }); });
   const todosNomes=new Set(); LNE.state.db.etapas.forEach(e=>{ Object.values(e.provas||{}).forEach(p=>{ p.atletas.filter(a=>a.escola===escola.nome).forEach(a=>todosNomes.add(a.nome)); }); }); totalAtl=todosNomes.size;
+  const avisosHtml=LNE.state.db.etapas.map(e=>htmlAvisosEtapa(e)).join('');
   let html=`<div style="background:linear-gradient(135deg,#003f8a,#0056b8);color:#fff;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;">
     <span style="font-size:32px;">🏫</span>
     <div style="flex:1;">
@@ -29,7 +30,7 @@ export function renderPortalEscola(){
     <div class="sc"><div class="lbl">Atletas únicos</div><div class="val">${totalAtl}</div></div>
     <div class="sc"><div class="lbl">Inscrições totais</div><div class="val">${totalInscr}</div></div>
   </div>
-  <h3 style="font-size:14px;font-weight:700;color:var(--az);margin-bottom:10px;">📋 Inscrições por Etapa</h3>`;
+${avisosHtml}<h3 style="font-size:14px;font-weight:700;color:var(--az);margin-bottom:10px;">📋 Inscrições por Etapa</h3>`;
   if(!LNE.state.db.etapas.length) html+='<p style="text-align:center;color:#64748b;padding:30px;font-size:13px;">Nenhuma etapa disponível ainda.</p>';
   LNE.state.db.etapas.forEach(e=>{
     const prazoOk=!e.prazoInscricao||e.prazoInscricao>=hoje;
