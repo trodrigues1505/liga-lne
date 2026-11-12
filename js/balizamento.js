@@ -128,7 +128,7 @@ export function renderBal(nome){
     <div class="card-hd coll-hd" onclick="LNE.toggleCollapse('balbody-${LNE.tid(nome)}','balarr-${LNE.tid(nome)}')">
       <span>⚡ Balizamento — ${LNE.esc(nome)} <span style="font-weight:400;color:#6b7280;font-size:11px;">${p.series.length} série(s)</span></span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <button class="btn b-pri" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();abrirSerieCombinada(${LNE.jstr(nome)})">🔀 Série combinada</button>
+        <button class="btn b-pri" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();LNE.abrirSerieCombinada(${LNE.jstr(nome)})">🔀 Série combinada</button>
         <span id="balarr-${LNE.tid(nome)}" class="coll-arrow open">▼</span>
       </div>
     </div>
@@ -204,7 +204,7 @@ export function excluirRaia(nome,si,li){const p=LNE.getProva(nome);if(!p) return
 export function ativarRaiaVazia(nome,si,li){
   const tr=document.getElementById(`rvazia-${LNE.tid(nome)}-${si}-${li}`); if(!tr) return;
   tr.innerHTML=`<td></td><td class="rn">${li+1}</td>
-    <td><input type="text" id="rvn-${si}-${li}" placeholder="Nome" autofocus style="width:100%;border:1px solid var(--azm);padding:3px 5px;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')confRaiaVazia(${LNE.jstr(nome)},${si},${li});if(event.key==='Escape')LNE.renderBal(${LNE.jstr(nome)});"/></td>
+    <td><input type="text" id="rvn-${si}-${li}" placeholder="Nome" autofocus style="width:100%;border:1px solid var(--azm);padding:3px 5px;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')LNE.confRaiaVazia(${LNE.jstr(nome)},${si},${li});if(event.key==='Escape')LNE.renderBal(${LNE.jstr(nome)});"/></td>
     <td><input type="text" id="rvcat-${si}-${li}" placeholder="Cat." style="width:65px;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
     <td><input type="text" id="rve-${si}-${li}" placeholder="Escola" style="width:100%;border:1px solid var(--bd);padding:3px 5px;border-radius:4px;font-size:12px;"/></td>
     <td colspan="2" style="white-space:nowrap;">
@@ -374,7 +374,7 @@ export function abrirSerieCombinada(nomeProva){
 export function confirmarSerieCombinada(){
   const etapa=LNE.getEtapa(LNE.state.curEtapaId); if(!etapa) return;
   const raias=etapa.raias||8;
-  const lo=LNE.LNE.getLaneOrder(LNE.state.db.etapas.find(e=>e.id===LNE.state.curEtapaId)?.raias||8).slice(0,raias);
+  const lo=LNE.getLaneOrder(raias).slice(0,raias);
   const checks=[...document.querySelectorAll('.comb-chk:checked')];
   if(!checks.length){alert('Selecione pelo menos um atleta.');return;}
   if(checks.length>raias){alert(`Máximo ${raias} atletas.`);return;}
