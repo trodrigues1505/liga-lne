@@ -141,7 +141,7 @@ export function renderBal(nome){
         <tr><td colspan="${raias+3}" style="background:#374151;color:#fff;padding:6px 12px;font-size:11px;font-weight:700;">
           SÉRIE ${si+1} ${combTag} <span style="font-weight:400;font-size:10px;opacity:.75;">${cnt} atleta(s)</span>
         </td></tr>
-        <tr><th style="width:24px;"></th><th style="width:34px;">Raia</th><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:105px;">Tempo</th><th style="width:46px;"></th></tr>
+        <tr><th style="width:24px;"></th><th style="width:34px;">Raia</th><th>Nome</th><th style="width:70px;">Cat.</th><th>Escola</th><th style="width:105px;">Tempo</th><th style="width:84px;"></th></tr>
       </thead><tbody>`;
     serie.lanes.forEach((a,li)=>{
       const raia=li+1, isCen=raias>=8&&(raia===4||raia===5), cen=isCen?' rc':'';
@@ -162,6 +162,9 @@ export function renderBal(nome){
               style="width:95px;"/>
           </td>
           <td style="text-align:center;white-space:nowrap;">
+            <button onclick="LNE.imprimirCartaoAtleta(${LNE.jstr(nome)},${si},${li})"
+              title="Imprimir cartão deste atleta"
+              style="background:#e0f2fe;border:none;color:#0369a1;cursor:pointer;font-size:11px;padding:4px 8px;border-radius:5px;font-weight:600;touch-action:manipulation;margin-right:4px;">🖨️</button>
             <button onclick="LNE.excluirRaia(${LNE.jstr(nome)},${si},${li})"
               title="Remover desta raia"
               style="background:#fee2e2;border:none;color:#dc2626;cursor:pointer;font-size:11px;padding:4px 8px;border-radius:5px;font-weight:600;touch-action:manipulation;">✕</button>
