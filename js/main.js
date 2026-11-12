@@ -89,7 +89,7 @@ import { renderPortalEscola, verClassificacaoEscola,
 import { buildCartoesHtml, abrirModalCartoesEmBranco, imprimirCartoesEmBranco,
          buildCartoesEmBrancoHtml, abrirModalCartaoManual, imprimirCartaoManual,
          abrirModalCartoes, cartSelTodas, confirmarImprimirCartoes,
-         imprimirCartoesProva, imprimirTodosCartoes } from './cartoes.js';
+         imprimirCartaoAtleta, imprimirCartoesProva, imprimirTodosCartoes } from './cartoes.js';
 
 // ── impressao_lote ────────────────────────────────────────
 import { abrirModalImprimirBalizamentos, ibSelTodas,
@@ -212,7 +212,7 @@ window.LNE = {
   buildCartoesHtml, abrirModalCartoesEmBranco, imprimirCartoesEmBranco,
   buildCartoesEmBrancoHtml, abrirModalCartaoManual, imprimirCartaoManual,
   abrirModalCartoes, cartSelTodas, confirmarImprimirCartoes,
-  imprimirCartoesProva, imprimirTodosCartoes,
+  imprimirCartaoAtleta, imprimirCartoesProva, imprimirTodosCartoes,
 
   // ── impressao_lote ──
   abrirModalImprimirBalizamentos, ibSelTodas,
@@ -303,4 +303,4 @@ window.addEventListener('lne:navegar', e => {
 // DB restaurado via backup
 window.addEventListener('lne:dbRestored', () => {
   if (state.perfil === 'admin') navegarPara('etapas');
-});   
+});
