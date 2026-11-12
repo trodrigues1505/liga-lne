@@ -1089,6 +1089,8 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
               <div class="dropdown-sep"></div>
               <div class="dropdown-label">Impressão</div>
               <button class="dropdown-item" onclick="LNE.imprimirTodosCartoes();LNE.fecharDropdowns()">Todos os cartões</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalCartoesEmBranco();LNE.fecharDropdowns()">Cartões em branco</button>
+              <button class="dropdown-item" onclick="LNE.abrirModalCartaoManual();LNE.fecharDropdowns()">Cartão avulso (digitar dados)</button>
               <button class="dropdown-item" onclick="LNE.abrirModalImprimirBalizamentos();LNE.fecharDropdowns()">Balizamentos</button>
               <button class="dropdown-item" onclick="LNE.abrirModalImprimirClassificacoes();LNE.fecharDropdowns()">Classificações</button>
               <div class="dropdown-sep"></div>
@@ -1760,4 +1762,4 @@ input[type=checkbox],input[type=radio]{accent-color:var(--azm);}
 
 
 </body>
-</html>   
+</html>
