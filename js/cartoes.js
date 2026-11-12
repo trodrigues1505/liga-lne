@@ -240,6 +240,22 @@ export function confirmarImprimirCartoes(){
   w.document.close(); w.focus(); setTimeout(()=>w.print(),450);
 }
 
+// ── Cartão avulso: imprime 1 cartão de um atleta direto do balizamento ──
+// Usa a série/raia/federado que estão gravados na raia (p.series[si].lanes[li]),
+// os mesmos dados que confirmarImprimirCartoes usa para o lote.
+export function imprimirCartaoAtleta(nomeProva, si, li){
+  const p = LNE.getProva(nomeProva);
+  const a = p && p.series && p.series[si] && p.series[si].lanes[li];
+  if(!a || !a.nome || a._outra){ LNE.showToast('⚠️ Nenhum atleta nesta raia.'); return; }
+  const cartao = { nome:a.nome, prova:nomeProva, serie:si+1, raia:li+1, federado:!!a.federado };
+  const pf = 8; // retrato: cartão maior e legível; sai no canto superior esquerdo da folha
+  const w = window.open('','_blank');
+  if(!w){ LNE.showToast('⚠️ O navegador bloqueou a janela de impressão. Libere pop-ups para este site.'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cartão — ${LNE.esc(a.nome)}</title><style>${getCartoesCSS(pf)}</style></head><body>${LNE.buildCartoesHtml([cartao], pf)}
+</body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(), 450);
+}
+
 export function imprimirCartoesProva(nome){ abrirModalCartoes(nome); }
 
-export function imprimirTodosCartoes(){ abrirModalCartoes(null); }    
+export function imprimirTodosCartoes(){ abrirModalCartoes(null); }
