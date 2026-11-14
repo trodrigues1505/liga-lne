@@ -40,9 +40,8 @@ export function _buildClassRows(classArr,pontuarPts,nomePrv){
     while(fim<validos.length && LNE.tempoMs(validos[fim].a.tempo)===tAtual) fim++;
     const grupo=validos.slice(cursor,fim); // atletas empatados
     const posicao=cursor+1; // posição olímpica (baseada em quantos vieram antes)
-    // Pontos: média dos pontos das posições ocupadas pelo grupo, arredondado para baixo
-
-    const ptsPos=LNE.PONTOS_LNE[cursor]||0; // todos recebem os pontos da posição
+    // Empate: todos do grupo recebem a pontuação cheia da posição em que o grupo começa (sem dividir)
+    const ptsPos=LNE.PONTOS_LNE[cursor]||0;
     grupo.forEach(({i})=>{ rankMap[i]={pos:posicao, pts:ptsPos, empate:grupo.length>1}; });
     cursor=fim;
   }
@@ -60,7 +59,7 @@ export function _buildClassRows(classArr,pontuarPts,nomePrv){
     const stBadge=st?`<span class="badge ${st==='DQ'?'badge-red':st==='DNS'?'badge-amber':'badge-gray'}" title="${STATUS_TITLE[st]||st}" style="cursor:help;">${st} ℹ️</span>`:'';
     const fedBadge=a.federado?`<span class="badge badge-purple" style="font-size:9px;margin-left:3px;">FED</span>`:'';
     return {html:`<tr style="${st||semTempo?'opacity:.6;':''}">
-      <td><span class="pb ${st||!pPos?'pn':bc}" title="${empate?'Empate — pontos divididos':''}">${posLabel}</span></td>
+      <td><span class="pb ${st||!pPos?'pn':bc}" title="${empate?'Empate — todos recebem a mesma pontuação':''}">${posLabel}</span></td>
       <td style="font-weight:600;">${LNE.esc(a.nome)}${fedBadge}</td>
       <td style="font-size:11px;color:#64748b;text-align:center;">${LNE.esc(a.categoria||'')}</td>
       <td style="font-size:11px;">${LNE.esc(a.escola||'')}</td>
@@ -166,7 +165,7 @@ export function fsRender(p,filtro=''){
         <div style="width:22px;text-align:center;font-weight:700;color:#94a3b8;font-size:12px;">${li+1}</div>
         <div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;color:#f1f5f9;">${LNE.esc(a.nome)}</div>
         <div style="font-size:10px;color:#64748b;">${LNE.esc(a.escola||'')} · ${LNE.esc(a.categoria||'')}</div></div>
-        <input type="text" placeholder="00:00,00" value="${LNE.esc(t)}" data-k="${k}" oninput="LNE.fsUpd(this)" onkeydown="LNE.fsTab(event,this)"
+        <input type="text" inputmode="numeric" placeholder="00:00,00" value="${LNE.esc(t)}" data-k="${k}" onfocus="this.select()" oninput="LNE.fsUpd(this)" onkeydown="LNE.fsTab(event,this)"
           style="width:95px;border-radius:5px;border:1px solid ${t?(ok?'#86efac':'#fca5a5'):'#475569'};background:${t?(ok?'#052e16':'#2d0000'):'#1e293b'};color:#f1f5f9;padding:5px 8px;font-family:monospace;font-size:13px;text-align:center;"/>
       </div>`;
     });
@@ -175,7 +174,14 @@ export function fsRender(p,filtro=''){
   body.innerHTML=html||'<p style="color:#94a3b8;text-align:center;padding:30px;">Nenhum atleta.</p>';
 }
 
-export function fsUpd(inp){const k=inp.dataset.k,v=inp.value.trim();LNE.state.fsTempos[k]=v;const ok=/^\d{1,2}:\d{2}[,.]\d{2}$/.test(v);inp.style.borderColor=v?(ok?'#86efac':'#fca5a5'):'#475569';inp.style.background=v?(ok?'#052e16':'#2d0000'):'#1e293b';}
+export function fsUpd(inp){
+  inp.value=LNE.mascararTempo(inp.value);   // máscara: só números → mm:ss,cc
+  const k=inp.dataset.k,v=inp.value;
+  LNE.state.fsTempos[k]=v;
+  const ok=LNE.tempoValido(v);
+  inp.style.borderColor=v?(ok?'#86efac':'#fca5a5'):'#475569';
+  inp.style.background=v?(ok?'#052e16':'#2d0000'):'#1e293b';
+}
 
 export function fsTab(e,inp){if(e.key!=='Enter'&&e.key!=='Tab') return;e.preventDefault();const all=[...document.querySelectorAll('#fsBody input')];const idx=all.indexOf(inp);if(idx<all.length-1) all[idx+1].focus();}
 
@@ -188,4 +194,3 @@ export function fsSalvar(){
 }
 
 export function fecharTelaCheia(){LNE.fecharModal('fsModal');LNE.state.fsProva=null;}
-
