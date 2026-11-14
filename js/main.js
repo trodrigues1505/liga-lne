@@ -8,7 +8,7 @@
 // ── state, utils, ui ─────────────────────────────────────
 import { state, getEtapa, getProva, getProvas,
          ADMIN_SENHA, PONTOS_LNE } from './state.js';
-import { esc, tid, jstr, uid, toTitle, tempoMs, fmtData,
+import { esc, tid, jstr, uid, toTitle, tempoMs, mascararTempo, tempoValido, fmtData,
          gerarCodigo, getLaneOrder, calcSeries,
          getProvasOrdenadas, normNomeProva } from './utils.js';
 import { showToast, loading, setSyncStatus,
@@ -140,7 +140,7 @@ window.LNE = {
   PRINT_CSS, CARTOES_CSS,
 
   // ── utils ──
-  esc, tid, jstr, uid, toTitle, tempoMs, fmtData, gerarCodigo,
+  esc, tid, jstr, uid, toTitle, tempoMs, mascararTempo, tempoValido, fmtData, gerarCodigo,
   getLaneOrder, calcSeries, getProvasOrdenadas, normNomeProva,
   getEtapa, getProva, getProvas,
 
