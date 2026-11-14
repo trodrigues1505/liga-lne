@@ -59,7 +59,7 @@ export function addAtleta(nome){
       <div class="fg grow"><label>Escola</label><input type="text" id="addEscola" value="${LNE.esc(escola)}" placeholder="Nome da escola"/></div>
     </div>
     <div class="frow">
-      <div class="fg"><label>Tempo de referência</label><input type="text" id="addTRef" placeholder="00:00,00"/></div>
+      <div class="fg"><label>Tempo de referência</label><input type="text" id="addTRef" inputmode="numeric" placeholder="00:00,00" oninput="this.value=LNE.mascararTempo(this.value)"/></div>
       <div class="fg" style="justify-content:flex-end;">
         <label style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px;">Vínculo</label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border:1.5px solid var(--bd);border-radius:6px;background:#fff;transition:all .15s;" id="fedLabel">
@@ -86,4 +86,3 @@ export function confirmarAddAtleta(nome){
   LNE.getProva(nome).atletas.push({id:LNE.uid(),nome:n,categoria:cat,escola,tempoRef:tr,tempo:'',federado});
   LNE.markDirty(); LNE.fecharModal('modalAddAtleta'); LNE.renderAll(nome); LNE.showToast(`${n} adicionado(a)!`);
 }
-
