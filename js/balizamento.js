@@ -156,7 +156,7 @@ export function renderBal(nome){
           <td><input type="text" value="${LNE.esc(a.escola||'')}" onchange="LNE.updBal(${LNE.jstr(nome)},${si},${li},'escola',this.value)"/></td>
           <td>
             <input type="text" class="ti${a.tempo?(ok?' ok':' err'):''}" placeholder="00:00,00" value="${LNE.esc(a.tempo||'')}"
-              inputmode="decimal"
+              inputmode="numeric" onfocus="this.select()"
               oninput="LNE.vTi(this)"
               onchange="LNE.updBal(${LNE.jstr(nome)},${si},${li},'tempo',this.value)"
               style="width:95px;"/>
@@ -421,4 +421,10 @@ export function ddrop(e,nome,si,li){
 }
 
 
-export const vTi=inp=>{const v=inp.value.trim();inp.classList.toggle('ok',!!v&&/^\d{1,2}:\d{2}[,.]\d{2}$/.test(v));inp.classList.toggle('err',!!v&&!/^\d{1,2}:\d{2}[,.]\d{2}$/.test(v));}
+// Máscara: digita só números → mm:ss,cc (preenche da direita p/ esquerda)
+export const vTi=inp=>{
+  inp.value=LNE.mascararTempo(inp.value);
+  const v=inp.value, ok=LNE.tempoValido(v);
+  inp.classList.toggle('ok',!!v&&ok);
+  inp.classList.toggle('err',!!v&&!ok);
+};
