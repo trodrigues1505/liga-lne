@@ -108,10 +108,10 @@ export function renderFluxo(nome){
   const el=document.getElementById('fluxo-'+LNE.tid(nome)); if(!el) return;
   const e=getFluxoEstado(nome);
   const steps=[
-    {id:'atletas',      label:'Atletas',       icon:'👥', done:e.atletas,       fn:`abrirSecao('atl',LNE.state.curProva)`},
-    {id:'balizamento',  label:'Balizamento',   icon:'🏊', done:e.balizamento,   fn:`abrirSecao('bal',LNE.state.curProva)`},
-    {id:'cronometragem',label:'Cronometragem', icon:'⏱️', done:e.cronoConcluida, fn:`abrirTelaCheia(LNE.state.curProva)`},
-    {id:'classificacao',label:'Classificação', icon:'🏆', done:e.classificacao, fn:`abrirSecao('cls',LNE.state.curProva)`},
+    {id:'atletas',      label:'Atletas',       icon:'👥', done:e.atletas,       fn:`LNE.abrirSecao('atl',LNE.state.curProva)`},
+    {id:'balizamento',  label:'Balizamento',   icon:'🏊', done:e.balizamento,   fn:`LNE.abrirSecao('bal',LNE.state.curProva)`},
+    {id:'cronometragem',label:'Cronometragem', icon:'⏱️', done:e.cronoConcluida, fn:`LNE.abrirTelaCheia(LNE.state.curProva)`},
+    {id:'classificacao',label:'Classificação', icon:'🏆', done:e.classificacao, fn:`LNE.abrirSecao('cls',LNE.state.curProva)`},
     {id:'sumula',       label:'Súmula',        icon:'📄', done:e.sumula,        fn:`LNE.abrirSumula()`},
   ];
   // determina qual é o "atual" — primeiro não-done
