@@ -25,6 +25,23 @@ export const tempoMs = t => {
   return m ? +m[1] * 60000 + +m[2] * 1000 + +m[3] * 10 : Infinity;
 };
 
+// Máscara de tempo de natação: digita só números e sai mm:ss,cc
+// (preenche da direita para a esquerda: 3497 → 00:34,97).
+// Sempre devolve os minutos com 2 dígitos, igual aos tempos já salvos.
+// Só zeros (ex.: "0") devolve vazio, para não virar um tempo de 0 ms.
+export const mascararTempo = raw => {
+  const d = String(raw || '').replace(/\D/g, '').slice(-6);
+  if (!/[1-9]/.test(d)) return '';
+  const p = d.padStart(6, '0');
+  return `${p.slice(0, 2)}:${p.slice(2, 4)},${p.slice(4)}`;
+};
+
+// Tempo válido: m:ss,cc ou mm:ss,cc, com segundos até 59.
+export const tempoValido = v => {
+  const m = /^(\d{1,2}):(\d{2})[,.](\d{2})$/.exec((v || '').trim());
+  return !!m && +m[2] <= 59;
+};
+
 // ── Data ──────────────────────────────────────────────────
 export const fmtData = d => {
   try { return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : ''; }
